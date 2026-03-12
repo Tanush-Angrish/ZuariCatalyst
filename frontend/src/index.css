@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-blue: #003580;
+  --color-brand-red: #DE0F17;
+  --color-brand-green: #99CC33;
+  --color-brand-black: #000000;
+}
+
+body {
+  background-color: #f9fafb;
+  color: #000000;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
