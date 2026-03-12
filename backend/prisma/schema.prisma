@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  role          String
+  name          String
+  title         String   @default("")
+  password      String   @default("password")
+  organization  String?  
+  
+  // Relations
+  authoredIdeas Idea[]   @relation("IdeaAuthor")
+  assignedIdeas Idea[]   @relation("IdeaAssignee")
+
+  @@map("users")
+}
+
+model Idea {
+  id             Int      @id @default(autoincrement())
+  title          String
+  description    String
+  department     String
+  expectedImpact String
+  supportingLink String?
+  extraFields    String   @default("{}") // Storing JSON as string to match old sqlite approach initially
+  status         String   @default("Pending Review")
+  createdAt      DateTime @default(now())
+
+  authorId       Int
+  assignedToId   Int?
+
+  // Relations
+  author         User     @relation("IdeaAuthor", fields: [authorId], references: [id])
+  assignedTo     User?    @relation("IdeaAssignee", fields: [assignedToId], references: [id])
+
+  @@map("ideas")
+}
+
+model FormField {
+  id         Int      @id @default(autoincrement())
+  formType   String
+  fieldName  String
+  fieldLabel String
+  fieldType  String   @default("text")
+  required   Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  options    String   @default("[]") // Storing JSON array as string
+  isSystem   Boolean  @default(false)
+
+  @@map("form_fields")
+}

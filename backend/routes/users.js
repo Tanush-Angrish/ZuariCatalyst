@@ -1,37 +1,50 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/database');
+const prisma = require('../db/prisma');
 
 // GET all users
-router.get('/', (req, res) => {
-  db.all('SELECT id, email, name, title, role, organization FROM users ORDER BY id', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
+router.get('/', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: { id: true, email: true, name: true, title: true, role: true, organization: true },
+      orderBy: { id: 'asc' }
+    });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // POST create single user
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { name, title, email, role, organization } = req.body;
 
   if (!name || !email || !role) {
     return res.status(400).json({ error: 'Name, email, and role are required' });
   }
 
-  const query = `INSERT INTO users (name, title, email, role, organization, password) VALUES (?, ?, ?, ?, ?, 'password')`;
-  db.run(query, [name, title || '', email, role, organization || ''], function(err) {
-    if (err) {
-      if (err.message.includes('UNIQUE constraint')) {
-        return res.status(409).json({ error: 'A user with this email already exists' });
+  try {
+    const user = await prisma.user.create({
+      data: {
+        name,
+        title: title || '',
+        email,
+        role,
+        organization: organization || '',
+        password: 'password'
       }
-      return res.status(500).json({ error: err.message });
+    });
+    res.json({ id: user.id, name, title, email, role, organization });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'A user with this email already exists' });
     }
-    res.json({ id: this.lastID, name, title, email, role, organization });
-  });
+    return res.status(500).json({ error: error.message });
+  }
 });
 
 // POST bulk create users
-router.post('/bulk', (req, res) => {
+router.post('/bulk', async (req, res) => {
   const { users } = req.body;
 
   if (!Array.isArray(users) || users.length === 0) {
@@ -40,37 +53,40 @@ router.post('/bulk', (req, res) => {
 
   const errors = [];
   const successes = [];
-  let processed = 0;
 
-  const query = `INSERT INTO users (name, title, email, role, organization, password) VALUES (?, ?, ?, ?, ?, 'password')`;
-
-  users.forEach((u, idx) => {
+  for (let i = 0; i < users.length; i++) {
+    const u = users[i];
     if (!u.name || !u.email || !u.role) {
-      errors.push({ row: idx + 1, error: 'Missing name, email, or role' });
-      processed++;
-      if (processed === users.length) {
-        return res.json({ successes: successes.length, errors });
-      }
-      return;
+      errors.push({ row: i + 1, error: 'Missing name, email, or role' });
+      continue;
     }
 
-    db.run(query, [u.name, u.title || '', u.email, u.role, u.organization || ''], function(err) {
-      processed++;
-      if (err) {
-        errors.push({ row: idx + 1, email: u.email, error: err.message.includes('UNIQUE') ? 'Duplicate email' : err.message });
-      } else {
-        successes.push({ id: this.lastID, email: u.email });
-      }
+    try {
+      const user = await prisma.user.create({
+        data: {
+          name: u.name,
+          title: u.title || '',
+          email: u.email,
+          role: u.role,
+          organization: u.organization || '',
+          password: 'password'
+        }
+      });
+      successes.push({ id: user.id, email: user.email });
+    } catch (error) {
+      errors.push({ 
+        row: i + 1, 
+        email: u.email, 
+        error: error.code === 'P2002' ? 'Duplicate email' : error.message 
+      });
+    }
+  }
 
-      if (processed === users.length) {
-        res.json({ successes: successes.length, errors });
-      }
-    });
-  });
+  res.json({ successes: successes.length, errors });
 });
 
 // PUT update user role
-router.put('/:id/role', (req, res) => {
+router.put('/:id/role', async (req, res) => {
   const { role } = req.body;
   const validRoles = ['Employee', 'Org Admin', 'Superadmin'];
 
@@ -81,15 +97,20 @@ router.put('/:id/role', (req, res) => {
   // Map "Central Team" display name to stored "Superadmin" if needed
   const dbRole = role === 'Central Team' ? 'Superadmin' : role;
 
-  db.run('UPDATE users SET role = ? WHERE id = ?', [dbRole, req.params.id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+  try {
+    await prisma.user.update({
+      where: { id: parseInt(req.params.id) },
+      data: { role: dbRole }
+    });
     res.json({ message: 'Role updated' });
-  });
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'User not found' });
+    return res.status(500).json({ error: error.message });
+  }
 });
 
 // PUT update user details
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const { name, title, email, role, organization } = req.body;
 
   if (!name || !email || !role) {
@@ -98,24 +119,35 @@ router.put('/:id', (req, res) => {
 
   const dbRole = role === 'Central Team' ? 'Superadmin' : role;
 
-  db.run(
-    'UPDATE users SET name = ?, title = ?, email = ?, role = ?, organization = ? WHERE id = ?',
-    [name, title || '', email, dbRole, organization || '', req.params.id],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
-      res.json({ message: 'User updated' });
-    }
-  );
+  try {
+    await prisma.user.update({
+      where: { id: parseInt(req.params.id) },
+      data: {
+        name,
+        title: title || '',
+        email,
+        role: dbRole,
+        organization: organization || ''
+      }
+    });
+    res.json({ message: 'User updated' });
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'User not found' });
+    return res.status(500).json({ error: error.message });
+  }
 });
 
 // DELETE user
-router.delete('/:id', (req, res) => {
-  db.run('DELETE FROM users WHERE id = ?', [req.params.id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+router.delete('/:id', async (req, res) => {
+  try {
+    await prisma.user.delete({
+      where: { id: parseInt(req.params.id) }
+    });
     res.json({ message: 'User deleted' });
-  });
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'User not found' });
+    return res.status(500).json({ error: error.message });
+  }
 });
 
 module.exports = router;

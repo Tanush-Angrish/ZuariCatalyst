@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/database');
+const prisma = require('../db/prisma');
 
 const ALLOWED_DOMAIN = '@adventz.com';
 
 // Login Route - validates domain, email, and password
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { email, password } = req.body || {};
 
   if (!email) {
@@ -21,10 +21,10 @@ router.post('/login', (req, res) => {
     return res.status(403).json({ error: `Only ${ALLOWED_DOMAIN} email addresses are allowed` });
   }
 
-  db.get('SELECT * FROM users WHERE email = ?', [email.toLowerCase()], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
+  try {
+    const row = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
     
     if (!row) {
       return res.status(404).json({ error: 'User not found. Contact your administrator.' });
@@ -50,7 +50,10 @@ router.post('/login', (req, res) => {
         organization: row.organization
       }
     });
-  });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({ error: 'Database error' });
+  }
 });
 
 module.exports = router;
