@@ -73,8 +73,8 @@ export default function DynamicIdeaTable({
               {templateName}
             </h2>
 
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-              <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden animate-fade-in-up delay-100">
+              <div className="overflow-x-auto overflow-y-auto max-h-[600px] pb-2">
                 <table className="text-left text-sm whitespace-nowrap" style={{ minWidth: '100%', width: 'max-content' }}>
                   <thead className="bg-[#f8f9fc] border-b border-gray-200 text-gray-600 sticky top-0 z-10">
                     <tr>
@@ -132,7 +132,7 @@ export default function DynamicIdeaTable({
                   
                   <tbody className="divide-y divide-gray-100">
                     {templateIdeas.map((idea) => (
-                      <tr key={idea.id} className="hover:bg-gray-50/50 transition-colors">
+                      <tr key={idea.id} className="hover:bg-brand-blue/5 transition-colors">
                         
                         {/* Author */}
                         {viewType !== 'myIdeas' && (
@@ -158,10 +158,24 @@ export default function DynamicIdeaTable({
                             else if (field.id === 'department') val = idea.department;
                             else if (field.id === 'expectedImpact') val = idea.expectedImpact;
                             else if (field.id === 'referenceLink' || field.id === 'supportingLink') val = idea.supportingLink;
-                            else if (field.id === 'problemDescription' || field.id === 'proposedSolution') {
-                              // We aggregated problem and solution into description during MVP submission
-                              // To display cleanly in dynamic table, we just split them roughly or show the full description
-                              val = idea.description;
+                            else if (field.id === 'problemDescription') {
+                              // Priority 1: Direct extra field (new submissions)
+                              if (idea.extra.problemDescription) {
+                                val = idea.extra.problemDescription;
+                              } else {
+                                // Priority 2: Extract from merged description (legacy)
+                                const match = idea.description?.match(/Problem:\n([\s\S]*?)(?=\n\nSolution:|$)/i);
+                                val = match ? match[1].trim() : idea.description;
+                              }
+                            } else if (field.id === 'proposedSolution') {
+                              // Priority 1: Direct extra field (new submissions)
+                              if (idea.extra.proposedSolution) {
+                                val = idea.extra.proposedSolution;
+                              } else {
+                                // Priority 2: Extract from merged description (legacy)
+                                const match = idea.description?.match(/Solution:\n([\s\S]*)/i);
+                                val = match ? match[1].trim() : idea.description;
+                              }
                             } else {
                               val = idea.extra[field.id];
                             }

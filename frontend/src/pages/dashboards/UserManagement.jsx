@@ -237,10 +237,12 @@ export default function UserManagement() {
                 <label className="mb-1 block text-sm font-medium text-gray-700">Email <span className="text-red-500">*</span></label>
                 <input required type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={inputClass} placeholder="user@company.com" />
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Organization</label>
-                <input value={form.organization} onChange={e => setForm({ ...form, organization: e.target.value })} className={inputClass} placeholder="e.g. Simon, Sugar, Global" />
-              </div>
+              {form.role !== 'Central Team' && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Organization</label>
+                  <input value={form.organization} onChange={e => setForm({ ...form, organization: e.target.value })} className={inputClass} placeholder="e.g. Simon, Sugar" />
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Role <span className="text-red-500">*</span></label>
                 <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className={inputClass}>

@@ -6,13 +6,13 @@ const Button = React.forwardRef(({ className, variant = "default", size = "defau
   return (
     <Comp
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-blue disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/50 disabled:pointer-events-none disabled:opacity-50",
         {
-          "bg-brand-blue text-white shadow hover:bg-brand-blue/90": variant === "default",
-          "bg-[#DE0F17] text-white shadow-sm hover:bg-[#DE0F17]/90": variant === "danger",
-          "bg-[#99CC33] text-white shadow-sm hover:bg-[#99CC33]/90": variant === "success",
-          "border border-gray-200 bg-white shadow-sm hover:bg-gray-100 text-brand-black": variant === "outline",
-          "hover:bg-gray-100 hover:text-brand-black text-gray-600": variant === "ghost",
+          "bg-brand-blue text-white shadow-md hover:bg-brand-blue/90 hover:shadow-lg hover:-translate-y-0.5": variant === "default",
+          "bg-[#DE0F17] text-white shadow-sm hover:bg-[#DE0F17]/90 hover:shadow-md hover:-translate-y-0.5": variant === "danger",
+          "bg-[#99CC33] text-white shadow-sm hover:bg-[#99CC33]/90 hover:shadow-md hover:-translate-y-0.5": variant === "success",
+          "border border-gray-200 bg-white shadow-sm hover:bg-gray-50 hover:text-brand-blue text-brand-black": variant === "outline",
+          "hover:bg-brand-blue/5 hover:text-brand-blue text-gray-600": variant === "ghost",
           "h-9 px-4 py-2": size === "default",
           "h-8 rounded-md px-3 text-xs": size === "sm",
           "h-10 rounded-md px-8": size === "lg",

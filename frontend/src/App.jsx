@@ -12,7 +12,7 @@ import OrgAdminDashboard from './pages/dashboards/OrgAdminDashboard';
 import TeamIdeas from './pages/dashboards/TeamIdeas';
 import Projects from './pages/Projects';
 import UserManagement from './pages/dashboards/UserManagement';
-import FormBuilder from './pages/dashboards/FormBuilder';
+import TemplateAccess from './pages/dashboards/TemplateAccess';
 
 // Protect Routes based on roles
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -69,9 +69,9 @@ function App() {
                 <UserManagement />
               </ProtectedRoute>
             } />
-            <Route path="form-builder" element={
+            <Route path="template-access" element={
               <ProtectedRoute allowedRoles={['Superadmin']}>
-                <FormBuilder />
+                <TemplateAccess />
               </ProtectedRoute>
             } />
             <Route path="projects" element={<Projects />} />
