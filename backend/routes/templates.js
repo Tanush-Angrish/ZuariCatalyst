@@ -19,7 +19,10 @@ router.get('/organizations', async (req, res) => {
     // so we can use findMany with distinct and select to get a unique list of non-null organizations.
     const orgs = await prisma.user.findMany({
       where: {
-        organization: { not: null, not: '' }
+        organization: { 
+          not: null, 
+          notIn: ['', 'Global'] 
+        }
       },
       select: { organization: true },
       distinct: ['organization'],

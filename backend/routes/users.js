@@ -30,7 +30,7 @@ router.post('/', async (req, res) => {
         title: title || '',
         email,
         role,
-        organization: organization || '',
+        organization: (role === 'Superadmin' || role === 'Central Team') ? null : (organization || ''),
         password: 'password'
       }
     });
@@ -68,7 +68,7 @@ router.post('/bulk', async (req, res) => {
           title: u.title || '',
           email: u.email,
           role: u.role,
-          organization: u.organization || '',
+          organization: (u.role === 'Superadmin' || u.role === 'Central Team') ? null : (u.organization || ''),
           password: 'password'
         }
       });
@@ -100,7 +100,9 @@ router.put('/:id/role', async (req, res) => {
   try {
     await prisma.user.update({
       where: { id: parseInt(req.params.id) },
-      data: { role: dbRole }
+      data: dbRole === 'Superadmin' 
+        ? { role: dbRole, organization: null } 
+        : { role: dbRole }
     });
     res.json({ message: 'Role updated' });
   } catch (error) {
@@ -127,7 +129,7 @@ router.put('/:id', async (req, res) => {
         title: title || '',
         email,
         role: dbRole,
-        organization: organization || ''
+        organization: dbRole === 'Superadmin' ? null : (organization || '')
       }
     });
     res.json({ message: 'User updated' });

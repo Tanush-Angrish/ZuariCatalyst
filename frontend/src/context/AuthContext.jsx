@@ -46,6 +46,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const msLogin = async (idToken) => {
+    try {
+      const response = await fetch('/api/auth/ms-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ idToken })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Microsoft Login failed');
+      }
+
+      setUser(data.user);
+      localStorage.setItem('demo_user', JSON.stringify(data.user));
+      return data.user;
+    } catch (error) {
+      console.error('MS Login Error:', error);
+      throw error;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('demo_user');
@@ -56,7 +81,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, msLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

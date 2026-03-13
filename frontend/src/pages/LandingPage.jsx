@@ -4,11 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 import { Lightbulb, Users, CheckCircle, ArrowRight, LogIn, AlertCircle } from 'lucide-react';
+import { useMsal } from '@azure/msal-react';
+import { loginRequest } from '../lib/msalConfig';
 
 const ALLOWED_DOMAIN = '@adventz.com';
 
 export default function LandingPage() {
-  const { login } = useAuth();
+  const { login, msLogin } = useAuth();
+  const { instance } = useMsal();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -31,6 +34,23 @@ export default function LandingPage() {
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOutlookLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const response = await instance.loginPopup(loginRequest);
+      if (response && response.idToken) {
+        await msLogin(response.idToken);
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Microsoft authentication failed.');
     } finally {
       setLoading(false);
     }
@@ -205,8 +225,33 @@ export default function LandingPage() {
                     {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
 
-                  <p className="text-xs text-gray-400 mt-3">
-                    Only @adventz.com email addresses are authorized. Default password: <code className="bg-gray-100 px-1 rounded">password</code>
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-200" />
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                    </div>
+                  </div>
+
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    disabled={loading} 
+                    onClick={handleOutlookLogin}
+                    className="w-full border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-brand-black flex items-center justify-center gap-2 h-11"
+                  >
+                    <svg viewBox="0 0 23 23" className="w-5 h-5">
+                      <path fill="#f35325" d="M1 1h10v10H1z" />
+                      <path fill="#81bc06" d="M12 1h10v10H12z" />
+                      <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                      <path fill="#ffba08" d="M12 12h10v10H12z" />
+                    </svg>
+                    Continue with Outlook
+                  </Button>
+
+                  <p className="text-xs text-center text-gray-400 mt-4">
+                    Only @adventz.com email addresses are authorized.
                   </p>
                 </form>
               </CardContent>

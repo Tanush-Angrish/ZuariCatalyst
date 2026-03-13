@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@azure/msal-browser": "^4.29.1",
+    "@azure/msal-react": "^3.0.28",
     "@tailwindcss/vite": "^4.2.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
