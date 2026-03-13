@@ -19,7 +19,7 @@ export default function Sidebar() {
         return [
           { name: 'Review Queue', path: '/dashboard', icon: LayoutList },
           { name: 'User Management', path: '/dashboard/users', icon: UserCog },
-          { name: 'Form Builder', path: '/dashboard/form-builder', icon: Settings },
+          { name: 'Template Access', path: '/dashboard/template-access', icon: Settings },
           ...common
         ];
       case 'Org Admin':

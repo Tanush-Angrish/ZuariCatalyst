@@ -25,6 +25,37 @@ export default function EmployeeDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({});
 
+  // Template Access State
+  const [allowedTemplates, setAllowedTemplates] = useState([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+
+  React.useEffect(() => {
+    const fetchAccess = async () => {
+      try {
+        const res = await fetch('/api/templates/access');
+        const accessData = await res.json();
+        
+        // Find which template IDs the user's organization has access to
+        const allowedIds = accessData
+          .filter(a => a.organization === user.organization && a.hasAccess)
+          .map(a => a.templateId);
+
+        // Filter master list
+        const filtered = IDEA_TEMPLATES.filter(t => allowedIds.includes(t.id));
+        setAllowedTemplates(filtered);
+      } catch (e) {
+        console.error('Failed to fetch template access', e);
+      } finally {
+        setIsLoadingTemplates(false);
+      }
+    };
+    if (user?.organization) {
+      fetchAccess();
+    } else {
+      setIsLoadingTemplates(false);
+    }
+  }, [user]);
+
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
     // Initialize form data with empty strings based on template fields
@@ -180,11 +211,21 @@ export default function EmployeeDashboard() {
         <div className="space-y-6">
           <p className="text-sm font-medium text-gray-700">Step 1: Select a template category that best fits your idea</p>
           
-          {IDEA_CATEGORIES.map(category => {
-            const CatIcon = CATEGORY_ICONS[category] || FileText;
-            const categoryTemplates = IDEA_TEMPLATES.filter(t => t.category === category);
-            
-            if (categoryTemplates.length === 0) return null;
+          {isLoadingTemplates ? (
+            <div className="py-8 text-center text-gray-500">Loading templates...</div>
+          ) : allowedTemplates.length === 0 ? (
+            <div className="py-8 text-center text-gray-500 border border-dashed border-gray-200 rounded-xl bg-gray-50">
+              <Boxes className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+              <h3 className="font-semibold text-gray-700">No Templates Available</h3>
+              <p className="text-sm mt-1">Your organization currently does not have access to any idea templates. Please contact the Central Team.</p>
+            </div>
+          ) : (
+            IDEA_CATEGORIES.map(category => {
+              const CatIcon = CATEGORY_ICONS[category] || FileText;
+              // Filter against allowedTemplates instead of all templates
+              const categoryTemplates = allowedTemplates.filter(t => t.category === category);
+              
+              if (categoryTemplates.length === 0) return null;
 
             return (
               <div key={category} className="space-y-3">
@@ -214,7 +255,8 @@ export default function EmployeeDashboard() {
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </div>
       )}
 

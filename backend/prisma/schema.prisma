@@ -60,3 +60,13 @@ model FormField {
 
   @@map("form_fields")
 }
+
+model TemplateAccess {
+  id           Int     @id @default(autoincrement())
+  templateId   String
+  organization String
+  hasAccess    Boolean @default(false)
+
+  @@unique([templateId, organization])
+  @@map("template_access")
+}
