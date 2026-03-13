@@ -119,7 +119,7 @@ export default function EmployeeDashboard() {
     Object.keys(formData).forEach(key => {
       if (systemFields.includes(key)) {
         payload[key] = formData[key];
-      } else if (key !== 'problemDescription' && key !== 'proposedSolution' && key !== 'referenceLink' && key !== 'expectedImpact') {
+      } else if (key !== 'referenceLink' && key !== 'expectedImpact') {
         extraFields[key] = formData[key];
       }
     });

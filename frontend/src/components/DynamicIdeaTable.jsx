@@ -158,10 +158,24 @@ export default function DynamicIdeaTable({
                             else if (field.id === 'department') val = idea.department;
                             else if (field.id === 'expectedImpact') val = idea.expectedImpact;
                             else if (field.id === 'referenceLink' || field.id === 'supportingLink') val = idea.supportingLink;
-                            else if (field.id === 'problemDescription' || field.id === 'proposedSolution') {
-                              // We aggregated problem and solution into description during MVP submission
-                              // To display cleanly in dynamic table, we just split them roughly or show the full description
-                              val = idea.description;
+                            else if (field.id === 'problemDescription') {
+                              // Priority 1: Direct extra field (new submissions)
+                              if (idea.extra.problemDescription) {
+                                val = idea.extra.problemDescription;
+                              } else {
+                                // Priority 2: Extract from merged description (legacy)
+                                const match = idea.description?.match(/Problem:\n([\s\S]*?)(?=\n\nSolution:|$)/i);
+                                val = match ? match[1].trim() : idea.description;
+                              }
+                            } else if (field.id === 'proposedSolution') {
+                              // Priority 1: Direct extra field (new submissions)
+                              if (idea.extra.proposedSolution) {
+                                val = idea.extra.proposedSolution;
+                              } else {
+                                // Priority 2: Extract from merged description (legacy)
+                                const match = idea.description?.match(/Solution:\n([\s\S]*)/i);
+                                val = match ? match[1].trim() : idea.description;
+                              }
                             } else {
                               val = idea.extra[field.id];
                             }
