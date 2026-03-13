@@ -32,7 +32,7 @@ export const IDEA_TEMPLATES = [
     fields: [
       ...baseFields,
       { id: 'toolName', label: 'Proposed Tool/Software Name', type: 'text', required: true },
-      { id: 'toolCost', label: 'Estimated Cost ($)', type: 'number', required: false },
+      { id: 'toolCost', label: 'Estimated Cost (₹)', type: 'number', required: false },
     ]
   },
   {
@@ -43,7 +43,7 @@ export const IDEA_TEMPLATES = [
     fields: [
       ...baseFields,
       { id: 'costSavingCategory', label: 'Saving Category', type: 'select', options: ['Material', 'Labor', 'Energy', 'Software', 'Other'], required: true },
-      { id: 'estimatedSavings', label: 'Estimated Annual Savings ($)', type: 'number', required: true },
+      { id: 'estimatedSavings', label: 'Estimated Annual Savings (₹)', type: 'number', required: true },
     ]
   },
 

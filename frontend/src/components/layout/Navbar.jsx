@@ -2,20 +2,30 @@ import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { Link } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, Lightbulb, Menu } from 'lucide-react';
 
-export default function Navbar() {
+export default function Navbar({ onMenuToggle }) {
   const { user, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-white px-6 shadow-sm">
       <div className="flex items-center gap-4">
+        {user && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={onMenuToggle}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        )}
         <Link to="/" className="flex items-center gap-2">
-          {/* Hexagon Idea Icon for Logo */}
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-blue text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          {/* Idea Bulb Icon for Logo */}
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-blue text-white shadow-sm">
+            <Lightbulb size={20} strokeWidth={2.5} />
           </div>
-          <span className="text-xl font-bold tracking-tight text-brand-blue">Zuari Hive</span>
+          <span className="text-xl font-bold tracking-tight text-brand-blue">Zuari Catalyst</span>
         </Link>
       </div>
 

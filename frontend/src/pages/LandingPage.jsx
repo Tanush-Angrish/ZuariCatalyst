@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
-import { Lightbulb, Users, CheckCircle, ArrowRight, LogIn, AlertCircle } from 'lucide-react';
+import { Lightbulb, Users, CheckCircle, ArrowRight, LogIn, AlertCircle, X } from 'lucide-react';
 import { useMsal } from '@azure/msal-react';
 import { loginRequest } from '../lib/msalConfig';
 
@@ -17,6 +17,15 @@ export default function LandingPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') setIsModalOpen(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -61,13 +70,13 @@ export default function LandingPage() {
       {/* Navbar Simple */}
       <header className="flex h-16 items-center justify-between px-6 lg:px-12 border-b">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-blue text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-blue text-white shadow-sm">
+            <Lightbulb size={20} strokeWidth={2.5} />
           </div>
-          <span className="text-xl font-bold text-brand-blue">Zuari Hive</span>
+          <span className="text-xl font-bold text-brand-blue">Zuari Catalyst</span>
         </div>
         <div className="flex gap-4">
-          <Button variant="outline" onClick={() => document.getElementById('login-section').scrollIntoView({ behavior: 'smooth' })}>
+          <Button variant="outline" onClick={() => setIsModalOpen(true)}>
             Login
           </Button>
         </div>
@@ -79,15 +88,15 @@ export default function LandingPage() {
           <Badge variant="secondary" className="mb-6 font-medium text-brand-blue bg-blue-50 hover:bg-blue-100 px-3 py-1">
             v1.0 Now Live
           </Badge>
-          <h1 className="mx-auto max-w-4xl text-5xl font-extrabold tracking-tight text-brand-black sm:text-7xl">
+          <h1 className="mx-auto max-w-4xl text-5xl font-extrabold tracking-tight text-brand-black sm:text-7xl animate-fade-in-up">
             The next-generation <br/> 
-            <span className="text-brand-blue">Idea Ticketing Platform</span>
+            <span className="text-brand-blue bg-clip-text text-transparent bg-gradient-to-r from-brand-blue to-blue-500">Idea Ticketing Platform</span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-500">
-            Zuari Hive empowers your organization to seamlessly crowdsource, review, and execute innovative ideas from your team. A modern internal hackathon and innovation hub.
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-500 animate-fade-in-up delay-100">
+            Zuari Catalyst empowers your organization to seamlessly crowdsource, review, and execute innovative ideas from your team. A modern internal hackathon and innovation hub.
           </p>
-          <div className="mt-10 flex items-center justify-center gap-4">
-            <Button size="lg" className="rounded-full px-8" onClick={() => document.getElementById('login-section').scrollIntoView({ behavior: 'smooth' })}>
+          <div className="mt-10 flex items-center justify-center gap-4 animate-fade-in-up delay-200">
+            <Button size="lg" className="rounded-full px-8 shadow-blue-500/20 shadow-lg hover:shadow-blue-500/40" onClick={() => setIsModalOpen(true)}>
               Get Started <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -102,7 +111,7 @@ export default function LandingPage() {
             </div>
             
             <div className="grid gap-8 md:grid-cols-3">
-              <Card className="border-none shadow-md hover:-translate-y-1 transition-transform">
+              <Card className="border-none shadow-md hover:-translate-y-2 hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-100">
                 <CardHeader>
                   <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-brand-blue">
                     <Lightbulb className="h-6 w-6" />
@@ -114,7 +123,7 @@ export default function LandingPage() {
                 </CardHeader>
               </Card>
               
-              <Card className="border-none shadow-md hover:-translate-y-1 transition-transform">
+              <Card className="border-none shadow-md hover:-translate-y-2 hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-200">
                 <CardHeader>
                   <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-[#DE0F17]">
                     <CheckCircle className="h-6 w-6" />
@@ -126,7 +135,7 @@ export default function LandingPage() {
                 </CardHeader>
               </Card>
 
-              <Card className="border-none shadow-md hover:-translate-y-1 transition-transform">
+              <Card className="border-none shadow-md hover:-translate-y-2 hover:shadow-xl transition-all duration-300 animate-fade-in-up delay-300">
                 <CardHeader>
                   <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#99CC33]/20 text-[#7a9d2d]">
                     <Users className="h-6 w-6" />
@@ -172,96 +181,119 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Login Section */}
-        <section id="login-section" className="bg-brand-blue px-6 py-24 text-center lg:px-12 rounded-t-[3rem]">
-          <h2 className="text-3xl font-bold tracking-tight text-white mb-4">Login to Zuari Hive</h2>
-          <p className="text-blue-100 mb-10 max-w-xl mx-auto">
-            Sign in with your company email to access your dashboard.
-          </p>
-          
-          <div className="max-w-md mx-auto">
-            <Card className="border-none shadow-2xl">
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-brand-blue/10">
-                  <LogIn className="h-6 w-6 text-brand-blue" />
+        {/* Login Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            {/* Backdrop Blur overlay */}
+            <div 
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+              onClick={() => setIsModalOpen(false)}
+            />
+            
+            {/* Modal Container */}
+            <div className="relative z-10 w-full max-w-4xl overflow-hidden rounded-[2rem] bg-[#fdfdfd] shadow-2xl flex flex-col md:flex-row animate-fade-in-up max-h-[95vh] md:max-h-[85vh]">
+              
+              {/* Left Column: Form */}
+              <div className="flex-1 px-8 py-10 md:px-14 md:py-16 overflow-y-auto w-full md:w-1/2">
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="absolute top-6 left-6 md:hidden p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+                
+                <div className="mx-auto max-w-sm pt-4 md:pt-0 text-center md:text-left">
+                  <h2 className="text-3xl font-extrabold tracking-tight text-brand-black mb-10 text-center">Welcome</h2>
+                  
+                  <form onSubmit={handleLogin} className="space-y-6">
+                    {/* Microsoft Outlook button mimicking Google button UI */}
+                    <button 
+                      type="button" 
+                      onClick={handleOutlookLogin}
+                      disabled={loading}
+                      className="w-full flex items-center justify-center gap-3 bg-[#fdfdfd] border border-gray-400 rounded-none px-4 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 hover:shadow-sm transition-all shadow-sm"
+                    >
+                      <svg viewBox="0 0 23 23" className="w-5 h-5">
+                        <path fill="#f35325" d="M1 1h10v10H1z" />
+                        <path fill="#81bc06" d="M12 1h10v10H12z" />
+                        <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                        <path fill="#ffba08" d="M12 12h10v10H12z" />
+                      </svg>
+                      Log in With Outlook
+                    </button>
+
+                    <div className="flex items-center my-8">
+                      <div className="flex-grow border-t border-gray-300"></div>
+                      <span className="px-4 text-xs font-medium text-gray-600 tracking-wide">Or Log in with Email</span>
+                      <div className="flex-grow border-t border-gray-300"></div>
+                    </div>
+
+                    {error && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-100">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <span>{error}</span>
+                      </div>
+                    )}
+
+                    <div className="text-left space-y-4 mb-2">
+                      <input
+                        required
+                        type="email"
+                        value={email}
+                        onChange={e => { setEmail(e.target.value); setError(''); }}
+                        className="w-full rounded-none border border-gray-400 bg-transparent p-3.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue/50 transition-colors placeholder:text-gray-500 font-medium"
+                        placeholder="Your Email"
+                      />
+
+                      <input
+                        required
+                        type="password"
+                        value={password}
+                        onChange={e => { setPassword(e.target.value); setError(''); }}
+                        className="w-full rounded-none border border-gray-400 bg-transparent p-3.5 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue/50 transition-colors placeholder:text-gray-500 font-medium"
+                        placeholder="Your Password"
+                      />
+                    </div>
+
+                    <Button type="submit" disabled={loading} className="w-full bg-[#1e1b4b] hover:bg-[#2d2873] text-white rounded-none h-12 text-base flex justify-between items-center px-6 transition-colors shadow-none mt-4">
+                      <span className="mx-auto flex-grow text-center font-normal tracking-wide">{loading ? 'Logging in...' : 'Log in'}</span>
+                      {!loading && <ArrowRight className="h-5 w-5 opacity-90 font-light" />}
+                    </Button>
+                  </form>
                 </div>
-                <CardTitle>Sign In</CardTitle>
-                <CardDescription>Use your @adventz.com email and password</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
-                  {error && (
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-100">
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>{error}</span>
-                    </div>
-                  )}
+              </div>
+              
+              {/* Right Column: Visuals */}
+              <div className="hidden md:flex flex-1 w-1/2 bg-[#e0f7fa] bg-opacity-80 p-12 flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br from-[#d4f9f4] to-[#cbf4fc]">
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="absolute top-6 right-6 p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-black/5 transition-colors z-20"
+                >
+                  <X className="h-6 w-6" />
+                </button>
 
-                  <div className="text-left">
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
-                    <input
-                      required
-                      type="email"
-                      value={email}
-                      onChange={e => { setEmail(e.target.value); setError(''); }}
-                      className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20 transition-colors"
-                      placeholder="you@adventz.com"
-                    />
+                <div className="relative z-10 text-center max-w-sm mt-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight leading-snug">Everything begins<br/>with an idea.</h3>
+                  <p className="text-gray-700 text-sm mb-6 leading-relaxed px-4">Shape the future of our organization by sharing your innovative proposals.</p>
+                  
+                  {/* Decorative Illustration Shape mimicking the UI reference */}
+                  <div className="mt-16 relative w-full flex items-center justify-center h-48">
+                     <div className="absolute inset-0 bg-[#38bdf8] opacity-20 rounded-[4rem] blur-2xl transform scale-150" />
+                     <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-[3rem] transform -rotate-6 blur-lg opacity-30" />
+                     <div className="absolute inset-0 bg-[#e0f2fe] rounded-[2rem] transform rotate-3 flex items-center justify-center shadow-inner border border-white/50 backdrop-blur-md">
+                        <Users className="w-20 h-20 text-[#0369a1] drop-shadow-md" />
+                     </div>
                   </div>
-
-                  <div className="text-left">
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Password</label>
-                    <input
-                      required
-                      type="password"
-                      value={password}
-                      onChange={e => { setPassword(e.target.value); setError(''); }}
-                      className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20 transition-colors"
-                      placeholder="Enter your password"
-                    />
-                  </div>
-
-                  <Button type="submit" disabled={loading} size="lg" className="w-full mt-2">
-                    {loading ? 'Signing in...' : 'Sign In'}
-                  </Button>
-
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-200" />
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="bg-white px-2 text-gray-500">Or continue with</span>
-                    </div>
-                  </div>
-
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    disabled={loading} 
-                    onClick={handleOutlookLogin}
-                    className="w-full border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-brand-black flex items-center justify-center gap-2 h-11"
-                  >
-                    <svg viewBox="0 0 23 23" className="w-5 h-5">
-                      <path fill="#f35325" d="M1 1h10v10H1z" />
-                      <path fill="#81bc06" d="M12 1h10v10H12z" />
-                      <path fill="#05a6f0" d="M1 12h10v10H1z" />
-                      <path fill="#ffba08" d="M12 12h10v10H12z" />
-                    </svg>
-                    Continue with Outlook
-                  </Button>
-
-                  <p className="text-xs text-center text-gray-400 mt-4">
-                    Only @adventz.com email addresses are authorized.
-                  </p>
-                </form>
-              </CardContent>
-            </Card>
+                </div>
+              </div>
+              
+            </div>
           </div>
-        </section>
+        )}
       </main>
 
       <footer className="bg-brand-blue py-8 text-center text-sm text-blue-200 border-t border-blue-800">
-        <p>© 2026 Zuari Hive. All rights reserved.</p>
+        <p>© 2026 Zuari Catalyst. All rights reserved.</p>
       </footer>
     </div>
   );

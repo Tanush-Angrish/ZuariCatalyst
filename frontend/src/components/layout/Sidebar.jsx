@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { LayoutDashboard, Users, PlusCircle, LayoutList, UserCog, Settings } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export default function Sidebar() {
+export default function Sidebar({ isMobile }) {
   const { user } = useAuth();
 
   const getLinks = () => {
@@ -42,7 +42,10 @@ export default function Sidebar() {
   const links = getLinks();
 
   return (
-    <aside className="w-64 border-r bg-white min-h-[calc(100vh-4rem)] p-4 hidden md:block">
+    <aside className={cn(
+      "border-r bg-white p-4",
+      isMobile ? "w-full" : "w-64 min-h-[calc(100vh-4rem)] hidden md:block"
+    )}>
       <div className="flex flex-col gap-2">
         <div className="py-2 text-xs font-semibold uppercase text-gray-400 tracking-wider">
           Menu
