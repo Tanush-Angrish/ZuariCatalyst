@@ -262,7 +262,11 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
                   onChange={e => onAdminSelect?.(idea.id, e.target.value)}
                 >
                   <option value="">Select Org Admin...</option>
-                  {orgAdmins.map(a => <option key={a.id} value={a.id}>{a.name} ({a.organization})</option>)}
+                  {orgAdmins.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}{a.organization ? ` (${a.organization})` : ''}
+                    </option>
+                  ))}
                 </select>
                 <Button size="sm" className="shrink-0" onClick={() => { onAction?.(idea.id); onClose(); }}>
                   <UserCheck size={14} className="mr-1" />Assign
@@ -391,47 +395,15 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
         </div>
 
         {/* Card Footer */}
-        <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-2 mt-auto">
-          <span className="text-xs text-gray-400">
-            {new Date(idea.createdAt).toLocaleDateString()}
-          </span>
+        <div className="px-4 py-3 border-t border-gray-100 mt-auto">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-gray-400">
+              {new Date(idea.createdAt).toLocaleDateString()}
+            </span>
 
-          {/* Action buttons — absorb click so card doesn't open modal */}
-          <div
-            className="flex gap-2"
-            onClick={e => e.preventDefault()}
-            onPointerDown={e => e.stopPropagation()}
-          >
-            {/* Superadmin */}
-            {viewType === 'superadmin' && (
-              <>
-                <select
-                  className="border border-gray-300 rounded-md text-xs p-1.5 focus:border-brand-blue max-w-[130px]"
-                  value={selectedAdmins?.[idea.id] || ''}
-                  onChange={e => onAdminSelect?.(idea.id, e.target.value)}
-                >
-                  <option value="">Assign to...</option>
-                  {orgAdmins?.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-                <Button size="sm" className="text-xs py-1 h-auto" onClick={e => { e.stopPropagation(); onAction?.(idea.id); }}>
-                  Assign
-                </Button>
-                <Button size="sm" variant="outline"
-                  className="text-green-600 border-green-200 hover:bg-green-50 text-xs py-1 h-auto"
-                  onClick={e => { e.stopPropagation(); onDirectAction?.(idea.id, 'Approved'); }}>
-                  ✓
-                </Button>
-                <Button size="sm" variant="outline"
-                  className="text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto"
-                  onClick={e => { e.stopPropagation(); onDirectAction?.(idea.id, 'Rejected'); }}>
-                  ✕
-                </Button>
-              </>
-            )}
-
-            {/* OrgAdmin */}
+            {/* OrgAdmin buttons — single row */}
             {viewType === 'orgAdmin' && (
-              <>
+              <div className="flex gap-2" onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
                 <Button size="sm" variant="outline"
                   className="text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto font-semibold gap-1"
                   onClick={e => { e.stopPropagation(); onAction?.(idea.id, 'Rejected'); }}>
@@ -442,9 +414,44 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
                   onClick={e => { e.stopPropagation(); onAction?.(idea.id, 'Approved'); }}>
                   <CheckCircle2 size={13} />Approve
                 </Button>
-              </>
+              </div>
             )}
           </div>
+
+          {/* Superadmin — two-row layout for assign + approve/reject */}
+          {viewType === 'superadmin' && (
+            <div className="mt-2 space-y-2" onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
+              <div className="flex gap-2">
+                <select
+                  className="flex-1 border border-gray-300 rounded-md text-xs p-1.5 focus:border-brand-blue"
+                  value={selectedAdmins?.[idea.id] || ''}
+                  onChange={e => onAdminSelect?.(idea.id, e.target.value)}
+                >
+                  <option value="">Assign to...</option>
+                  {orgAdmins?.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}{a.organization ? ` (${a.organization})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <Button size="sm" className="text-xs py-1 h-auto shrink-0" onClick={e => { e.stopPropagation(); onAction?.(idea.id); }}>
+                  Assign
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline"
+                  className="flex-1 text-green-600 border-green-200 hover:bg-green-50 text-xs py-1 h-auto font-semibold gap-1"
+                  onClick={e => { e.stopPropagation(); onDirectAction?.(idea.id, 'Approved'); }}>
+                  <CheckCircle2 size={13} />Approve
+                </Button>
+                <Button size="sm" variant="outline"
+                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto font-semibold gap-1"
+                  onClick={e => { e.stopPropagation(); onDirectAction?.(idea.id, 'Rejected'); }}>
+                  <XCircle size={13} />Reject
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -503,8 +510,13 @@ export default function IdeaCardGrid({
     );
   }
 
+  // Superadmin gets wider cards (2 cols) to fit assign + approve/reject
+  const gridCols = viewType === 'superadmin'
+    ? 'grid-cols-1 lg:grid-cols-2'
+    : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3';
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 animate-fade-in-up">
+    <div className={`grid ${gridCols} gap-5 animate-fade-in-up`}>
       {parsedIdeas.map(idea => (
         <IdeaCard
           key={idea.id}
