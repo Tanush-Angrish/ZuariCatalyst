@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
 import { FileText } from 'lucide-react';
-import DynamicIdeaTable from '../../components/DynamicIdeaTable';
+import IdeaCardGrid from '../../components/IdeaCardGrid';
 
 export default function MyIdeas() {
   const { user } = useAuth();
@@ -40,7 +40,7 @@ export default function MyIdeas() {
       </div>
 
       <div className="mt-8">
-        <DynamicIdeaTable ideas={ideas} viewType="myIdeas" />
+        <IdeaCardGrid ideas={ideas} viewType="myIdeas" />
       </div>
     </div>
   );

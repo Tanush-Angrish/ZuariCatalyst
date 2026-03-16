@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { LayoutList, UserCheck } from 'lucide-react';
-import DynamicIdeaTable from '../../components/DynamicIdeaTable';
+import IdeaCardGrid from '../../components/IdeaCardGrid';
 
 export default function SuperadminDashboard() {
   const [ideas, setIdeas] = useState([]);
@@ -85,7 +85,7 @@ export default function SuperadminDashboard() {
       </div>
 
       <div className="mt-8">
-        <DynamicIdeaTable
+        <IdeaCardGrid
           ideas={ideas}
           viewType="superadmin"
           onAction={handleAssign}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Users, PartyPopper } from 'lucide-react';
-import DynamicIdeaTable from '../components/DynamicIdeaTable';
+import IdeaCardGrid from '../components/IdeaCardGrid';
 
 export default function Projects() {
   const [ideas, setIdeas] = useState([]);
@@ -39,7 +39,7 @@ export default function Projects() {
       </div>
 
       <div className="mt-8">
-        <DynamicIdeaTable ideas={ideas} viewType="community" />
+        <IdeaCardGrid ideas={ideas} viewType="community" />
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { LayoutDashboard, CheckCircle, XCircle } from 'lucide-react';
-import DynamicIdeaTable from '../../components/DynamicIdeaTable';
+import IdeaCardGrid from '../../components/IdeaCardGrid';
 
 export default function OrgAdminDashboard() {
   const { user } = useAuth();
@@ -47,7 +47,7 @@ export default function OrgAdminDashboard() {
       </div>
 
       <div className="mt-8">
-        <DynamicIdeaTable
+        <IdeaCardGrid
           ideas={assignedIdeas}
           viewType="orgAdmin"
           onAction={handleStatusUpdate}
