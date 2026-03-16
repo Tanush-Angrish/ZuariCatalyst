@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Save, AlertCircle } from 'lucide-react';
-import { IDEA_TEMPLATES } from '../../lib/templates';
 import { Badge } from '../../components/ui/Badge';
 
 export default function TemplateAccess() {
   const [organizations, setOrganizations] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [accessMap, setAccessMap] = useState({}); // { "templateId_orgName": boolean }
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -19,16 +19,20 @@ export default function TemplateAccess() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch unique organizations from Users
+      // 1. Fetch templates from API
+      const tplRes = await fetch('/api/templates');
+      const tplData = await tplRes.json();
+      setTemplates(tplData);
+
+      // 2. Fetch unique organizations from Users
       const orgRes = await fetch('/api/templates/organizations');
       const orgs = await orgRes.json();
       setOrganizations(orgs);
 
-      // 2. Fetch existing access map
+      // 3. Fetch existing access map
       const accessRes = await fetch('/api/templates/access');
       const accessData = await accessRes.json();
 
-      // Convert to a dictionary for easy O(1) lookups: mapping[templateId_organization] = Boolean
       const loadedMap = {};
       accessData.forEach(record => {
         const key = `${record.templateId}_${record.organization}`;
@@ -53,16 +57,26 @@ export default function TemplateAccess() {
     setHasUnsavedChanges(true);
   };
 
+  const isAllEnabled = (templateId) => {
+    return !!accessMap[`${templateId}_ALL`];
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Convert map state back to array for the bulk update API
       const mapping = [];
       
-      IDEA_TEMPLATES.forEach(template => {
+      templates.forEach(template => {
+        // Include ALL pseudo-org
+        const allKey = `${template.id}_ALL`;
+        mapping.push({
+          templateId: template.id,
+          organization: 'ALL',
+          hasAccess: accessMap[allKey] || false
+        });
+
         organizations.forEach(org => {
           const key = `${template.id}_${org}`;
-          // Default to false if never explicitly set in the local state
           const hasAccess = accessMap[key] || false;
           mapping.push({
             templateId: template.id,
@@ -80,7 +94,6 @@ export default function TemplateAccess() {
 
       if (res.ok) {
         setHasUnsavedChanges(false);
-        // Refresh to get absolute ground truth (optional, but robust)
         await fetchData(); 
       } else {
         const data = await res.json();
@@ -92,6 +105,8 @@ export default function TemplateAccess() {
       setIsSaving(false);
     }
   };
+
+  const allOrgs = ['ALL', ...organizations];
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -118,7 +133,7 @@ export default function TemplateAccess() {
               Access Matrix
               {hasUnsavedChanges && <Badge variant="warning" className="ml-2 text-xs font-normal py-0">Unsaved Changes</Badge>}
             </CardTitle>
-            <CardDescription>Rows are templates, columns are dynamically fetched organizations.</CardDescription>
+            <CardDescription>Rows are templates, columns are organizations. Enable "ALL" to grant universal access.</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -139,39 +154,44 @@ export default function TemplateAccess() {
                       <th className="px-6 py-4 font-semibold min-w-[300px] border-r border-gray-200">
                         Template
                       </th>
-                      {organizations.map(org => (
-                        <th key={org} className="px-6 py-4 font-semibold text-center border-r border-gray-100 last:border-r-0">
-                          {org}
+                      {allOrgs.map(org => (
+                        <th key={org} className={`px-6 py-4 font-semibold text-center border-r border-gray-100 last:border-r-0 ${org === 'ALL' ? 'bg-blue-50 text-brand-blue' : ''}`}>
+                          {org === 'ALL' ? '🌐 ALL' : org}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {IDEA_TEMPLATES.map(template => (
-                      <tr key={template.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4 border-r border-gray-200">
-                          <div className="font-medium text-brand-black">{template.name}</div>
-                          <div className="text-xs text-gray-500">{template.category}</div>
-                        </td>
-                        {organizations.map(org => {
-                          const key = `${template.id}_${org}`;
-                          const isChecked = !!accessMap[key];
-                          
-                          return (
-                            <td key={org} className="px-6 py-4 text-center border-r border-gray-100 last:border-r-0">
-                              <label className="flex items-center justify-center w-full h-full cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => handleToggle(template.id, org)}
-                                  className="w-5 h-5 rounded border-gray-300 text-brand-blue focus:ring-brand-blue transition-all cursor-pointer"
-                                />
-                              </label>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
+                    {templates.map(template => {
+                      const allEnabled = isAllEnabled(template.id);
+                      return (
+                        <tr key={template.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4 border-r border-gray-200">
+                            <div className="font-medium text-brand-black">{template.name}</div>
+                            <div className="text-xs text-gray-500">{template.category}</div>
+                          </td>
+                          {allOrgs.map(org => {
+                            const key = `${template.id}_${org}`;
+                            const isChecked = !!accessMap[key];
+                            const isDisabled = org !== 'ALL' && allEnabled;
+                            
+                            return (
+                              <td key={org} className={`px-6 py-4 text-center border-r border-gray-100 last:border-r-0 ${org === 'ALL' ? 'bg-blue-50/30' : ''} ${isDisabled ? 'opacity-40' : ''}`}>
+                                <label className="flex items-center justify-center w-full h-full cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={isDisabled ? true : isChecked}
+                                    disabled={isDisabled}
+                                    onChange={() => handleToggle(template.id, org)}
+                                    className="w-5 h-5 rounded border-gray-300 text-brand-blue focus:ring-brand-blue transition-all cursor-pointer disabled:cursor-not-allowed"
+                                  />
+                                </label>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -185,8 +205,9 @@ export default function TemplateAccess() {
         <div className="text-sm text-brand-blue">
           <p className="font-semibold mb-1">How this works</p>
           <p>
-            When users are added (manually or via bulk upload) with a new Organization name, it automatically appears here as a new column. 
-            By default, new organizations have <strong>no access</strong> to any templates until you check the boxes and click "Apply Changes".
+            <strong>🌐 ALL</strong> — When enabled for a template, every organization automatically gets access (individual org checkboxes are overridden).
+            <br />When "ALL" is disabled, access is controlled per organization using the checkboxes.
+            <br />New organizations appear as columns automatically when new users are created. By default, new organizations have <strong>no access</strong>.
           </p>
         </div>
       </div>

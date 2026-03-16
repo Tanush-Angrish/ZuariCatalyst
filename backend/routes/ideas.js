@@ -106,7 +106,7 @@ router.get('/team/:organization', async (req, res) => {
 
 // POST submit new idea (Employee)
 router.post('/', async (req, res) => {
-  const { title, description, department, expectedImpact, supportingLink, authorId, extraFields } = req.body;
+  const { title, description, department, expectedImpact, supportingLink, authorId, extraFields, files } = req.body;
   if (!title || !description || !department || !expectedImpact || !authorId) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -120,6 +120,7 @@ router.post('/', async (req, res) => {
         expectedImpact,
         supportingLink,
         extraFields: JSON.stringify(extraFields || {}),
+        files: JSON.stringify(files || []),
         authorId: parseInt(authorId),
         status: 'Pending Review'
       }

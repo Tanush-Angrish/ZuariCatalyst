@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Send, FileText, ArrowLeft, Lightbulb, Boxes, Building, FileSpreadsheet } from 'lucide-react';
-import { IDEA_CATEGORIES, IDEA_TEMPLATES } from '../../lib/templates';
+import { Send, FileText, ArrowLeft, Lightbulb, Boxes, Building, FileSpreadsheet, Mic, Square, Play, Trash2, Upload, Paperclip } from 'lucide-react';
 
 const CATEGORY_ICONS = {
   'GENERAL': Lightbulb,
@@ -13,44 +12,148 @@ const CATEGORY_ICONS = {
   'EXCEL AUTOMATION': FileSpreadsheet
 };
 
+// ─── Voice Recorder Component ──────────────────────────────────────────────
+function VoiceRecorder({ onRecorded, existingUrl, onRemove }) {
+  const [recording, setRecording] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(existingUrl || null);
+  const [uploading, setUploading] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        // Upload
+        setUploading(true);
+        try {
+          const fd = new FormData();
+          fd.append('voice', blob, 'voice-note.webm');
+          const res = await fetch('/api/upload/voice', { method: 'POST', body: fd });
+          const data = await res.json();
+          setAudioUrl(data.url);
+          onRecorded(data);
+        } catch (err) {
+          console.error('Voice upload error:', err);
+          alert('Failed to upload voice note');
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      mediaRecorder.start();
+      setRecording(true);
+    } catch (err) {
+      alert('Microphone access denied. Please allow microphone access to record voice notes.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    }
+  };
+
+  const handleRemove = () => {
+    setAudioUrl(null);
+    onRemove?.();
+  };
+
+  return (
+    <div className="space-y-2">
+      {!audioUrl ? (
+        <div className="flex items-center gap-3">
+          {recording ? (
+            <>
+              <div className="flex items-center gap-2 text-red-600 text-sm font-medium">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />Recording...
+              </div>
+              <Button type="button" size="sm" variant="outline" onClick={stopRecording}
+                className="text-red-600 border-red-200 hover:bg-red-50 gap-1.5">
+                <Square size={13} />Stop
+              </Button>
+            </>
+          ) : (
+            <Button type="button" size="sm" variant="outline" onClick={startRecording} className="gap-1.5" disabled={uploading}>
+              <Mic size={14} />{uploading ? 'Uploading...' : 'Record Voice Note'}
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-2 border">
+          <audio controls src={audioUrl} className="h-8 flex-1" />
+          <button type="button" onClick={handleRemove} className="text-red-400 hover:text-red-600">
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────
 export default function EmployeeDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   
   // Wizard State
-  const [step, setStep] = useState(1); // 1 = Select Template, 2 = Fill Form
+  const [step, setStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   
   // Form State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({});
+  const [uploadedFiles, setUploadedFiles] = useState([]); // { name, url, type }
+  const [voiceNote, setVoiceNote] = useState(null); // { name, url, type }
 
   // Template Access State
   const [allowedTemplates, setAllowedTemplates] = useState([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [categories, setCategories] = useState([]);
 
   React.useEffect(() => {
-    const fetchAccess = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch('/api/templates/access');
-        const accessData = await res.json();
-        
-        // Find which template IDs the user's organization has access to
-        const allowedIds = accessData
-          .filter(a => a.organization === user.organization && a.hasAccess)
-          .map(a => a.templateId);
+        // Fetch templates from API
+        const tplRes = await fetch('/api/templates');
+        const allTemplates = await tplRes.json();
 
-        // Filter master list
-        const filtered = IDEA_TEMPLATES.filter(t => allowedIds.includes(t.id));
+        // Fetch access rules
+        const accessRes = await fetch('/api/templates/access');
+        const accessData = await accessRes.json();
+        
+        // Find which template IDs the user's org has access to, or ALL
+        const allowedIds = new Set();
+        accessData.forEach(a => {
+          if (a.hasAccess) {
+            if (a.organization === 'ALL' || a.organization === user.organization) {
+              allowedIds.add(a.templateId);
+            }
+          }
+        });
+
+        const filtered = allTemplates.filter(t => allowedIds.has(t.id));
         setAllowedTemplates(filtered);
+
+        // Extract unique categories
+        const cats = [...new Set(filtered.map(t => t.category))];
+        setCategories(cats);
       } catch (e) {
-        console.error('Failed to fetch template access', e);
+        console.error('Failed to fetch templates', e);
       } finally {
         setIsLoadingTemplates(false);
       }
     };
     if (user?.organization) {
-      fetchAccess();
+      fetchData();
     } else {
       setIsLoadingTemplates(false);
     }
@@ -58,12 +161,15 @@ export default function EmployeeDashboard() {
 
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
-    // Initialize form data with empty strings based on template fields
     const initial = {};
     template.fields.forEach(f => {
-      initial[f.id] = f.type === 'file' ? null : '';
+      if (f.type !== 'file' && f.type !== 'voice') {
+        initial[f.id] = '';
+      }
     });
     setFormData(initial);
+    setUploadedFiles([]);
+    setVoiceNote(null);
     setStep(2);
   };
 
@@ -71,15 +177,31 @@ export default function EmployeeDashboard() {
     setStep(1);
     setSelectedTemplate(null);
     setFormData({});
+    setUploadedFiles([]);
+    setVoiceNote(null);
   };
 
-  const handleChange = (fieldId, value, type) => {
-    if (type === 'file') {
-      // For MVP file upload simulation: store the file object's name
-      const file = value.target.files[0];
-      setFormData(prev => ({ ...prev, [fieldId]: file ? file.name : null }));
-    } else {
-      setFormData(prev => ({ ...prev, [fieldId]: value }));
+  const handleChange = (fieldId, value) => {
+    setFormData(prev => ({ ...prev, [fieldId]: value }));
+  };
+
+  const handleFileUpload = async (fieldId, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/upload/file', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok) {
+        setUploadedFiles(prev => [...prev, data]);
+        setFormData(prev => ({ ...prev, [fieldId]: data.url }));
+      } else {
+        alert('Upload failed: ' + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('File upload failed');
     }
   };
 
@@ -89,33 +211,28 @@ export default function EmployeeDashboard() {
     
     setIsSubmitting(true);
 
-    // Map template fields to Backend payload
-    const systemFields = ['title', 'department']; // Must always match DB exactly
+    const systemFields = ['title', 'department'];
     const extraFields = { _templateId: selectedTemplate.id, _templateName: selectedTemplate.name };
     
     const payload = { 
       authorId: user.id,
-      description: '', // Built dynamically
-      expectedImpact: '', // Built dynamically
+      description: '',
+      expectedImpact: '',
       supportingLink: formData.referenceLink || ''
     };
 
-    // Build the description from the problem and solution
     if (formData.problemDescription && formData.proposedSolution) {
       payload.description = `Problem:\n${formData.problemDescription}\n\nSolution:\n${formData.proposedSolution}`;
     } else {
-      // Fallback
       payload.description = `Submitted via ${selectedTemplate.name}`;
     }
 
-    // Set expectedImpact
     if (formData.expectedImpact) {
       payload.expectedImpact = formData.expectedImpact;
     } else {
       payload.expectedImpact = 'N/A';
     }
 
-    // Copy exact system fields and push rest to extraFields
     Object.keys(formData).forEach(key => {
       if (systemFields.includes(key)) {
         payload[key] = formData[key];
@@ -125,6 +242,11 @@ export default function EmployeeDashboard() {
     });
 
     payload.extraFields = extraFields;
+
+    // Compile files array (file uploads + voice note)
+    const allFiles = [...uploadedFiles];
+    if (voiceNote) allFiles.push(voiceNote);
+    payload.files = allFiles;
 
     try {
       const res = await fetch('/api/ideas', {
@@ -136,6 +258,8 @@ export default function EmployeeDashboard() {
       if (res.ok) {
         setFormData({});
         setSelectedTemplate(null);
+        setUploadedFiles([]);
+        setVoiceNote(null);
         setStep(1);
         alert('Idea submitted successfully!');
         navigate('/dashboard/my-ideas');
@@ -186,10 +310,33 @@ export default function EmployeeDashboard() {
         );
       case 'file':
         return (
-          <div className="flex border border-gray-300 rounded-md overflow-hidden bg-gray-50">
-            <input type="file" required={field.required} onChange={e => handleChange(field.id, e, 'file')}
-              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-brand-blue file:text-white hover:file:bg-blue-700 transition" />
+          <div className="space-y-2">
+            <div className="flex border border-gray-300 rounded-md overflow-hidden bg-gray-50">
+              <input type="file" onChange={e => handleFileUpload(field.id, e)}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.svg"
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-brand-blue file:text-white hover:file:bg-blue-700 transition" />
+            </div>
+            {value && (
+              <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-md px-3 py-1.5">
+                <Paperclip size={13} />
+                <span className="truncate">File uploaded successfully</span>
+              </div>
+            )}
           </div>
+        );
+      case 'voice':
+        return (
+          <VoiceRecorder
+            onRecorded={(data) => {
+              setVoiceNote(data);
+              setFormData(prev => ({ ...prev, [field.id]: data.url }));
+            }}
+            existingUrl={voiceNote?.url}
+            onRemove={() => {
+              setVoiceNote(null);
+              setFormData(prev => ({ ...prev, [field.id]: '' }));
+            }}
+          />
         );
       default: // text
         return (
@@ -220,9 +367,8 @@ export default function EmployeeDashboard() {
               <p className="text-sm mt-1">Your organization currently does not have access to any idea templates. Please contact the Central Team.</p>
             </div>
           ) : (
-            IDEA_CATEGORIES.map(category => {
+            categories.map(category => {
               const CatIcon = CATEGORY_ICONS[category] || FileText;
-              // Filter against allowedTemplates instead of all templates
               const categoryTemplates = allowedTemplates.filter(t => t.category === category);
               
               if (categoryTemplates.length === 0) return null;
@@ -285,6 +431,18 @@ export default function EmployeeDashboard() {
                     {renderField(field)}
                   </div>
                 ))}
+
+                {/* Voice Note — always shown at bottom */}
+                <div className="md:col-span-2">
+                  <label className="mb-1.5 block text-sm font-semibold text-gray-700 flex items-center gap-1">
+                    <Mic size={14} className="text-gray-400" /> Voice Note (Optional)
+                  </label>
+                  <VoiceRecorder
+                    onRecorded={(data) => setVoiceNote(data)}
+                    existingUrl={voiceNote?.url}
+                    onRemove={() => setVoiceNote(null)}
+                  />
+                </div>
               </div>
 
               <hr className="border-gray-200" />

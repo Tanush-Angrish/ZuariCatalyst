@@ -34,6 +34,7 @@ model Idea {
   expectedImpact String
   supportingLink String?
   extraFields    String   @default("{}") // Storing JSON as string to match old sqlite approach initially
+  files          String   @default("[]") // JSON array of { name, url, type } objects
   status         String   @default("Pending Review")
   createdAt      DateTime @default(now())
 
@@ -45,6 +46,18 @@ model Idea {
   assignedTo     User?    @relation("IdeaAssignee", fields: [assignedToId], references: [id])
 
   @@map("ideas")
+}
+
+model IdeaTemplate {
+  id          String   @id @default(cuid())
+  category    String
+  name        String
+  description String   @default("")
+  fields      String   @default("[]") // JSON array of field definitions
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("idea_templates")
 }
 
 model FormField {

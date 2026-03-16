@@ -3,11 +3,11 @@ import ReactDOM from 'react-dom';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { useAuth } from '../context/AuthContext';
-import { IDEA_TEMPLATES } from '../lib/templates';
 import {
   FileText, ChevronDown, ChevronUp, X,
   Building, Tag, CheckCircle2, XCircle,
-  Calendar, Paperclip, Link as LinkIcon, UserCheck
+  Calendar, Paperclip, Link as LinkIcon, UserCheck,
+  Download, Eye, Mic
 } from 'lucide-react';
 
 // ─── Helper: extract field value from idea ─────────────────────────────────
@@ -65,9 +65,19 @@ function ReadMoreText({ text }) {
 }
 
 // ─── Detail Modal (rendered via Portal for proper centering) ───────────────
-function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAdmins, selectedAdmins, onAdminSelect, onDirectAction }) {
-  const templateDef = IDEA_TEMPLATES.find(t => t.id === idea.extra?._templateId);
+function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAdmins, selectedAdmins, onAdminSelect, onDirectAction, templates }) {
+  const templateDef = (templates || []).find(t => t.id === idea.extra?._templateId);
   const fields = templateDef?.fields ?? [];
+
+  // Parse files from idea
+  const ideaFiles = useMemo(() => {
+    try {
+      const raw = typeof idea.files === 'string' ? JSON.parse(idea.files) : (idea.files || []);
+      return Array.isArray(raw) ? raw : [];
+    } catch { return []; }
+  }, [idea.files]);
+  const fileAttachments = ideaFiles.filter(f => f.type === 'file');
+  const voiceNotes = ideaFiles.filter(f => f.type === 'voice');
 
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose(); };
@@ -205,6 +215,42 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
             </div>
           )}
 
+          {/* File Attachments */}
+          {fileAttachments.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Attached Files</h3>
+              <div className="space-y-2">
+                {fileAttachments.map((f, i) => (
+                  <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                    <FileText size={16} className="text-brand-blue shrink-0" />
+                    <span className="text-sm text-gray-700 flex-1 truncate">{f.name}</span>
+                    <a href={f.url} target="_blank" rel="noreferrer" className="text-brand-blue hover:underline text-xs flex items-center gap-1">
+                      <Eye size={12} />View
+                    </a>
+                    <a href={f.url} download className="text-brand-blue hover:underline text-xs flex items-center gap-1">
+                      <Download size={12} />Download
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Voice Notes */}
+          {voiceNotes.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Voice Notes</h3>
+              <div className="space-y-2">
+                {voiceNotes.map((v, i) => (
+                  <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-purple-50/50 border border-purple-100">
+                    <Mic size={16} className="text-purple-600 shrink-0" />
+                    <audio controls src={v.url} className="h-8 flex-1" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Superadmin Assign panel */}
           {viewType === 'superadmin' && orgAdmins?.length > 0 && (
             <div className="p-4 rounded-xl bg-gray-50 border">
@@ -264,7 +310,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
 }
 
 // ─── Single Idea Card ──────────────────────────────────────────────────────
-function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAdmins, onAdminSelect, onDirectAction }) {
+function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAdmins, onAdminSelect, onDirectAction, templates }) {
   const [modalOpen, setModalOpen] = useState(false);
 
   const problem = getFieldValue('problemDescription', idea);
@@ -414,6 +460,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
           selectedAdmins={selectedAdmins}
           onAdminSelect={onAdminSelect}
           onDirectAction={onDirectAction}
+          templates={templates}
         />
       )}
     </>
@@ -431,6 +478,11 @@ export default function IdeaCardGrid({
   onDirectAction
 }) {
   const { user: currentUser } = useAuth();
+  const [templates, setTemplates] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/templates').then(r => r.json()).then(setTemplates).catch(console.error);
+  }, []);
 
   const parsedIdeas = useMemo(() =>
     ideas.map(idea => ({
@@ -464,6 +516,7 @@ export default function IdeaCardGrid({
           selectedAdmins={selectedAdmins}
           onAdminSelect={onAdminSelect}
           onDirectAction={onDirectAction}
+          templates={templates}
         />
       ))}
     </div>

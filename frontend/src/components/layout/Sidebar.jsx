@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Users, PlusCircle, LayoutList, UserCog, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, PlusCircle, LayoutList, UserCog, Settings, Wrench } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export default function Sidebar({ isMobile }) {
@@ -20,6 +20,7 @@ export default function Sidebar({ isMobile }) {
           { name: 'Review Queue', path: '/dashboard', icon: LayoutList },
           { name: 'User Management', path: '/dashboard/users', icon: UserCog },
           { name: 'Template Access', path: '/dashboard/template-access', icon: Settings },
+          { name: 'Template Config', path: '/dashboard/template-config', icon: Wrench },
           ...common
         ];
       case 'Org Admin':

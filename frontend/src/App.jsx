@@ -13,6 +13,7 @@ import TeamIdeas from './pages/dashboards/TeamIdeas';
 import Projects from './pages/Projects';
 import UserManagement from './pages/dashboards/UserManagement';
 import TemplateAccess from './pages/dashboards/TemplateAccess';
+import TemplateConfig from './pages/dashboards/TemplateConfig';
 
 // Protect Routes based on roles
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -72,6 +73,11 @@ function App() {
             <Route path="template-access" element={
               <ProtectedRoute allowedRoles={['Superadmin']}>
                 <TemplateAccess />
+              </ProtectedRoute>
+            } />
+            <Route path="template-config" element={
+              <ProtectedRoute allowedRoles={['Superadmin']}>
+                <TemplateConfig />
               </ProtectedRoute>
             } />
             <Route path="projects" element={<Projects />} />
