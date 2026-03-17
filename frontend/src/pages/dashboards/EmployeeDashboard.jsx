@@ -200,8 +200,8 @@ export default function EmployeeDashboard() {
         alert('Upload failed: ' + data.error);
       }
     } catch (err) {
-      console.error(err);
-      alert('File upload failed');
+      console.error('Upload Error:', err);
+      alert('File upload failed: ' + err.message);
     }
   };
 
@@ -313,7 +313,7 @@ export default function EmployeeDashboard() {
           <div className="space-y-2">
             <div className="flex border border-gray-300 rounded-md overflow-hidden bg-gray-50">
               <input type="file" onChange={e => handleFileUpload(field.id, e)}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.svg"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.svg,.txt"
                 className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-brand-blue file:text-white hover:file:bg-blue-700 transition" />
             </div>
             {value && (

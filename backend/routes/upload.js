@@ -34,10 +34,14 @@ const uploadFile = multer({
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
   fileFilter: (req, file, cb) => {
     const allowed = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-      '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+      '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.txt'];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) cb(null, true);
-    else cb(new Error('File type not allowed'), false);
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      console.log(`Upload rejected. Allowed: ${allowed}. Received: ${ext}`);
+      cb(new Error(`File type not allowed: ${ext}`), false);
+    }
   }
 });
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
+import mammoth from 'mammoth';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { useAuth } from '../context/AuthContext';
@@ -66,6 +67,9 @@ function ReadMoreText({ text }) {
 
 // ─── Detail Modal (rendered via Portal for proper centering) ───────────────
 function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAdmins, selectedAdmins, onAdminSelect, onDirectAction, templates }) {
+  const [viewingFile, setViewingFile] = useState(null);
+  const [fileContent, setFileContent] = useState(null);
+  const [loadingFile, setLoadingFile] = useState(false);
   const templateDef = (templates || []).find(t => t.id === idea.extra?._templateId);
   const fields = templateDef?.fields ?? [];
 
@@ -90,6 +94,43 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
     };
   }, [onClose]);
 
+  useEffect(() => {
+    if (!viewingFile) {
+      setFileContent(null);
+      setLoadingFile(false);
+      return;
+    }
+
+    const ext = viewingFile.url.split('.').pop().toLowerCase();
+    
+    if (ext === 'txt') {
+      setLoadingFile(true);
+      fetch(viewingFile.url)
+        .then(res => res.text())
+        .then(text => {
+          setFileContent({ type: 'txt', content: text });
+          setLoadingFile(false);
+        })
+        .catch(err => {
+          console.error('Error fetching txt file:', err);
+          setLoadingFile(false);
+        });
+    } else if (ext === 'docx') {
+      setLoadingFile(true);
+      fetch(viewingFile.url)
+        .then(res => res.arrayBuffer())
+        .then(buffer => mammoth.convertToHtml({ arrayBuffer: buffer }))
+        .then(result => {
+          setFileContent({ type: 'docx', content: result.value });
+          setLoadingFile(false);
+        })
+        .catch(err => {
+          console.error('Error converting docx file:', err);
+          setLoadingFile(false);
+        });
+    }
+  }, [viewingFile]);
+
   const problem = getFieldValue('problemDescription', idea);
   const solution = getFieldValue('proposedSolution', idea);
   const extraFields = fields.filter(f =>
@@ -106,10 +147,11 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
       style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
       onPointerDown={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] overflow-y-auto animate-modal-in"
-        onPointerDown={e => e.stopPropagation()}
-      >
+      <div className={`modal-transition-container ${viewingFile ? 'modal-slide-left' : ''}`}>
+        <div
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] overflow-y-auto animate-modal-in"
+          onPointerDown={e => e.stopPropagation()}
+        >
         {/* Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-start justify-between gap-4 z-10 rounded-t-2xl">
           <div className="flex-1 min-w-0">
@@ -224,9 +266,13 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
                   <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
                     <FileText size={16} className="text-brand-blue shrink-0" />
                     <span className="text-sm text-gray-700 flex-1 truncate">{f.name}</span>
-                    <a href={f.url} target="_blank" rel="noreferrer" className="text-brand-blue hover:underline text-xs flex items-center gap-1">
+                    <button 
+                      type="button"
+                      onClick={() => setViewingFile(f)}
+                      className="text-brand-blue hover:underline text-xs flex items-center gap-1"
+                    >
                       <Eye size={12} />View
-                    </a>
+                    </button>
                     <a href={f.url} download className="text-brand-blue hover:underline text-xs flex items-center gap-1">
                       <Download size={12} />Download
                     </a>
@@ -304,6 +350,83 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
             </Button>
           </div>
         )}
+      </div>
+
+      {/* File Viewer Panel (Slides in from right) */}
+      {viewingFile && (
+        <div className="absolute left-[calc(50%+20px)] sm:left-[calc(50%+100px)] top-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-2xl h-[88vh] flex flex-col animate-viewer-in z-[10000]">
+          {/* Viewer Header */}
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between gap-4 rounded-t-2xl">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setViewingFile(null)}
+                className="p-1.5 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
+                title="Back to idea"
+              >
+                <ChevronUp className="-rotate-90" size={20} />
+              </button>
+              <h2 className="text-lg font-bold text-brand-black truncate">{viewingFile.name}</h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-700 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Viewer Body */}
+          <div className="flex-1 overflow-auto bg-gray-50 flex flex-col">
+            {loadingFile ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-gray-400">
+                <div className="h-8 w-8 border-4 border-brand-blue/20 border-t-brand-blue rounded-full animate-spin mb-4" />
+                <p className="text-sm">Loading document...</p>
+              </div>
+            ) : fileContent?.type === 'txt' ? (
+              <div className="p-8 bg-white min-h-full">
+                <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed">
+                  {fileContent.content}
+                </pre>
+              </div>
+            ) : fileContent?.type === 'docx' ? (
+              <div className="p-8 bg-white min-h-full prose prose-sm max-w-none">
+                <div 
+                  className="docx-content text-gray-800"
+                  dangerouslySetInnerHTML={{ __html: fileContent.content }} 
+                />
+              </div>
+            ) : viewingFile.url.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/) ? (
+              <div className="flex-1 flex items-center justify-center">
+                <img 
+                  src={viewingFile.url} 
+                  alt={viewingFile.name} 
+                  className="max-w-full max-h-full object-contain p-4"
+                />
+              </div>
+            ) : viewingFile.url.toLowerCase().endsWith('.pdf') ? (
+              <iframe 
+                src={`${viewingFile.url}#toolbar=0`} 
+                className="w-full h-full border-none"
+                title={viewingFile.name}
+              />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <FileText size={48} className="mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-500 mb-6">Preview not available for this file type.</p>
+                <a 
+                  href={viewingFile.url} 
+                  download 
+                  className="inline-flex items-center justify-center px-6 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue/90 shadow-sm transition-all gap-2 text-sm font-medium"
+                >
+                  <Download size={16} /> Download to View
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

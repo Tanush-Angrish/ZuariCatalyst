@@ -59,3 +59,39 @@ body {
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 
+/* Modal Slide Transitions */
+.modal-transition-container {
+  display: flex;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  justify-content: center;
+}
+
+.modal-slide-left {
+  transform: translateX(-15%);
+}
+
+@keyframes viewerSlideIn {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+.animate-viewer-in {
+  animation: viewerSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@media (max-width: 640px) {
+  .modal-slide-left {
+    transform: translateX(-100%);
+  }
+}
+
+/* DOCX Viewer Content Styling */
+.docx-content h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+.docx-content h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem; }
+.docx-content h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+.docx-content p { margin-bottom: 1rem; line-height: 1.6; }
+.docx-content ul, .docx-content ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+.docx-content li { margin-bottom: 0.25rem; }
+.docx-content table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+.docx-content td, .docx-content th { border: 1px solid #ddd; padding: 8px; }
