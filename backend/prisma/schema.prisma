@@ -36,6 +36,8 @@ model Idea {
   extraFields    String   @default("{}") // Storing JSON as string to match old sqlite approach initially
   files          String   @default("[]") // JSON array of { name, url, type } objects
   status         String   @default("Pending Review")
+  aiSummary      String?
+  aiTags         String   @default("[]") // JSON array of tags
   createdAt      DateTime @default(now())
 
   authorId       Int

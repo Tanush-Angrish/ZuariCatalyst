@@ -8,7 +8,7 @@ import {
   FileText, ChevronDown, ChevronUp, X,
   Building, Tag, CheckCircle2, XCircle,
   Calendar, Paperclip, Link as LinkIcon, UserCheck,
-  Download, Eye, Mic
+  Download, Eye, Mic, Lightbulb
 } from 'lucide-react';
 
 // ─── Helper: extract field value from idea ─────────────────────────────────
@@ -102,7 +102,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
     }
 
     const ext = viewingFile.url.split('.').pop().toLowerCase();
-    
+
     if (ext === 'txt') {
       setLoadingFile(true);
       fetch(viewingFile.url)
@@ -152,281 +152,315 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
           className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] overflow-y-auto animate-modal-in"
           onPointerDown={e => e.stopPropagation()}
         >
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-start justify-between gap-4 z-10 rounded-t-2xl">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-brand-black leading-snug">{idea.title}</h2>
-            <div className="flex flex-wrap items-center gap-2 mt-1.5">
-              <Badge variant={statusVariant(idea.status)}>{idea.status}</Badge>
-              {idea.authorOrganization && (
-                <span className="text-xs text-gray-400 flex items-center gap-1">
-                  <Building size={10} />{idea.authorOrganization}
-                </span>
-              )}
-              {idea.department && (
-                <span className="text-xs text-gray-400 flex items-center gap-1">
-                  <Tag size={10} />{idea.department}
-                </span>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1.5 hover:bg-gray-100 text-gray-400 hover:text-gray-700 shrink-0 transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="px-6 py-5 space-y-5">
-          {/* Author block */}
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-            <div className="h-9 w-9 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center font-bold text-sm shrink-0">
-              {displayName.charAt(0)}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-brand-black">{displayName}</p>
-              <p className="text-xs text-gray-400">{idea.authorOrganization || 'No organization'}</p>
-            </div>
-            <div className="ml-auto text-xs text-gray-400 flex items-center gap-1">
-              <Calendar size={11} />
-              {new Date(idea.createdAt).toLocaleDateString()}
-            </div>
-          </div>
-
-          {/* Problem Description */}
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Problem Description</h3>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-red-50/50 border border-red-100 rounded-lg p-3">
-              {problem || '—'}
-            </p>
-          </div>
-
-          {/* Proposed Solution */}
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Proposed Solution</h3>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-green-50/50 border border-green-100 rounded-lg p-3">
-              {solution || '—'}
-            </p>
-          </div>
-
-          {/* Expected Impact */}
-          {idea.expectedImpact && (
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Expected Impact</h3>
-              <p className="text-sm text-gray-700 leading-relaxed bg-blue-50/50 border border-blue-100 rounded-lg p-3">
-                {idea.expectedImpact}
-              </p>
-            </div>
-          )}
-
-          {/* Extra template-specific fields */}
-          {extraFields.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {extraFields.map(f => {
-                const val = idea.extra?.[f.id];
-                if (!val) return null;
-                if (f.type === 'url') return (
-                  <div key={f.id}>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{f.label}</h3>
-                    <a href={val} target="_blank" rel="noreferrer" className="text-brand-blue text-sm flex items-center gap-1 hover:underline">
-                      <LinkIcon size={12} />View Link
-                    </a>
-                  </div>
-                );
-                return (
-                  <div key={f.id}>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{f.label}</h3>
-                    <p className="text-sm text-gray-700">{val}</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Supporting link */}
-          {idea.supportingLink && (
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Supporting Link</h3>
-              <a href={idea.supportingLink} target="_blank" rel="noreferrer"
-                className="text-brand-blue text-sm flex items-center gap-1 hover:underline">
-                <Paperclip size={12} />View Attachment
-              </a>
-            </div>
-          )}
-
-          {/* File Attachments */}
-          {fileAttachments.length > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Attached Files</h3>
-              <div className="space-y-2">
-                {fileAttachments.map((f, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
-                    <FileText size={16} className="text-brand-blue shrink-0" />
-                    <span className="text-sm text-gray-700 flex-1 truncate">{f.name}</span>
-                    <button 
-                      type="button"
-                      onClick={() => setViewingFile(f)}
-                      className="text-brand-blue hover:underline text-xs flex items-center gap-1"
-                    >
-                      <Eye size={12} />View
-                    </button>
-                    <a href={f.url} download className="text-brand-blue hover:underline text-xs flex items-center gap-1">
-                      <Download size={12} />Download
-                    </a>
-                  </div>
-                ))}
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-start justify-between gap-4 z-10 rounded-t-2xl">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-bold text-brand-black leading-snug">{idea.title}</h2>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                <Badge variant={statusVariant(idea.status)}>{idea.status}</Badge>
+                {idea.authorOrganization && (
+                  <span className="text-xs text-gray-400 flex items-center gap-1">
+                    <Building size={10} />{idea.authorOrganization}
+                  </span>
+                )}
+                {idea.department && (
+                  <span className="text-xs text-gray-400 flex items-center gap-1">
+                    <Tag size={10} />{idea.department}
+                  </span>
+                )}
               </div>
-            </div>
-          )}
-
-          {/* Voice Notes */}
-          {voiceNotes.length > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Voice Notes</h3>
-              <div className="space-y-2">
-                {voiceNotes.map((v, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-purple-50/50 border border-purple-100">
-                    <Mic size={16} className="text-purple-600 shrink-0" />
-                    <audio controls src={v.url} className="h-8 flex-1" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Superadmin Assign panel */}
-          {viewType === 'superadmin' && orgAdmins?.length > 0 && (
-            <div className="p-4 rounded-xl bg-gray-50 border">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Assign Reviewer</h3>
-              <div className="flex gap-2">
-                <select
-                  className="flex-1 border border-gray-300 rounded-lg text-sm p-2 focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
-                  value={selectedAdmins?.[idea.id] || ''}
-                  onChange={e => onAdminSelect?.(idea.id, e.target.value)}
-                >
-                  <option value="">Select Org Admin...</option>
-                  {orgAdmins.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}{a.organization ? ` (${a.organization})` : ''}
-                    </option>
-                  ))}
-                </select>
-                <Button size="sm" className="shrink-0" onClick={() => { onAction?.(idea.id); onClose(); }}>
-                  <UserCheck size={14} className="mr-1" />Assign
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer action buttons */}
-        {(viewType === 'orgAdmin' || viewType === 'superadmin') && (
-          <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-red-600 border-red-200 hover:bg-red-50 font-semibold gap-1.5"
-              onClick={() => {
-                if (viewType === 'orgAdmin') onAction?.(idea.id, 'Rejected');
-                else onDirectAction?.(idea.id, 'Rejected');
-                onClose();
-              }}
-            >
-              <XCircle size={15} />Reject
-            </Button>
-            <Button
-              size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-1.5"
-              onClick={() => {
-                if (viewType === 'orgAdmin') onAction?.(idea.id, 'Approved');
-                else onDirectAction?.(idea.id, 'Approved');
-                onClose();
-              }}
-            >
-              <CheckCircle2 size={15} />Approve
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* File Viewer Panel (Slides in from right) */}
-      {viewingFile && (
-        <div className="absolute left-[calc(50%+20px)] sm:left-[calc(50%+100px)] top-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-2xl h-[88vh] flex flex-col animate-viewer-in z-[10000]">
-          {/* Viewer Header */}
-          <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between gap-4 rounded-t-2xl">
-            <div className="flex items-center gap-3 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setViewingFile(null)}
-                className="p-1.5 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
-                title="Back to idea"
-              >
-                <ChevronUp className="-rotate-90" size={20} />
-              </button>
-              <h2 className="text-lg font-bold text-brand-black truncate">{viewingFile.name}</h2>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-700 transition-colors"
+              className="rounded-full p-1.5 hover:bg-gray-100 text-gray-400 hover:text-gray-700 shrink-0 transition-colors"
             >
               <X size={20} />
             </button>
           </div>
 
-          {/* Viewer Body */}
-          <div className="flex-1 overflow-auto bg-gray-50 flex flex-col">
-            {loadingFile ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-gray-400">
-                <div className="h-8 w-8 border-4 border-brand-blue/20 border-t-brand-blue rounded-full animate-spin mb-4" />
-                <p className="text-sm">Loading document...</p>
+          {/* Body */}
+          <div className="px-6 py-5 space-y-5">
+            {/* AI Insights Section */}
+            {idea.aiSummary && (
+              <div className="p-4 rounded-xl bg-gradient-to-br from-brand-blue/5 to-purple-50 border border-brand-blue/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1 rounded bg-brand-blue/10 text-brand-blue">
+                    <Lightbulb size={14} />
+                  </div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-brand-blue">AI Summary</h3>
+                </div>
+                <p className="text-sm font-medium text-brand-black leading-relaxed italic">
+                  "{idea.aiSummary}"
+                </p>
+
+                {/* AI Tags */}
+                {(() => {
+                  try {
+                    const tags = typeof idea.aiTags === 'string' ? JSON.parse(idea.aiTags) : (idea.aiTags || []);
+                    if (Array.isArray(tags) && tags.length > 0) {
+                      return (
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {tags.map((tag, idx) => (
+                            <span key={idx} className="text-[10px] px-2 py-0.5 bg-white border border-brand-blue/20 text-brand-blue rounded-full font-semibold uppercase tracking-tight">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    }
+                  } catch (e) { return null; }
+                  return null;
+                })()}
               </div>
-            ) : fileContent?.type === 'txt' ? (
-              <div className="p-8 bg-white min-h-full">
-                <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed">
-                  {fileContent.content}
-                </pre>
+            )}
+
+            {/* Author block */}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+              <div className="h-9 w-9 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center font-bold text-sm shrink-0">
+                {displayName.charAt(0)}
               </div>
-            ) : fileContent?.type === 'docx' ? (
-              <div className="p-8 bg-white min-h-full prose prose-sm max-w-none">
-                <div 
-                  className="docx-content text-gray-800"
-                  dangerouslySetInnerHTML={{ __html: fileContent.content }} 
-                />
+              <div>
+                <p className="text-sm font-semibold text-brand-black">{displayName}</p>
+                <p className="text-xs text-gray-400">{idea.authorOrganization || 'No organization'}</p>
               </div>
-            ) : viewingFile.url.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/) ? (
-              <div className="flex-1 flex items-center justify-center">
-                <img 
-                  src={viewingFile.url} 
-                  alt={viewingFile.name} 
-                  className="max-w-full max-h-full object-contain p-4"
-                />
+              <div className="ml-auto text-xs text-gray-400 flex items-center gap-1">
+                <Calendar size={11} />
+                {new Date(idea.createdAt).toLocaleDateString()}
               </div>
-            ) : viewingFile.url.toLowerCase().endsWith('.pdf') ? (
-              <iframe 
-                src={`${viewingFile.url}#toolbar=0`} 
-                className="w-full h-full border-none"
-                title={viewingFile.name}
-              />
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <FileText size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-500 mb-6">Preview not available for this file type.</p>
-                <a 
-                  href={viewingFile.url} 
-                  download 
-                  className="inline-flex items-center justify-center px-6 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue/90 shadow-sm transition-all gap-2 text-sm font-medium"
-                >
-                  <Download size={16} /> Download to View
+            </div>
+
+            {/* Problem Description */}
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Problem Description</h3>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-red-50/50 border border-red-100 rounded-lg p-3">
+                {problem || '—'}
+              </p>
+            </div>
+
+            {/* Proposed Solution */}
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Proposed Solution</h3>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-green-50/50 border border-green-100 rounded-lg p-3">
+                {solution || '—'}
+              </p>
+            </div>
+
+            {/* Expected Impact */}
+            {idea.expectedImpact && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Expected Impact</h3>
+                <p className="text-sm text-gray-700 leading-relaxed bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                  {idea.expectedImpact}
+                </p>
+              </div>
+            )}
+
+            {/* Extra template-specific fields */}
+            {extraFields.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {extraFields.map(f => {
+                  const val = idea.extra?.[f.id];
+                  if (!val) return null;
+                  if (f.type === 'url') return (
+                    <div key={f.id}>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{f.label}</h3>
+                      <a href={val} target="_blank" rel="noreferrer" className="text-brand-blue text-sm flex items-center gap-1 hover:underline">
+                        <LinkIcon size={12} />View Link
+                      </a>
+                    </div>
+                  );
+                  return (
+                    <div key={f.id}>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{f.label}</h3>
+                      <p className="text-sm text-gray-700">{val}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Supporting link */}
+            {idea.supportingLink && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Supporting Link</h3>
+                <a href={idea.supportingLink} target="_blank" rel="noreferrer"
+                  className="text-brand-blue text-sm flex items-center gap-1 hover:underline">
+                  <Paperclip size={12} />View Attachment
                 </a>
               </div>
             )}
+
+            {/* File Attachments */}
+            {fileAttachments.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Attached Files</h3>
+                <div className="space-y-2">
+                  {fileAttachments.map((f, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                      <FileText size={16} className="text-brand-blue shrink-0" />
+                      <span className="text-sm text-gray-700 flex-1 truncate">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setViewingFile(f)}
+                        className="text-brand-blue hover:underline text-xs flex items-center gap-1"
+                      >
+                        <Eye size={12} />View
+                      </button>
+                      <a href={f.url} download className="text-brand-blue hover:underline text-xs flex items-center gap-1">
+                        <Download size={12} />Download
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Voice Notes */}
+            {voiceNotes.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Voice Notes</h3>
+                <div className="space-y-2">
+                  {voiceNotes.map((v, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-purple-50/50 border border-purple-100">
+                      <Mic size={16} className="text-purple-600 shrink-0" />
+                      <audio controls src={v.url} className="h-8 flex-1" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Superadmin Assign panel */}
+            {viewType === 'superadmin' && orgAdmins?.length > 0 && (
+              <div className="p-4 rounded-xl bg-gray-50 border">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Assign Reviewer</h3>
+                <div className="flex gap-2">
+                  <select
+                    className="flex-1 border border-gray-300 rounded-lg text-sm p-2 focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                    value={selectedAdmins?.[idea.id] || ''}
+                    onChange={e => onAdminSelect?.(idea.id, e.target.value)}
+                  >
+                    <option value="">Select Org Admin...</option>
+                    {orgAdmins.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}{a.organization ? ` (${a.organization})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <Button size="sm" className="shrink-0" onClick={() => { onAction?.(idea.id); onClose(); }}>
+                    <UserCheck size={14} className="mr-1" />Assign
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Footer action buttons */}
+          {(viewType === 'orgAdmin' || viewType === 'superadmin') && (
+            <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 border-red-200 hover:bg-red-50 font-semibold gap-1.5"
+                onClick={() => {
+                  if (viewType === 'orgAdmin') onAction?.(idea.id, 'Rejected');
+                  else onDirectAction?.(idea.id, 'Rejected');
+                  onClose();
+                }}
+              >
+                <XCircle size={15} />Reject
+              </Button>
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-1.5"
+                onClick={() => {
+                  if (viewType === 'orgAdmin') onAction?.(idea.id, 'Approved');
+                  else onDirectAction?.(idea.id, 'Approved');
+                  onClose();
+                }}
+              >
+                <CheckCircle2 size={15} />Approve
+              </Button>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* File Viewer Panel (Slides in from right) */}
+        {viewingFile && (
+          <div className="absolute left-[calc(50%+20px)] sm:left-[calc(50%+100px)] top-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl w-full max-w-2xl h-[88vh] flex flex-col animate-viewer-in z-[10000]">
+            {/* Viewer Header */}
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between gap-4 rounded-t-2xl">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setViewingFile(null)}
+                  className="p-1.5 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
+                  title="Back to idea"
+                >
+                  <ChevronUp className="-rotate-90" size={20} />
+                </button>
+                <h2 className="text-lg font-bold text-brand-black truncate">{viewingFile.name}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-700 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Viewer Body */}
+            <div className="flex-1 overflow-auto bg-gray-50 flex flex-col">
+              {loadingFile ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-gray-400">
+                  <div className="h-8 w-8 border-4 border-brand-blue/20 border-t-brand-blue rounded-full animate-spin mb-4" />
+                  <p className="text-sm">Loading document...</p>
+                </div>
+              ) : fileContent?.type === 'txt' ? (
+                <div className="p-8 bg-white min-h-full">
+                  <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed">
+                    {fileContent.content}
+                  </pre>
+                </div>
+              ) : fileContent?.type === 'docx' ? (
+                <div className="p-8 bg-white min-h-full prose prose-sm max-w-none">
+                  <div
+                    className="docx-content text-gray-800"
+                    dangerouslySetInnerHTML={{ __html: fileContent.content }}
+                  />
+                </div>
+              ) : viewingFile.url.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/) ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <img
+                    src={viewingFile.url}
+                    alt={viewingFile.name}
+                    className="max-w-full max-h-full object-contain p-4"
+                  />
+                </div>
+              ) : viewingFile.url.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={`${viewingFile.url}#toolbar=0`}
+                  className="w-full h-full border-none"
+                  title={viewingFile.name}
+                />
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                  <FileText size={48} className="mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500 mb-6">Preview not available for this file type.</p>
+                  <a
+                    href={viewingFile.url}
+                    download
+                    className="inline-flex items-center justify-center px-6 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue/90 shadow-sm transition-all gap-2 text-sm font-medium"
+                  >
+                    <Download size={16} /> Download to View
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -473,7 +507,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
               {displayName.charAt(0)}
             </div>
             <span className="text-sm font-medium text-brand-black truncate">{displayName}</span>
-            {idea.authorOrganization && !isOwn && (
+            {idea.authorOrganization && !isOwn && viewType !== 'community' && (
               <span className="text-xs text-gray-400 hidden sm:block truncate">• {idea.authorOrganization}</span>
             )}
           </div>
@@ -482,100 +516,117 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
 
         {/* Card Body */}
         <div className="px-4 pb-3 flex-1 space-y-3">
+          {/* AI Summary (Top of card content) */}
+          {idea.aiSummary && (
+            <div className="p-2.5 rounded-lg bg-brand-blue/5 border border-brand-blue/10">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-brand-blue mb-1 flex items-center gap-1">
+                <Lightbulb size={10} /> AI Summary
+              </p>
+              <p className="text-xs font-semibold text-brand-black leading-snug line-clamp-2 italic">
+                "{idea.aiSummary}"
+              </p>
+            </div>
+          )}
           <h3 className="font-bold text-brand-black text-base leading-snug group-hover:text-brand-blue transition-colors line-clamp-2">
             {idea.title}
           </h3>
 
-          {/* Tags */}
-          <div className="flex flex-wrap gap-1.5">
-            {templateName && (
-              <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-brand-blue rounded-full px-2 py-0.5 border border-blue-100">
-                <Tag size={9} />{templateName}
-              </span>
-            )}
-            {idea.department && (
-              <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-500 rounded-full px-2 py-0.5">
-                <Building size={9} />{idea.department}
-              </span>
-            )}
-          </div>
+          {viewType !== 'community' && (
+            <>
+              {/* Tags */}
+              <div className="flex flex-wrap gap-1.5">
+                {templateName && (
+                  <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-brand-blue rounded-full px-2 py-0.5 border border-blue-100">
+                    <Tag size={9} />{templateName}
+                  </span>
+                )}
+                {idea.department && (
+                  <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-500 rounded-full px-2 py-0.5">
+                    <Building size={9} />{idea.department}
+                  </span>
+                )}
+              </div>
 
-          {/* Problem — stopPropagation only on interactive elements inside */}
-          {problem && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Problem</p>
-              <ReadMoreText text={problem} />
-            </div>
-          )}
+              {/* Problem — stopPropagation only on interactive elements inside */}
+              {problem && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Problem</p>
+                  <ReadMoreText text={problem} />
+                </div>
+              )}
 
-          {/* Solution */}
-          {solution && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Solution</p>
-              <ReadMoreText text={solution} />
-            </div>
+              {/* Solution */}
+              {solution && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Solution</p>
+                  <ReadMoreText text={solution} />
+                </div>
+              )}
+            </>
           )}
         </div>
 
         {/* Card Footer */}
-        <div className="px-4 py-3 border-t border-gray-100 mt-auto">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-gray-400">
-              {new Date(idea.createdAt).toLocaleDateString()}
-            </span>
+        {viewType !== 'community' && (
+          <div className="px-4 py-3 border-t border-gray-100 mt-auto">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-gray-400">
+                {new Date(idea.createdAt).toLocaleDateString()}
+              </span>
 
-            {/* OrgAdmin buttons — single row */}
-            {viewType === 'orgAdmin' && (
-              <div className="flex gap-2" onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
-                <Button size="sm" variant="outline"
-                  className="text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto font-semibold gap-1"
-                  onClick={e => { e.stopPropagation(); onAction?.(idea.id, 'Rejected'); }}>
-                  <XCircle size={13} />Reject
-                </Button>
-                <Button size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white text-xs py-1 h-auto font-semibold gap-1"
-                  onClick={e => { e.stopPropagation(); onAction?.(idea.id, 'Approved'); }}>
-                  <CheckCircle2 size={13} />Approve
-                </Button>
+              {/* OrgAdmin buttons — single row */}
+              {viewType === 'orgAdmin' && (
+                <div className="flex gap-2" onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
+                  <Button size="sm" variant="outline"
+                    className="text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto font-semibold gap-1"
+                    onClick={e => { e.stopPropagation(); onAction?.(idea.id, 'Rejected'); }}>
+                    <XCircle size={13} />Reject
+                  </Button>
+                  <Button size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white text-xs py-1 h-auto font-semibold gap-1"
+                    onClick={e => { e.stopPropagation(); onAction?.(idea.id, 'Approved'); }}>
+                    <CheckCircle2 size={13} />Approve
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Superadmin — two-row layout for assign + approve/reject */}
+            {viewType === 'superadmin' && (
+              <div className="mt-2 space-y-2" onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
+                <div className="flex gap-2">
+                  <select
+                    className="flex-1 border border-gray-300 rounded-md text-xs p-1.5 focus:border-brand-blue"
+                    value={selectedAdmins?.[idea.id] || ''}
+                    onChange={e => onAdminSelect?.(idea.id, e.target.value)}
+                  >
+                    <option value="">Assign to...</option>
+                    {orgAdmins?.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}{a.organization ? ` (${a.organization})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <Button size="sm" className="text-xs py-1 h-auto shrink-0" onClick={e => { e.stopPropagation(); onAction?.(idea.id); }}>
+                    Assign
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline"
+                    className="flex-1 text-green-600 border-green-200 hover:bg-green-50 text-xs py-1 h-auto font-semibold gap-1"
+                    onClick={e => { e.stopPropagation(); onDirectAction?.(idea.id, 'Approved'); }}>
+                    <CheckCircle2 size={13} />Approve
+                  </Button>
+                  <Button size="sm" variant="outline"
+                    className="flex-1 text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto font-semibold gap-1"
+                    onClick={e => { e.stopPropagation(); onDirectAction?.(idea.id, 'Rejected'); }}>
+                    <XCircle size={13} />Reject
+                  </Button>
+                </div>
               </div>
             )}
           </div>
-
-          {/* Superadmin — two-row layout for assign + approve/reject */}
-          {viewType === 'superadmin' && (
-            <div className="mt-2 space-y-2" onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
-              <div className="flex gap-2">
-                <select
-                  className="flex-1 border border-gray-300 rounded-md text-xs p-1.5 focus:border-brand-blue"
-                  value={selectedAdmins?.[idea.id] || ''}
-                  onChange={e => onAdminSelect?.(idea.id, e.target.value)}
-                >
-                  <option value="">Assign to...</option>
-                  {orgAdmins?.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}{a.organization ? ` (${a.organization})` : ''}
-                    </option>
-                  ))}
-                </select>
-                <Button size="sm" className="text-xs py-1 h-auto shrink-0" onClick={e => { e.stopPropagation(); onAction?.(idea.id); }}>
-                  Assign
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline"
-                  className="flex-1 text-green-600 border-green-200 hover:bg-green-50 text-xs py-1 h-auto font-semibold gap-1"
-                  onClick={e => { e.stopPropagation(); onDirectAction?.(idea.id, 'Approved'); }}>
-                  <CheckCircle2 size={13} />Approve
-                </Button>
-                <Button size="sm" variant="outline"
-                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto font-semibold gap-1"
-                  onClick={e => { e.stopPropagation(); onDirectAction?.(idea.id, 'Rejected'); }}>
-                  <XCircle size={13} />Reject
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Detail Modal — via portal, always centered */}
@@ -621,7 +672,7 @@ export default function IdeaCardGrid({
         ? JSON.parse(idea.extraFields)
         : (idea.extraFields || {})
     }))
-  , [ideas]);
+    , [ideas]);
 
   if (parsedIdeas.length === 0) {
     return (

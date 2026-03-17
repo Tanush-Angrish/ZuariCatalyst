@@ -2,7 +2,7 @@ const prisma = require('../db/prisma');
 
 async function runSeed() {
   console.log('Seed check started');
-  
+
   try {
     // 1. Scrub existing "Global" organizations to null
     const updatedGlobal = await prisma.user.updateMany({

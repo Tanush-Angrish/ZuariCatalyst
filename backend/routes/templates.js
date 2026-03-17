@@ -19,16 +19,16 @@ router.get('/organizations', async (req, res) => {
   try {
     const orgs = await prisma.user.findMany({
       where: {
-        organization: { 
-          not: null, 
-          notIn: ['', 'Global'] 
+        organization: {
+          not: null,
+          notIn: ['', 'Global']
         }
       },
       select: { organization: true },
       distinct: ['organization'],
       orderBy: { organization: 'asc' }
     });
-    
+
     const orgList = orgs.map(o => o.organization);
     res.json(orgList);
   } catch (error) {
@@ -38,7 +38,7 @@ router.get('/organizations', async (req, res) => {
 
 // PUT bulk update template access records
 router.put('/access', async (req, res) => {
-  const { mapping } = req.body; 
+  const { mapping } = req.body;
 
   if (!Array.isArray(mapping)) {
     return res.status(400).json({ error: 'mapping must be an array' });
@@ -46,7 +46,7 @@ router.put('/access', async (req, res) => {
 
   try {
     await prisma.$transaction(
-      mapping.map(({ templateId, organization, hasAccess }) => 
+      mapping.map(({ templateId, organization, hasAccess }) =>
         prisma.templateAccess.upsert({
           where: {
             templateId_organization: {

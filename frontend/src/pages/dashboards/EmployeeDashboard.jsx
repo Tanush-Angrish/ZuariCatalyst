@@ -103,11 +103,11 @@ function VoiceRecorder({ onRecorded, existingUrl, onRemove }) {
 export default function EmployeeDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   // Wizard State
   const [step, setStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  
+
   // Form State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({});
@@ -124,12 +124,19 @@ export default function EmployeeDashboard() {
       try {
         // Fetch templates from API
         const tplRes = await fetch('/api/templates');
+        if (!tplRes.ok) throw new Error('Failed to fetch templates');
         const allTemplates = await tplRes.json();
 
         // Fetch access rules
         const accessRes = await fetch('/api/templates/access');
+        if (!accessRes.ok) throw new Error('Failed to fetch template access');
         const accessData = await accessRes.json();
-        
+
+        if (!Array.isArray(allTemplates) || !Array.isArray(accessData)) {
+          console.error('Invalid data received from API');
+          return;
+        }
+
         // Find which template IDs the user's org has access to, or ALL
         const allowedIds = new Set();
         accessData.forEach(a => {
@@ -144,7 +151,7 @@ export default function EmployeeDashboard() {
         setAllowedTemplates(filtered);
 
         // Extract unique categories
-        const cats = [...new Set(filtered.map(t => t.category))];
+        const cats = [...new Set(filtered.map(t => t.category).filter(Boolean))];
         setCategories(cats);
       } catch (e) {
         console.error('Failed to fetch templates', e);
@@ -208,13 +215,13 @@ export default function EmployeeDashboard() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedTemplate) return;
-    
+
     setIsSubmitting(true);
 
     const systemFields = ['title', 'department'];
     const extraFields = { _templateId: selectedTemplate.id, _templateName: selectedTemplate.name };
-    
-    const payload = { 
+
+    const payload = {
       authorId: user.id,
       description: '',
       expectedImpact: '',
@@ -357,7 +364,7 @@ export default function EmployeeDashboard() {
       {step === 1 && (
         <div className="space-y-6">
           <p className="text-sm font-medium text-gray-700">Step 1: Select a template category that best fits your idea</p>
-          
+
           {isLoadingTemplates ? (
             <div className="py-8 text-center text-gray-500">Loading templates...</div>
           ) : allowedTemplates.length === 0 ? (
@@ -370,38 +377,38 @@ export default function EmployeeDashboard() {
             categories.map(category => {
               const CatIcon = CATEGORY_ICONS[category] || FileText;
               const categoryTemplates = allowedTemplates.filter(t => t.category === category);
-              
+
               if (categoryTemplates.length === 0) return null;
 
-            return (
-              <div key={category} className="space-y-3">
-                <h2 className="text-lg font-bold text-brand-black flex items-center gap-2">
-                  <span className="p-1.5 rounded-md bg-gray-100 text-brand-blue"><CatIcon size={16} /></span>
-                  {category}
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {categoryTemplates.map(template => (
-                    <Card 
-                      key={template.id} 
-                      className="cursor-pointer hover:border-brand-blue hover:shadow-md transition duration-200 border-gray-200"
-                      onClick={() => handleTemplateSelect(template)}
-                    >
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base text-brand-blue leading-tight truncate" title={template.name}>
-                          {template.name}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-gray-500 line-clamp-2" title={template.description}>
-                          {template.description}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ))}
+              return (
+                <div key={category} className="space-y-3">
+                  <h2 className="text-lg font-bold text-brand-black flex items-center gap-2">
+                    <span className="p-1.5 rounded-md bg-gray-100 text-brand-blue"><CatIcon size={16} /></span>
+                    {category}
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {categoryTemplates.map(template => (
+                      <Card
+                        key={template.id}
+                        className="cursor-pointer hover:border-brand-blue hover:shadow-md transition duration-200 border-gray-200"
+                        onClick={() => handleTemplateSelect(template)}
+                      >
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base text-brand-blue leading-tight truncate" title={template.name}>
+                            {template.name}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-gray-500 line-clamp-2" title={template.description}>
+                            {template.description}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })
           )}
         </div>
       )}

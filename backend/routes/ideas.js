@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
+const { generateIdeaInsights } = require('../services/geminiService');
 
 // GET all ideas (For testing or general review)
 router.get('/', async (req, res) => {
@@ -125,6 +126,27 @@ router.post('/', async (req, res) => {
         status: 'Pending Review'
       }
     });
+
+    // AI Processing - Background (don't block the response)
+    console.log(`[AI-Queue] Triggering AI processing for idea ID: ${idea.id}`);
+    generateIdeaInsights({ title, description, proposedSolution: extraFields?.proposedSolution || '' })
+      .then(async (insights) => {
+        if (insights) {
+          console.log(`[AI-Queue] Updating idea ID: ${idea.id} with insights`);
+          await prisma.idea.update({
+            where: { id: idea.id },
+            data: {
+              aiSummary: insights.summary,
+              aiTags: JSON.stringify(insights.tags)
+            }
+          });
+          console.log(`[AI-Queue] Idea ID: ${idea.id} successfully updated with AI insights`);
+        } else {
+          console.warn(`[AI-Queue] No insights generated for idea ID: ${idea.id}`);
+        }
+      })
+      .catch(err => console.error(`[AI-Queue] Error in background AI processing for ID: ${idea.id}:`, err));
+
     res.json({ id: idea.id, status: idea.status });
   } catch (error) {
     res.status(500).json({ error: error.message });

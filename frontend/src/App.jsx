@@ -14,6 +14,7 @@ import Projects from './pages/Projects';
 import UserManagement from './pages/dashboards/UserManagement';
 import TemplateAccess from './pages/dashboards/TemplateAccess';
 import TemplateConfig from './pages/dashboards/TemplateConfig';
+import CommunityHub from './pages/dashboards/CommunityHub';
 
 // Protect Routes based on roles
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -34,11 +35,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 // Route director
 const DashboardDirector = () => {
   const { user } = useAuth();
-  
+
   if (user?.role === 'Superadmin') return <SuperadminDashboard />;
   if (user?.role === 'Org Admin') return <OrgAdminDashboard />;
   if (user?.role === 'Employee') return <EmployeeDashboard />;
-  
+
   return <Navigate to="/" replace />;
 }
 
@@ -48,7 +49,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          
+
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <DashboardLayout />
@@ -80,9 +81,10 @@ function App() {
                 <TemplateConfig />
               </ProtectedRoute>
             } />
+            <Route path="community" element={<CommunityHub />} />
             <Route path="projects" element={<Projects />} />
           </Route>
-          
+
         </Routes>
       </Router>
     </AuthProvider>

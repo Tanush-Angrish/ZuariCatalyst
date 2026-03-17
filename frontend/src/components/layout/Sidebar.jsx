@@ -9,7 +9,8 @@ export default function Sidebar({ isMobile }) {
 
   const getLinks = () => {
     const common = [
-      { name: 'Projects', path: '/dashboard/projects', icon: Users },
+      { name: 'Community Hub', path: '/dashboard/community', icon: Users },
+      { name: 'Projects', path: '/dashboard/projects', icon: LayoutList },
     ];
 
     if (!user) return common;
@@ -72,6 +73,19 @@ export default function Sidebar({ isMobile }) {
             </NavLink>
           );
         })}
+      </div>
+
+      {/* AI Branding */}
+      <div className="mt-auto pt-6 px-3">
+        <div className="p-3 rounded-xl bg-gradient-to-br from-brand-blue/5 to-purple-50 border border-brand-blue/10">
+          <p className="text-[10px] font-bold text-brand-blue uppercase tracking-widest flex items-center gap-1.5 mb-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-blue animate-pulse" />
+            Smart Insights
+          </p>
+          <p className="text-[11px] text-gray-500 font-medium leading-tight">
+            Powered by Gemini AI for faster decision making.
+          </p>
+        </div>
       </div>
     </aside>
   );
