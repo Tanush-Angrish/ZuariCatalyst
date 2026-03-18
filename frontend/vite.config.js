@@ -16,17 +16,17 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       react()
     ],
-    // server: {
-    //   proxy: {
-    //     '/api': {
-    //       target: apiTarget,
-    //       changeOrigin: true,
-    //     },
-    //     '/uploads': {
-    //       target: apiTarget,
-    //       changeOrigin: true,
-    //     }
-    //   }
-    // }
+    server: {
+      proxy: {
+        '/api': {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+        '/uploads': {
+          target: apiTarget,
+          changeOrigin: true,
+        }
+      }
+    }
   }
 })

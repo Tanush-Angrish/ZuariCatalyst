@@ -7,12 +7,14 @@
  * e.g., to "http://<ec2-ip>:5000". If empty, it assumes the API is served on the same domain.
  */
 
+// Use empty string fallback for AWS production where static frontend and backend share the same domain/proxy
 const BASE_URL = import.meta.env.VITE_API_URL || '';
+console.log("Loaded API Base URL:", BASE_URL);
 
 async function request(endpoint, options = {}) {
   // Always prepend BASE_URL to the endpoint so that static AWS builds can route requests to your EC2 backend
   const url = endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`;
-  
+
   const headers = { ...options.headers };
   // If we're sending FormData, don't set Content-Type manually (browser sets it with boundary)
   if (!(options.body instanceof FormData)) {
@@ -27,7 +29,7 @@ async function request(endpoint, options = {}) {
   };
 
   const response = await fetch(url, config);
-  
+
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
     throw new Error(errorBody.error || `API Error: ${response.status}`);
@@ -80,7 +82,7 @@ export const api = {
     body: JSON.stringify({ deadline }),
   }),
   getProjectParticipants: (id) => request(`/api/projects/${id}/participants`),
-  
+
   // Project Steps
   addProjectStep: (id, step) => request(`/api/projects/${id}/steps`, {
     method: 'POST',
