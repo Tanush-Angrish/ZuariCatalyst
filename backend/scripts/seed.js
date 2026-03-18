@@ -59,12 +59,11 @@ async function runSeed() {
       }
     }
 
-    // 3. Seed hardcoded templates into IdeaTemplate table (one-time migration)
-    const templateCount = await prisma.ideaTemplate.count();
-    if (templateCount === 0) {
-      console.log('No templates in DB — seeding from hardcoded definitions...');
-      const { IDEA_TEMPLATES } = require('./template-seed-data');
-      for (const t of IDEA_TEMPLATES) {
+    // 3. Seed hardcoded templates into IdeaTemplate table
+    const { IDEA_TEMPLATES } = require('./template-seed-data');
+    for (const t of IDEA_TEMPLATES) {
+      const existingTpl = await prisma.ideaTemplate.findUnique({ where: { id: t.id } });
+      if (!existingTpl) {
         await prisma.ideaTemplate.create({
           data: {
             id: t.id,
@@ -74,11 +73,10 @@ async function runSeed() {
             fields: JSON.stringify(t.fields)
           }
         });
+        console.log(`Seeded missing template: ${t.name}`);
       }
-      console.log(`Seeded ${IDEA_TEMPLATES.length} templates into database.`);
-    } else {
-      console.log(`Templates already in DB (${templateCount} found), skipping seed.`);
     }
+    console.log('Template seed check complete.');
   } catch (error) {
     console.error('Seed execution failed:', error);
   }

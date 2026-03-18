@@ -662,7 +662,7 @@ export default function IdeaCardGrid({
   const [templates, setTemplates] = useState([]);
 
   useEffect(() => {
-    fetch('/api/templates').then(r => r.json()).then(setTemplates).catch(console.error);
+    fetch('/api/templates').then(r => r.json()).then(d => setTemplates(d.templates || [])).catch(console.error);
   }, []);
 
   const parsedIdeas = useMemo(() =>

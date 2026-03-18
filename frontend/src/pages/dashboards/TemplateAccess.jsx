@@ -21,8 +21,8 @@ export default function TemplateAccess() {
     try {
       // 1. Fetch templates from API
       const tplRes = await fetch('/api/templates');
-      const tplData = await tplRes.json();
-      setTemplates(tplData);
+      const data = await tplRes.json();
+      setTemplates(data.templates || []);
 
       // 2. Fetch unique organizations from Users
       const orgRes = await fetch('/api/templates/organizations');
@@ -65,7 +65,7 @@ export default function TemplateAccess() {
     setIsSaving(true);
     try {
       const mapping = [];
-      
+
       templates.forEach(template => {
         // Include ALL pseudo-org
         const allKey = `${template.id}_ALL`;
@@ -94,7 +94,7 @@ export default function TemplateAccess() {
 
       if (res.ok) {
         setHasUnsavedChanges(false);
-        await fetchData(); 
+        await fetchData();
       } else {
         const data = await res.json();
         alert('Failed to save template access: ' + data.error);
@@ -115,9 +115,9 @@ export default function TemplateAccess() {
           <h1 className="text-3xl font-bold tracking-tight text-brand-black">Template Access</h1>
           <p className="text-gray-500 mt-1">Manage which organizations can utilize specific idea templates.</p>
         </div>
-        
-        <Button 
-          onClick={handleSave} 
+
+        <Button
+          onClick={handleSave}
           disabled={!hasUnsavedChanges || isSaving}
           className="gap-2 shrink-0"
         >
@@ -174,7 +174,7 @@ export default function TemplateAccess() {
                             const key = `${template.id}_${org}`;
                             const isChecked = !!accessMap[key];
                             const isDisabled = org !== 'ALL' && allEnabled;
-                            
+
                             return (
                               <td key={org} className={`px-6 py-4 text-center border-r border-gray-100 last:border-r-0 ${org === 'ALL' ? 'bg-blue-50/30' : ''} ${isDisabled ? 'opacity-40' : ''}`}>
                                 <label className="flex items-center justify-center w-full h-full cursor-pointer">
@@ -199,7 +199,7 @@ export default function TemplateAccess() {
           )}
         </CardContent>
       </Card>
-      
+
       <div className="rounded-lg bg-blue-50 p-4 border border-blue-100 flex items-start gap-3">
         <AlertCircle className="w-5 h-5 text-brand-blue shrink-0 mt-0.5" />
         <div className="text-sm text-brand-blue">

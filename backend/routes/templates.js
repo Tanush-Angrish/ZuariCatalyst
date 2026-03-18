@@ -68,17 +68,34 @@ router.put('/access', async (req, res) => {
 
 // ─── Template CRUD ─────────────────────────────────────────────────────────
 
-// GET all templates
+// GET all templates (Unified response)
 router.get('/', async (req, res) => {
   try {
     const templates = await prisma.ideaTemplate.findMany({
       orderBy: [{ category: 'asc' }, { name: 'asc' }]
     });
-    const formatted = templates.map(t => ({
-      ...t,
-      fields: JSON.parse(t.fields || '[]')
-    }));
-    res.json(formatted);
+
+    const masterTpl = templates.find(t => t.id === 'MASTER_TEMPLATE');
+    if (masterTpl) {
+      console.log('API: Master Template found with ID:', masterTpl.id);
+    } else {
+      console.warn('API: MASTER_TEMPLATE NOT FOUND in database!');
+    }
+
+    const masterFields = masterTpl ? JSON.parse(masterTpl.fields || '[]') : [];
+
+    const specificTemplates = templates
+      .filter(t => t.id !== 'MASTER_TEMPLATE')
+      .map(t => ({
+        ...t,
+        fields: [...masterFields, ...JSON.parse(t.fields || '[]')]
+      }));
+
+    console.log(`API: Returning 1 master and ${specificTemplates.length} templates`);
+    res.json({
+      master: masterTpl ? { ...masterTpl, fields: masterFields } : null,
+      templates: specificTemplates
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

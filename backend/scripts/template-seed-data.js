@@ -13,6 +13,13 @@ const baseFields = [
 
 const IDEA_TEMPLATES = [
   {
+    id: 'MASTER_TEMPLATE',
+    category: 'GLOBAL',
+    name: 'Master Template (Global Fields)',
+    description: 'Fields shared across all idea templates.',
+    fields: baseFields
+  },
+  {
     id: 'general-process-improvement',
     category: 'GENERAL',
     name: 'Process Improvement Idea',

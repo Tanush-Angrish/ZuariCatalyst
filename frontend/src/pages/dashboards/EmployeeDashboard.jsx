@@ -125,7 +125,8 @@ export default function EmployeeDashboard() {
         // Fetch templates from API
         const tplRes = await fetch('/api/templates');
         if (!tplRes.ok) throw new Error('Failed to fetch templates');
-        const allTemplates = await tplRes.json();
+        const data = await tplRes.json();
+        const allTemplates = data.templates || [];
 
         // Fetch access rules
         const accessRes = await fetch('/api/templates/access');

@@ -33,9 +33,46 @@ app.get('/api/health', (req, res) => {
 
 // Run seed and then start server
 runSeed().then(() => {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
   });
+
+  server.on('error', (err) => {
+    console.error('SERVER ERROR EVENT:', err);
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Please kill the process using it.`);
+    }
+    process.exit(1);
+  });
+
 }).catch(err => {
   console.error("Failed to start server due to seed error:", err);
+  process.exit(1);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED REJECTION:', reason);
+  process.exit(1);
+});
+
+process.on('exit', (code) => {
+  console.log(`PROCESS EXITING WITH CODE: ${code}`);
+  if (code === 0) {
+    console.trace('Exit 0 trace:');
+  }
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received. Shutting down...');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down...');
+  process.exit(0);
 });
