@@ -85,3 +85,49 @@ model TemplateAccess {
   @@unique([templateId, organization])
   @@map("template_access")
 }
+
+// ─── Project Lifecycle Models ────────────────────────────────────────────────
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  projectId   String    @unique // e.g. PROJ-0001
+  ideaId      Int       @unique
+  orgId       String    // organization name
+  createdById Int       // authorId of the original idea
+  title       String
+  aiSummary   String?
+  status      String    @default("Initiated")
+  deadline    DateTime?
+  createdAt   DateTime  @default(now())
+
+  steps       ProjectStep[]
+  messages    ProjectMessage[]
+
+  @@map("projects")
+}
+
+model ProjectStep {
+  id          Int       @id @default(autoincrement())
+  projectId   Int
+  description String
+  status      String    @default("Pending") // Pending | In Progress | Completed
+  deadline    DateTime?
+
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_steps")
+}
+
+model ProjectMessage {
+  id             Int      @id @default(autoincrement())
+  projectId      Int
+  senderId       Int
+  senderName     String
+  message        String
+  mentionedUsers String   @default("[]") // JSON array of user ids
+  createdAt      DateTime @default(now())
+
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_messages")
+}

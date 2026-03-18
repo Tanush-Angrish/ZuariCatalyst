@@ -8,6 +8,7 @@ const usersRoutes = require('./routes/users');
 const formFieldsRoutes = require('./routes/form-fields');
 const templatesRoutes = require('./routes/templates');
 const uploadRoutes = require('./routes/upload');
+const projectsRoutes = require('./routes/projects');
 const runSeed = require('./scripts/seed');
 
 const app = express();
@@ -26,6 +27,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/form-fields', formFieldsRoutes);
 app.use('/api/templates', templatesRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/projects', projectsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Zuari Catalyst Backend Running' });

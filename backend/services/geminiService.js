@@ -67,6 +67,70 @@ async function generateIdeaInsights(ideaData) {
   return null;
 }
 
+/**
+ * Generates a structured action plan (list of steps) for a project.
+ * @param {Object} projectData - { title, problemDescription, proposedSolution }
+ * @returns {Promise<Array<{description: string}>>}
+ */
+async function generateProjectPlan(projectData) {
+  console.log(`[AI] Generating project plan for: "${projectData.title}"`);
+
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_api_key_here') {
+    console.warn("[AI] GEMINI_API_KEY not set. Skipping project plan generation.");
+    return null;
+  }
+
+  const prompt = `
+    You are a project planning assistant. Based on the following project details, generate a structured action plan with clear, actionable steps that a team can follow to implement this idea.
+
+    Project Title: ${projectData.title}
+    Problem Description: ${projectData.problemDescription || 'Not provided'}
+    Proposed Solution: ${projectData.proposedSolution || 'Not provided'}
+
+    Generate 5-8 specific, practical action steps.
+    Each step should be a concrete task, not vague advice.
+
+    Response must be a valid JSON array of objects:
+    [
+      { "description": "Step description here" },
+      { "description": "Another step here" }
+    ]
+    Return ONLY the JSON array, no other text.
+  `;
+
+  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  let lastError = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`[AI] Attempting project plan with model: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        console.error(`[AI] Could not find JSON array in ${modelName} response.`);
+        continue;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (Array.isArray(parsed)) {
+        console.log(`[AI] Successfully generated ${parsed.length} steps using ${modelName}`);
+        return parsed;
+      }
+    } catch (error) {
+      console.error(`[AI] Model ${modelName} failed for project plan:`, error.message);
+      lastError = error;
+    }
+  }
+
+  console.error("[AI] All models failed for project plan. Last error:", lastError?.message);
+  return null;
+}
+
 module.exports = {
-  generateIdeaInsights
+  generateIdeaInsights,
+  generateProjectPlan
 };

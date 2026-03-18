@@ -187,10 +187,35 @@ router.put('/:id/status', async (req, res) => {
   }
 
   try {
-    await prisma.idea.update({
+    const idea = await prisma.idea.update({
       where: { id: ideaId },
-      data: { status }
+      data: { status },
+      include: { author: { select: { name: true, organization: true } } }
     });
+
+    // Auto-create project when approved (if not already existing)
+    if (status === 'Approved') {
+      const existingProject = await prisma.project.findUnique({ where: { ideaId } });
+      if (!existingProject) {
+        // Generate PROJ-XXXX id
+        const count = await prisma.project.count();
+        const projectId = `PROJ-${String(count + 1).padStart(4, '0')}`;
+
+        await prisma.project.create({
+          data: {
+            projectId,
+            ideaId,
+            orgId: idea.author.organization || 'Unknown',
+            createdById: idea.authorId,
+            title: idea.title,
+            aiSummary: idea.aiSummary || null,
+            status: 'Initiated'
+          }
+        });
+        console.log(`[Projects] Auto-created project ${projectId} for idea ${ideaId}`);
+      }
+    }
+
     res.json({ message: `Idea marked as ${status}` });
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Idea not found' });

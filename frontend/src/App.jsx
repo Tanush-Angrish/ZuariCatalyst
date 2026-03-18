@@ -10,7 +10,7 @@ import MyIdeas from './pages/dashboards/MyIdeas';
 import SuperadminDashboard from './pages/dashboards/SuperadminDashboard';
 import OrgAdminDashboard from './pages/dashboards/OrgAdminDashboard';
 import TeamIdeas from './pages/dashboards/TeamIdeas';
-import Projects from './pages/Projects';
+import ProjectsPage from './pages/dashboards/ProjectsPage';
 import UserManagement from './pages/dashboards/UserManagement';
 import TemplateAccess from './pages/dashboards/TemplateAccess';
 import TemplateConfig from './pages/dashboards/TemplateConfig';
@@ -82,7 +82,7 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="community" element={<CommunityHub />} />
-            <Route path="projects" element={<Projects />} />
+            <Route path="projects" element={<ProjectsPage />} />
           </Route>
 
         </Routes>
