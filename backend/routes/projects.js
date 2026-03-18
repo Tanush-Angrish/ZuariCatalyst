@@ -3,6 +3,12 @@ const router = express.Router();
 const prisma = require('../db/prisma');
 const { generateProjectPlan } = require('../services/geminiService');
 const { sendMentionEmail } = require('../services/emailService');
+const {
+  notifyCentralTeam,
+  notifyOrgAdmins,
+  notifyUser,
+  notifyUsers
+} = require('../services/notificationService');
 
 // Helper: get all Central Team (Superadmin) emails
 async function getCentralTeamEmails() {
@@ -76,6 +82,11 @@ router.put('/:id/status', async (req, res) => {
       data: { status }
     });
     res.json(project);
+
+    // DB Notifications
+    notifyUser(project.createdById, 'project', `Project '${project.title}' status changed to ${status}.`, project.id);
+    notifyOrgAdmins(project.orgId, 'project', `Project '${project.title}' status changed to ${status}.`, project.id);
+    notifyCentralTeam('project', `Project '${project.title}' status changed to ${status}.`, project.id);
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Project not found' });
     res.status(500).json({ error: error.message });
@@ -91,6 +102,12 @@ router.put('/:id/deadline', async (req, res) => {
       data: { deadline: deadline ? new Date(deadline) : null }
     });
     res.json(project);
+
+    // DB Notifications
+    const dt = deadline ? new Date(deadline).toLocaleDateString() : 'None';
+    notifyUser(project.createdById, 'project', `Project '${project.title}' deadline updated to ${dt}.`, project.id);
+    notifyOrgAdmins(project.orgId, 'project', `Project '${project.title}' deadline updated to ${dt}.`, project.id);
+    notifyCentralTeam('project', `Project '${project.title}' deadline updated to ${dt}.`, project.id);
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Project not found' });
     res.status(500).json({ error: error.message });
@@ -111,6 +128,14 @@ router.post('/:id/steps', async (req, res) => {
       }
     });
     res.json(step);
+
+    // DB Notifications
+    const project = await prisma.project.findUnique({ where: { id: parseInt(req.params.id) } });
+    if (project) {
+      notifyUser(project.createdById, 'project', `New step added to project '${project.title}'.`, project.id);
+      notifyOrgAdmins(project.orgId, 'project', `New step added to project '${project.title}'.`, project.id);
+      notifyCentralTeam('project', `New step added to project '${project.title}'.`, project.id);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -129,6 +154,16 @@ router.put('/:id/steps/:stepId', async (req, res) => {
       }
     });
     res.json(step);
+
+    // DB Notifications (if status changed)
+    if (status !== undefined) {
+      const project = await prisma.project.findUnique({ where: { id: parseInt(req.params.id) } });
+      if (project) {
+        notifyUser(project.createdById, 'project', `Step in '${project.title}' marked as ${status}.`, project.id);
+        notifyOrgAdmins(project.orgId, 'project', `Step in '${project.title}' marked as ${status}.`, project.id);
+        notifyCentralTeam('project', `Step in '${project.title}' marked as ${status}.`, project.id);
+      }
+    }
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Step not found' });
     res.status(500).json({ error: error.message });
@@ -202,18 +237,29 @@ router.post('/:id/messages', async (req, res) => {
       }
     });
 
-    // Send email notifications for @mentions (author + Central Team)
+    // 1. Send DB Notifications to EVERYONE else in the project Chat
+    // To avoid spamming, let's just send DB notifications to people explicitly mentioned.
+    // Wait, the project chat is relatively quiet. Let's just notify everyone if there's a new message?
+    // User requested: "Chat: No email unless @mentioned", "Project Updates: Notify Employee, Org Admin, Central Team."
+    // Let's notify participants in DB, but email ONLY mentioned.
+    notifyUser(project.createdById, 'project', `New message in '${project.title}' from ${senderName}`, project.id);
+    notifyOrgAdmins(project.orgId, 'project', `New message in '${project.title}' from ${senderName}`, project.id);
+    notifyCentralTeam('project', `New message in '${project.title}' from ${senderName}`, project.id);
+
+    // 2. Mention Handling: DB Notification (type 'mention') + Email (ONLY to target)
     if (mentionedUserIds && mentionedUserIds.length > 0) {
       const mentionedUsers = await prisma.user.findMany({
         where: { id: { in: mentionedUserIds.map(id => parseInt(id)) } },
         select: { id: true, name: true, email: true }
       });
-      const centralEmails = await getCentralTeamEmails();
 
       for (const u of mentionedUsers) {
-        const recipients = [...new Set([u.email, ...centralEmails].filter(Boolean))];
+        // Explicit mention DB record
+        notifyUser(u.id, 'mention', `${senderName} mentioned you in '${project.title}'`, project.id);
+
+        // ONLY email the target, NOT the Central Team (per user feedback)
         sendMentionEmail({
-          toEmails: recipients,
+          toEmails: [u.email], // Only the mentioned user
           mentionedName: u.name,
           senderName,
           projectTitle: project.title,

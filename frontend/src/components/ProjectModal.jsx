@@ -8,6 +8,7 @@ import {
   MessageSquare, Send, Sparkles, Calendar, Clock,
   Loader2, AtSign, CheckCircle2, AlertCircle, Pause, User
 } from 'lucide-react';
+import { useNotifications } from '../context/NotificationContext';
 
 const STATUS_COLORS = {
   Initiated:   'bg-blue-100 text-blue-700 border-blue-200',
@@ -157,6 +158,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
   const [messages, setMessages] = useState([]);
   const [participants, setParticipants] = useState([]);
   const [activeTab, setActiveTab] = useState('overview'); // overview | steps | chat
+  const { notify } = useNotifications();
   
   // Steps state
   const [addingStep, setAddingStep] = useState(false);
@@ -233,8 +235,12 @@ export default function ProjectModal({ project: initialProject, onClose, current
       if (res.ok) {
         setNewStepDesc(''); setNewStepDeadline(''); setAddingStep(false);
         fetchSteps();
+        notify({ type: 'success', title: 'Step Added', message: 'The project step has been created.' });
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      notify({ type: 'error', title: 'Error', message: 'Failed to add step.' });
+    }
   };
 
   const handleEditStep = async (stepId, data) => {
@@ -245,7 +251,11 @@ export default function ProjectModal({ project: initialProject, onClose, current
         body: JSON.stringify(data)
       });
       fetchSteps();
-    } catch (e) { console.error(e); }
+      notify({ type: 'success', title: 'Step Updated' });
+    } catch (e) {
+      console.error(e);
+      notify({ type: 'error', title: 'Error', message: 'Failed to update step.' });
+    }
   };
 
   const handleDeleteStep = async (stepId) => {
@@ -253,6 +263,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
     try {
       await fetch(`/api/projects/${project.id}/steps/${stepId}`, { method: 'DELETE' });
       fetchSteps();
+      notify({ type: 'info', title: 'Step Deleted' });
     } catch (e) { console.error(e); }
   };
 
@@ -289,6 +300,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
       });
       setGeminiSteps(null);
       fetchSteps();
+      notify({ type: 'success', title: 'Plan Saved', message: 'AI generated steps have been added.' });
     } catch (e) { alert('Error saving steps.'); }
     setSavingGemini(false);
   };
@@ -306,6 +318,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
         setProject(updated);
         onProjectUpdated?.(updated);
         setEditStatus(false);
+        notify({ type: 'success', title: 'Status Updated', message: `Project status is now ${selectedStatus}.` });
       }
     } catch (e) { console.error(e); }
   };
@@ -322,6 +335,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
         setProject(updated);
         onProjectUpdated?.(updated);
         setEditDeadline(false);
+        notify({ type: 'success', title: 'Deadline Updated' });
       }
     } catch (e) { console.error(e); }
   };
@@ -368,6 +382,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
       setChatInput('');
       setPendingMentions([]);
       fetchSteps(); // also refreshes messages
+      notify({ type: 'success', title: 'Message Sent' });
     } catch (e) { console.error(e); }
     setSendingMsg(false);
   };

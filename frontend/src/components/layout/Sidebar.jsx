@@ -9,7 +9,7 @@ export default function Sidebar({ isMobile }) {
 
   const getLinks = () => {
     const common = [
-      { name: 'Community Hub', path: '/dashboard/community', icon: Users },
+      { name: 'Community Hub', path: '/community-hub', icon: Users },
       { name: 'Projects', path: '/dashboard/projects', icon: LayoutList },
     ];
 
@@ -19,15 +19,15 @@ export default function Sidebar({ isMobile }) {
       case 'Superadmin':
         return [
           { name: 'Review Queue', path: '/dashboard', icon: LayoutList },
-          { name: 'User Management', path: '/dashboard/users', icon: UserCog },
-          { name: 'Template Access', path: '/dashboard/template-access', icon: Settings },
-          { name: 'Template Config', path: '/dashboard/template-config', icon: Wrench },
+          { name: 'User Management', path: '/settings/users', icon: UserCog },
+          { name: 'Template Access', path: '/settings/access', icon: Settings },
+          { name: 'Template Config', path: '/settings/templates', icon: Wrench },
           ...common
         ];
       case 'Org Admin':
         return [
           { name: 'Assigned Ideas', path: '/dashboard', icon: LayoutDashboard },
-          { name: 'Team Ideas', path: '/dashboard/team', icon: Users },
+          { name: 'Team Ideas', path: '/dashboard/team-ideas', icon: Users },
           ...common
         ];
       case 'Employee':

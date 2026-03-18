@@ -8,6 +8,12 @@ const {
   sendIdeaApprovedEmail,
   sendIdeaRejectedEmail
 } = require('../services/emailService');
+const {
+  notifyCentralTeam,
+  notifyOrgAdmins,
+  notifyUser,
+  notifyUsers
+} = require('../services/notificationService');
 
 // Helper: get all Central Team (Superadmin) emails
 async function getCentralTeamEmails() {
@@ -166,8 +172,14 @@ router.post('/', async (req, res) => {
 
     res.json({ id: idea.id, status: idea.status });
 
-    // Email Central Team — fires in background, never blocks response
+    // DB Notifications & Email
     const author = await prisma.user.findUnique({ where: { id: parseInt(authorId) }, select: { name: true, organization: true } });
+    
+    // Notify in app
+    notifyOrgAdmins(author?.organization, 'idea', `New idea submitted by ${author?.name}: ${title}`, idea.id);
+    notifyCentralTeam('idea', `New idea submitted by ${author?.name}: ${title}`, idea.id);
+    
+    // Email Central Team
     const centralEmails = await getCentralTeamEmails();
     if (centralEmails.length > 0 && author) {
       sendIdeaSubmittedEmail({
@@ -207,6 +219,13 @@ router.put('/:id/assign', async (req, res) => {
       prisma.user.findUnique({ where: { id: parseInt(assignedToId) }, select: { name: true, email: true } }),
       getCentralTeamEmails()
     ]);
+
+    // DB Notifications
+    notifyUser(updatedIdea.authorId, 'idea', `Your idea '${updatedIdea.title}' has been assigned to an Org Admin for review.`, ideaId);
+    notifyUser(parseInt(assignedToId), 'idea', `You have been assigned to review idea: ${updatedIdea.title}`, ideaId);
+    notifyCentralTeam('idea', `Idea '${updatedIdea.title}' assigned to ${orgAdmin?.name}`, ideaId);
+
+    // Email Org Admin + Central Team in background
     const toEmails = [...new Set([orgAdmin?.email, ...centralEmails].filter(Boolean))];
     if (toEmails.length > 0 && orgAdmin) {
       sendIdeaAssignedEmail({
@@ -260,6 +279,10 @@ router.put('/:id/status', async (req, res) => {
         });
         console.log(`[Projects] Auto-created project ${projectId} for idea ${ideaId}`);
 
+        // DB Notifications
+        notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' was APPROVED. A project (${projectId}) has been created.`, ideaId);
+        notifyCentralTeam('idea', `Idea '${idea.title}' approved. Project ${projectId} created.`, ideaId);
+
         // Email author + Central Team about approval in background
         const [author, centralEmails] = await Promise.all([
           prisma.user.findUnique({ where: { id: idea.authorId }, select: { name: true, email: true } }),
@@ -276,6 +299,10 @@ router.put('/:id/status', async (req, res) => {
         }
       }
     } else if (status === 'Rejected') {
+      // DB Notifications
+      notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' has been REJECTED.`, ideaId);
+      notifyCentralTeam('idea', `Idea '${idea.title}' was rejected.`, ideaId);
+
       // Email author + Central Team about rejection in background
       const [author, centralEmails] = await Promise.all([
         prisma.user.findUnique({ where: { id: idea.authorId }, select: { name: true, email: true } }),

@@ -20,8 +20,9 @@ model User {
   organization  String?  
   
   // Relations
-  authoredIdeas Idea[]   @relation("IdeaAuthor")
-  assignedIdeas Idea[]   @relation("IdeaAssignee")
+  authoredIdeas Idea[]         @relation("IdeaAuthor")
+  assignedIdeas Idea[]         @relation("IdeaAssignee")
+  notifications Notification[] @relation("UserNotifications")
 
   @@map("users")
 }
@@ -130,4 +131,21 @@ model ProjectMessage {
   project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_messages")
+}
+
+// ─── Notification Model ──────────────────────────────────────────────────────
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  message     String
+  type        String   // 'idea', 'project', 'mention'
+  referenceId Int?     // ideaId or projectId
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
 }

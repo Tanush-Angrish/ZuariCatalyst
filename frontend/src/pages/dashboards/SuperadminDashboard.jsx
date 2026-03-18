@@ -72,6 +72,13 @@ export default function SuperadminDashboard() {
 
       if (res.ok) {
         setIdeas(ideas.filter(idea => idea.id !== ideaId));
+        const isApp = status === 'Approved';
+        notify({ 
+          type: isApp ? 'success' : 'info', 
+          title: isApp ? 'Idea Approved' : 'Idea Rejected', 
+          message: isApp ? 'Project auto-created.' : 'Idea rejected.', 
+          event: isApp ? 'idea_approved' : 'idea_rejected' 
+        });
       }
     } catch (e) {
       console.error(e);

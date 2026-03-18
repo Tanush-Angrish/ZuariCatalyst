@@ -46,51 +46,38 @@ const DashboardDirector = () => {
 
 function App() {
   return (
-    <NotificationProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <NotificationProvider>
         <Router>
           <Routes>
+            {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
 
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }>
+            {/* General Dashboard routes */}
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route index element={<DashboardDirector />} />
-              <Route path="team" element={
-                <ProtectedRoute allowedRoles={['Org Admin']}>
-                  <TeamIdeas />
-                </ProtectedRoute>
-              } />
-              <Route path="my-ideas" element={
-                <ProtectedRoute allowedRoles={['Employee']}>
-                  <MyIdeas />
-                </ProtectedRoute>
-              } />
-              <Route path="users" element={
-                <ProtectedRoute allowedRoles={['Superadmin']}>
-                  <UserManagement />
-                </ProtectedRoute>
-              } />
-              <Route path="template-access" element={
-                <ProtectedRoute allowedRoles={['Superadmin']}>
-                  <TemplateAccess />
-                </ProtectedRoute>
-              } />
-              <Route path="template-config" element={
-                <ProtectedRoute allowedRoles={['Superadmin']}>
-                  <TemplateConfig />
-                </ProtectedRoute>
-              } />
-              <Route path="community" element={<CommunityHub />} />
-              <Route path="projects" element={<ProjectsPage />} />
+              <Route path="my-ideas" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin']}><MyIdeas /></ProtectedRoute>} />
+              <Route path="team-ideas" element={<ProtectedRoute allowedRoles={['Org Admin']}><TeamIdeas /></ProtectedRoute>} />
+              <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin']}><ProjectsPage /></ProtectedRoute>} />
             </Route>
 
+            {/* Central Team / Hub routes */}
+            <Route path="/community-hub" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+              <Route index element={<CommunityHub />} />
+            </Route>
+
+            {/* Global Settings */}
+            <Route path="/settings" element={<ProtectedRoute allowedRoles={['Superadmin']}><DashboardLayout /></ProtectedRoute>}>
+              <Route path="users" element={<UserManagement />} />
+              <Route path="templates" element={<TemplateConfig />} />
+              <Route path="access" element={<TemplateAccess />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
-      </AuthProvider>
-    </NotificationProvider>
+      </NotificationProvider>
+    </AuthProvider>
   );
 }
 

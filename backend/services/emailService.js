@@ -9,7 +9,7 @@
  *   - idea_assigned    → Assigned Org Admin + Central Team
  *   - idea_approved    → Idea Author + Central Team
  *   - idea_rejected    → Idea Author + Central Team
- *   - mention          → Mentioned user(s) + Central Team (via @mention in project chat)
+ *   - mention          → Mentioned user(s) (via @mention in project chat)
  *
  * .env variables required:
  *   EMAIL_HOST=smtp.office365.com
