@@ -3,8 +3,10 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { LayoutList, UserCheck } from 'lucide-react';
 import IdeaCardGrid from '../../components/IdeaCardGrid';
+import { useNotifications } from '../../context/NotificationContext';
 
 export default function SuperadminDashboard() {
+  const { notify } = useNotifications();
   const [ideas, setIdeas] = useState([]);
   const [orgAdmins, setOrgAdmins] = useState([]);
   const [selectedAdmins, setSelectedAdmins] = useState({}); // ideaId -> adminId
@@ -46,17 +48,17 @@ export default function SuperadminDashboard() {
       });
 
       if (res.ok) {
-        // Remove from list
         setIdeas(ideas.filter(idea => idea.id !== ideaId));
         setSelectedAdmins(prev => {
           const copy = { ...prev };
           delete copy[ideaId];
           return copy;
         });
+        notify({ type: 'success', title: 'Idea Assigned', message: 'Idea has been assigned to the Org Admin.', event: 'idea_assigned' });
       }
     } catch (e) {
       console.error(e);
-      alert('Error assigning idea');
+      notify({ type: 'error', title: 'Assignment failed', message: 'Error assigning idea.', event: '' });
     }
   };
 

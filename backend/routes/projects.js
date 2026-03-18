@@ -2,34 +2,17 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
 const { generateProjectPlan } = require('../services/geminiService');
-const nodemailer = require('nodemailer');
+const { sendMentionEmail } = require('../services/emailService');
 
-// ─── Email helper ──────────────────────────────────────────────────────────
-async function sendMentionEmail(toEmail, toName, senderName, projectTitle, message) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn('[Email] EMAIL_USER or EMAIL_PASS not set. Skipping @mention email.');
-    return;
-  }
+// Helper: get all Central Team (Superadmin) emails
+async function getCentralTeamEmails() {
   try {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    const admins = await prisma.user.findMany({
+      where: { role: 'Superadmin' },
+      select: { email: true }
     });
-    await transporter.sendMail({
-      from: `"Zuari Catalyst" <${process.env.EMAIL_USER}>`,
-      to: toEmail,
-      subject: `You were mentioned in project: ${projectTitle}`,
-      html: `
-        <p>Hi ${toName},</p>
-        <p><strong>${senderName}</strong> mentioned you in the project <strong>${projectTitle}</strong>:</p>
-        <blockquote style="border-left:3px solid #0057a8;padding:8px 12px;color:#444">${message}</blockquote>
-        <p>Log in to Zuari Catalyst to view and reply.</p>
-      `
-    });
-    console.log(`[Email] Mention notification sent to ${toEmail}`);
-  } catch (err) {
-    console.error('[Email] Failed to send mention notification:', err.message);
-  }
+    return admins.map(a => a.email).filter(Boolean);
+  } catch { return []; }
 }
 
 // ─── Visibility helper ─────────────────────────────────────────────────────
@@ -219,14 +202,24 @@ router.post('/:id/messages', async (req, res) => {
       }
     });
 
-    // Send email notifications for @mentions
+    // Send email notifications for @mentions (author + Central Team)
     if (mentionedUserIds && mentionedUserIds.length > 0) {
       const mentionedUsers = await prisma.user.findMany({
         where: { id: { in: mentionedUserIds.map(id => parseInt(id)) } },
         select: { id: true, name: true, email: true }
       });
+      const centralEmails = await getCentralTeamEmails();
+
       for (const u of mentionedUsers) {
-        sendMentionEmail(u.email, u.name, senderName, project.title, message).catch(console.error);
+        const recipients = [...new Set([u.email, ...centralEmails].filter(Boolean))];
+        sendMentionEmail({
+          toEmails: recipients,
+          mentionedName: u.name,
+          senderName,
+          projectTitle: project.title,
+          projectId: project.projectId,
+          messageExcerpt: message.length > 300 ? message.slice(0, 300) + '…' : message
+        }).catch(console.error);
       }
     }
 

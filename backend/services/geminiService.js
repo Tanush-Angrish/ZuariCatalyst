@@ -130,7 +130,87 @@ async function generateProjectPlan(projectData) {
   return null;
 }
 
+/**
+ * Fills form fields from a free-text idea description.
+ * @param {Object} params - { description, fields: [{id, label, type, options}] }
+ * @returns {Promise<Object>} - { fieldId: value, ... }
+ */
+async function generateFormAutofill({ description, fields }) {
+  console.log(`[AI] Generating form autofill for ${fields.length} fields`);
+
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_api_key_here') {
+    console.warn("[AI] GEMINI_API_KEY not set. Skipping form autofill.");
+    return null;
+  }
+
+  const fieldDescriptions = fields
+    .filter(f => !['file', 'voice', 'attachment'].includes(f.type))
+    .map(f => {
+      let desc = `  - "${f.id}" (${f.type}): ${f.label}`;
+      if (f.type === 'select' && f.options?.length) {
+        desc += ` [valid options: ${f.options.join(', ')}]`;
+      }
+      return desc;
+    })
+    .join('\n');
+
+  const prompt = `
+You are a form-filling assistant. A user has described their idea below. Extract relevant information and fill in as many form fields as possible.
+
+User's Idea Description:
+"""
+${description}
+"""
+
+Form Fields Structure:
+${fieldDescriptions}
+
+Rules:
+1. Return a valid JSON object where keys are field IDs and values are the extracted content
+2. Only include fields you can confidently fill from the description
+3. For "select" type fields, only use one of the valid options listed — if unsure, omit
+4. For "textarea" type fields, write clear, professional content
+5. For "text" type fields, keep it concise
+6. For "url" type fields, only include if a URL was explicitly mentioned
+7. Leave fields empty (omit them) if the description doesn't provide enough info — do NOT guess
+8. Do NOT add any explanation — return ONLY the raw JSON object
+
+Example valid response:
+{"title": "...", "problemDescription": "...", "proposedSolution": "..."}
+`.trim();
+
+  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  let lastError = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`[AI] Attempting form autofill with model: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error(`[AI] No JSON found in autofill response from ${modelName}`);
+        continue;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      console.log(`[AI] Autofill successful via ${modelName}, filled ${Object.keys(parsed).length} fields`);
+      return parsed;
+    } catch (error) {
+      console.error(`[AI] Autofill failed with ${modelName}:`, error.message);
+      lastError = error;
+    }
+  }
+
+  console.error("[AI] All models failed for form autofill:", lastError?.message);
+  return null;
+}
+
 module.exports = {
   generateIdeaInsights,
-  generateProjectPlan
+  generateProjectPlan,
+  generateFormAutofill
 };

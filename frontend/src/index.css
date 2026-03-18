@@ -95,3 +95,20 @@ body {
 .docx-content li { margin-bottom: 0.25rem; }
 .docx-content table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
 .docx-content td, .docx-content th { border: 1px solid #ddd; padding: 8px; }
+
+/* Notification Toast Slide-in */
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateY(-16px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* AI Autofill bar expand animation */
+@keyframes aiBarExpand {
+  from { opacity: 0; transform: scaleY(0.85); }
+  to   { opacity: 1; transform: scaleY(1); }
+}
+.animate-ai-bar {
+  transform-origin: top;
+  animation: aiBarExpand 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

@@ -86,10 +86,16 @@ router.get('/', async (req, res) => {
 
     const specificTemplates = templates
       .filter(t => t.id !== 'MASTER_TEMPLATE')
-      .map(t => ({
-        ...t,
-        fields: [...masterFields, ...JSON.parse(t.fields || '[]')]
-      }));
+      .map(t => {
+        const templateFields = JSON.parse(t.fields || '[]');
+        const templateFieldIds = new Set(templateFields.map(f => f.id));
+        // Only include master fields whose ID is NOT already in the template's own fields
+        const uniqueMasterFields = masterFields.filter(f => !templateFieldIds.has(f.id));
+        return {
+          ...t,
+          fields: [...uniqueMasterFields, ...templateFields]
+        };
+      });
 
     console.log(`API: Returning 1 master and ${specificTemplates.length} templates`);
     res.json({

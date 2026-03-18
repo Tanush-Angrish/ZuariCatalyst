@@ -1,7 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
-const { generateIdeaInsights } = require('../services/geminiService');
+const { generateIdeaInsights, generateFormAutofill } = require('../services/geminiService');
+const {
+  sendIdeaSubmittedEmail,
+  sendIdeaAssignedEmail,
+  sendIdeaApprovedEmail,
+  sendIdeaRejectedEmail
+} = require('../services/emailService');
+
+// Helper: get all Central Team (Superadmin) emails
+async function getCentralTeamEmails() {
+  try {
+    const admins = await prisma.user.findMany({
+      where: { role: 'Superadmin' },
+      select: { email: true }
+    });
+    return admins.map(a => a.email).filter(Boolean);
+  } catch { return []; }
+}
 
 // GET all ideas (For testing or general review)
 router.get('/', async (req, res) => {
@@ -148,6 +165,18 @@ router.post('/', async (req, res) => {
       .catch(err => console.error(`[AI-Queue] Error in background AI processing for ID: ${idea.id}:`, err));
 
     res.json({ id: idea.id, status: idea.status });
+
+    // Email Central Team — fires in background, never blocks response
+    const author = await prisma.user.findUnique({ where: { id: parseInt(authorId) }, select: { name: true, organization: true } });
+    const centralEmails = await getCentralTeamEmails();
+    if (centralEmails.length > 0 && author) {
+      sendIdeaSubmittedEmail({
+        toEmails: centralEmails,
+        ideaTitle: title,
+        submittedBy: author.name,
+        organization: author.organization || 'Unknown'
+      }).catch(console.error);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -163,14 +192,31 @@ router.put('/:id/assign', async (req, res) => {
   }
 
   try {
-    await prisma.idea.update({
+    const updatedIdea = await prisma.idea.update({
       where: { id: ideaId },
       data: { 
         assignedToId: parseInt(assignedToId),
         status: 'Assigned to Org Admin'
-      }
+      },
+      include: { author: { select: { name: true, organization: true } } }
     });
     res.json({ message: 'Idea assigned successfully' });
+
+    // Email Org Admin + Central Team in background
+    const [orgAdmin, centralEmails] = await Promise.all([
+      prisma.user.findUnique({ where: { id: parseInt(assignedToId) }, select: { name: true, email: true } }),
+      getCentralTeamEmails()
+    ]);
+    const toEmails = [...new Set([orgAdmin?.email, ...centralEmails].filter(Boolean))];
+    if (toEmails.length > 0 && orgAdmin) {
+      sendIdeaAssignedEmail({
+        toEmails,
+        ideaTitle: updatedIdea.title,
+        assignedToName: orgAdmin.name,
+        submittedBy: updatedIdea.author.name,
+        organization: updatedIdea.author.organization || 'Unknown'
+      }).catch(console.error);
+    }
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Idea not found' });
     res.status(500).json({ error: error.message });
@@ -213,6 +259,35 @@ router.put('/:id/status', async (req, res) => {
           }
         });
         console.log(`[Projects] Auto-created project ${projectId} for idea ${ideaId}`);
+
+        // Email author + Central Team about approval in background
+        const [author, centralEmails] = await Promise.all([
+          prisma.user.findUnique({ where: { id: idea.authorId }, select: { name: true, email: true } }),
+          getCentralTeamEmails()
+        ]);
+        const approvedRecipients = [...new Set([author?.email, ...centralEmails].filter(Boolean))];
+        if (approvedRecipients.length > 0) {
+          sendIdeaApprovedEmail({
+            toEmails: approvedRecipients,
+            ideaTitle: idea.title,
+            authorName: author?.name || 'User',
+            projectId
+          }).catch(console.error);
+        }
+      }
+    } else if (status === 'Rejected') {
+      // Email author + Central Team about rejection in background
+      const [author, centralEmails] = await Promise.all([
+        prisma.user.findUnique({ where: { id: idea.authorId }, select: { name: true, email: true } }),
+        getCentralTeamEmails()
+      ]);
+      const rejectedRecipients = [...new Set([author?.email, ...centralEmails].filter(Boolean))];
+      if (rejectedRecipients.length > 0) {
+        sendIdeaRejectedEmail({
+          toEmails: rejectedRecipients,
+          ideaTitle: idea.title,
+          authorName: author?.name || 'User'
+        }).catch(console.error);
       }
     }
 
@@ -233,6 +308,23 @@ router.get('/orgadmins', async (req, res) => {
     res.json(admins);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+
+// POST autofill form fields using Gemini AI
+router.post('/autofill', async (req, res) => {
+  const { description, fields } = req.body;
+  if (!description || !Array.isArray(fields)) {
+    return res.status(400).json({ error: 'description and fields[] are required' });
+  }
+  try {
+    const result = await generateFormAutofill({ description, fields });
+    // Partial result is fine — return what we have (even null → empty object)
+    res.json({ fields: result || {} });
+  } catch (error) {
+    console.error('[Autofill] Error:', error.message);
+    res.json({ fields: {} }); // Never fail — return empty if error
   }
 });
 

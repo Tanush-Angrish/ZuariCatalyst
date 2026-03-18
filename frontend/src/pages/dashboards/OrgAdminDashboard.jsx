@@ -4,9 +4,11 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { LayoutDashboard, CheckCircle, XCircle } from 'lucide-react';
 import IdeaCardGrid from '../../components/IdeaCardGrid';
+import { useNotifications } from '../../context/NotificationContext';
 
 export default function OrgAdminDashboard() {
   const { user } = useAuth();
+  const { notify } = useNotifications();
   const [assignedIdeas, setAssignedIdeas] = useState([]);
 
   useEffect(() => {
@@ -32,10 +34,19 @@ export default function OrgAdminDashboard() {
 
       if (res.ok) {
         setAssignedIdeas(assignedIdeas.filter(idea => idea.id !== ideaId));
+        const isApproved = newStatus === 'Approved';
+        notify({
+          type: isApproved ? 'success' : 'info',
+          title: isApproved ? 'Idea Approved' : 'Idea Rejected',
+          message: isApproved
+            ? 'A project has been automatically created for this idea.'
+            : 'The idea has been marked as rejected.',
+          event: isApproved ? 'idea_approved' : 'idea_rejected'
+        });
       }
     } catch (e) {
       console.error(e);
-      alert('Error updating idea status');
+      notify({ type: 'error', title: 'Action failed', message: 'Error updating idea status.', event: '' });
     }
   };
 

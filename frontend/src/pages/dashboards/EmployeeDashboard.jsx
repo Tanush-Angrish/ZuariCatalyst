@@ -1,9 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '../../context/NotificationContext';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Send, FileText, ArrowLeft, Lightbulb, Boxes, Building, FileSpreadsheet, Mic, Square, Play, Trash2, Upload, Paperclip } from 'lucide-react';
+import {
+  Send, FileText, ArrowLeft, Lightbulb, Boxes, Building, FileSpreadsheet,
+  Mic, Square, Trash2, Paperclip, Sparkles, Loader2, X, MicOff
+} from 'lucide-react';
 
 const CATEGORY_ICONS = {
   'GENERAL': Lightbulb,
@@ -31,7 +35,6 @@ function VoiceRecorder({ onRecorded, existingUrl, onRemove }) {
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        // Upload
         setUploading(true);
         try {
           const fd = new FormData();
@@ -62,11 +65,6 @@ function VoiceRecorder({ onRecorded, existingUrl, onRemove }) {
     }
   };
 
-  const handleRemove = () => {
-    setAudioUrl(null);
-    onRemove?.();
-  };
-
   return (
     <div className="space-y-2">
       {!audioUrl ? (
@@ -90,7 +88,7 @@ function VoiceRecorder({ onRecorded, existingUrl, onRemove }) {
       ) : (
         <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-2 border">
           <audio controls src={audioUrl} className="h-8 flex-1" />
-          <button type="button" onClick={handleRemove} className="text-red-400 hover:text-red-600">
+          <button type="button" onClick={() => { setAudioUrl(null); onRemove?.(); }} className="text-red-400 hover:text-red-600">
             <Trash2 size={14} />
           </button>
         </div>
@@ -99,10 +97,156 @@ function VoiceRecorder({ onRecorded, existingUrl, onRemove }) {
   );
 }
 
+// ─── AI Autofill Bar ───────────────────────────────────────────────────────
+function AIAutofillBar({ fields, onAutofill, onClose }) {
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [voiceSupported] = useState(() => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+  const textareaRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
+  const recognitionRef = useRef(null);
+
+  // ── Voice-to-text via Web Speech API (if available) ──
+  const startVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.lang = 'en-IN';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        setText(prev => prev ? prev + ' ' + transcript : transcript);
+        setIsVoiceRecording(false);
+      };
+      recognition.onerror = () => setIsVoiceRecording(false);
+      recognition.onend = () => setIsVoiceRecording(false);
+      recognition.start();
+      setIsVoiceRecording(true);
+    } else {
+      // Fallback: use MediaRecorder + alert that transcription is not available in this browser
+      alert('Voice-to-text is not supported in this browser. Please type your idea instead.');
+    }
+  };
+
+  const stopVoiceInput = () => {
+    recognitionRef.current?.stop();
+    setIsVoiceRecording(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!text.trim() || loading) return;
+    setLoading(true);
+    await onAutofill(text.trim());
+    setLoading(false);
+    // Don't close — let user see results and then decide to collapse
+  };
+
+  return (
+    <div className="animate-ai-bar mb-6 rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50 shadow-lg">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-blue-600/10">
+            <Sparkles size={16} className="text-blue-600" />
+          </div>
+          <div>
+            <span className="text-sm font-bold text-blue-900">Fill with AI</span>
+            <p className="text-[11px] text-blue-500 leading-none mt-0.5">Describe your idea and Gemini will fill the form</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-lg text-blue-300 hover:text-blue-600 hover:bg-blue-100 transition-colors">
+          <X size={16} />
+        </button>
+      </div>
+
+      {/* Input Bar */}
+      <div className="px-5 pb-4">
+        <div className="relative flex items-end gap-2 bg-white rounded-xl border border-blue-200 shadow-sm px-4 py-3 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+          <textarea
+            ref={textareaRef}
+            className="flex-1 resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none leading-relaxed min-h-[48px] max-h-[160px]"
+            placeholder="Describe your idea in plain language... e.g. 'We need a system to reduce paperwork in procurement by digitizing approval workflows'..."
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
+            }}
+            rows={2}
+            disabled={loading}
+            autoFocus
+          />
+          <div className="flex items-center gap-1.5 shrink-0 self-end pb-0.5">
+            {/* Voice input button */}
+            {voiceSupported && (
+              <button
+                type="button"
+                onClick={isVoiceRecording ? stopVoiceInput : startVoiceInput}
+                disabled={loading}
+                className={`p-2 rounded-lg transition-colors ${
+                  isVoiceRecording
+                    ? 'bg-red-100 text-red-500 animate-pulse'
+                    : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+                title={isVoiceRecording ? 'Stop recording' : 'Voice input'}
+              >
+                {isVoiceRecording ? <MicOff size={17} /> : <Mic size={17} />}
+              </button>
+            )}
+            {/* Send button */}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!text.trim() || loading}
+              className={`p-2 rounded-lg transition-all ${
+                text.trim() && !loading
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                  : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+              }`}
+              title="Fill form with AI"
+            >
+              {loading ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
+            </button>
+          </div>
+        </div>
+
+        {isVoiceRecording && (
+          <div className="flex items-center gap-2 mt-2 text-xs text-red-500 font-medium pl-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+            Listening... speak now
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── AI Loader Overlay ─────────────────────────────────────────────────────
+function AILoader() {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-3">
+        <div className="relative">
+          <div className="h-12 w-12 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin" />
+          <Sparkles size={18} className="absolute inset-0 m-auto text-blue-600" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-gray-800">AI is filling your form...</p>
+          <p className="text-xs text-gray-400 mt-0.5">Gemini is analysing your idea</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function EmployeeDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { notify } = useNotifications();
 
   // Wizard State
   const [step, setStep] = useState(1);
@@ -110,9 +254,13 @@ export default function EmployeeDashboard() {
 
   // Form State
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAIFilling, setIsAIFilling] = useState(false);
   const [formData, setFormData] = useState({});
-  const [uploadedFiles, setUploadedFiles] = useState([]); // { name, url, type }
-  const [voiceNote, setVoiceNote] = useState(null); // { name, url, type }
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [voiceNote, setVoiceNote] = useState(null);
+
+  // AI Bar State
+  const [showAIBar, setShowAIBar] = useState(false);
 
   // Template Access State
   const [allowedTemplates, setAllowedTemplates] = useState([]);
@@ -122,23 +270,17 @@ export default function EmployeeDashboard() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch templates from API
         const tplRes = await fetch('/api/templates');
         if (!tplRes.ok) throw new Error('Failed to fetch templates');
         const data = await tplRes.json();
         const allTemplates = data.templates || [];
 
-        // Fetch access rules
         const accessRes = await fetch('/api/templates/access');
         if (!accessRes.ok) throw new Error('Failed to fetch template access');
         const accessData = await accessRes.json();
 
-        if (!Array.isArray(allTemplates) || !Array.isArray(accessData)) {
-          console.error('Invalid data received from API');
-          return;
-        }
+        if (!Array.isArray(allTemplates) || !Array.isArray(accessData)) return;
 
-        // Find which template IDs the user's org has access to, or ALL
         const allowedIds = new Set();
         accessData.forEach(a => {
           if (a.hasAccess) {
@@ -150,8 +292,6 @@ export default function EmployeeDashboard() {
 
         const filtered = allTemplates.filter(t => allowedIds.has(t.id));
         setAllowedTemplates(filtered);
-
-        // Extract unique categories
         const cats = [...new Set(filtered.map(t => t.category).filter(Boolean))];
         setCategories(cats);
       } catch (e) {
@@ -160,24 +300,20 @@ export default function EmployeeDashboard() {
         setIsLoadingTemplates(false);
       }
     };
-    if (user?.organization) {
-      fetchData();
-    } else {
-      setIsLoadingTemplates(false);
-    }
+    if (user?.organization) fetchData();
+    else setIsLoadingTemplates(false);
   }, [user]);
 
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
     const initial = {};
     template.fields.forEach(f => {
-      if (f.type !== 'file' && f.type !== 'voice') {
-        initial[f.id] = '';
-      }
+      if (f.type !== 'file' && f.type !== 'voice') initial[f.id] = '';
     });
     setFormData(initial);
     setUploadedFiles([]);
     setVoiceNote(null);
+    setShowAIBar(false);
     setStep(2);
   };
 
@@ -187,10 +323,46 @@ export default function EmployeeDashboard() {
     setFormData({});
     setUploadedFiles([]);
     setVoiceNote(null);
+    setShowAIBar(false);
   };
 
   const handleChange = (fieldId, value) => {
     setFormData(prev => ({ ...prev, [fieldId]: value }));
+  };
+
+  // ── AI Autofill handler ────────────────────────────────────────────────
+  const handleAIAutofill = async (description) => {
+    if (!selectedTemplate) return;
+
+    // Build simple field descriptors for the API
+    const fieldsPayload = selectedTemplate.fields
+      .filter(f => !['file', 'voice'].includes(f.type))
+      .map(f => ({ id: f.id, label: f.label, type: f.type, options: f.options || [] }));
+
+    setIsAIFilling(true);
+    try {
+      const res = await fetch('/api/ideas/autofill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description, fields: fieldsPayload })
+      });
+      const data = await res.json();
+      const filled = data.fields || {};
+      const filledCount = Object.keys(filled).length;
+
+      // Merge AI values into form state, never overwrite existing user edits for filled fields
+      setFormData(prev => ({ ...prev, ...filled }));
+
+      if (filledCount > 0) {
+        notify({ type: 'success', title: 'Form filled!', message: `AI filled ${filledCount} field${filledCount > 1 ? 's' : ''}. Review and edit as needed.`, event: '' });
+      } else {
+        notify({ type: 'warning', title: 'No fields filled', message: 'Gemini could not extract enough info. Try describing your idea in more detail.', event: '' });
+      }
+    } catch (e) {
+      console.error(e);
+      notify({ type: 'error', title: 'AI fill failed', message: 'Could not connect to Gemini. Please fill the form manually.', event: '' });
+    }
+    setIsAIFilling(false);
   };
 
   const handleFileUpload = async (fieldId, e) => {
@@ -216,7 +388,6 @@ export default function EmployeeDashboard() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedTemplate) return;
-
     setIsSubmitting(true);
 
     const systemFields = ['title', 'department'];
@@ -235,11 +406,7 @@ export default function EmployeeDashboard() {
       payload.description = `Submitted via ${selectedTemplate.name}`;
     }
 
-    if (formData.expectedImpact) {
-      payload.expectedImpact = formData.expectedImpact;
-    } else {
-      payload.expectedImpact = 'N/A';
-    }
+    payload.expectedImpact = formData.expectedImpact || 'N/A';
 
     Object.keys(formData).forEach(key => {
       if (systemFields.includes(key)) {
@@ -250,8 +417,6 @@ export default function EmployeeDashboard() {
     });
 
     payload.extraFields = extraFields;
-
-    // Compile files array (file uploads + voice note)
     const allFiles = [...uploadedFiles];
     if (voiceNote) allFiles.push(voiceNote);
     payload.files = allFiles;
@@ -264,20 +429,20 @@ export default function EmployeeDashboard() {
       });
 
       if (res.ok) {
+        notify({ type: 'success', title: 'Idea submitted!', message: 'Your idea has been sent for review.', event: 'idea_submitted' });
         setFormData({});
         setSelectedTemplate(null);
         setUploadedFiles([]);
         setVoiceNote(null);
         setStep(1);
-        alert('Idea submitted successfully!');
         navigate('/dashboard/my-ideas');
       } else {
         const errorData = await res.json();
-        alert(`Error: ${errorData.error}`);
+        notify({ type: 'error', title: 'Submission failed', message: errorData.error, event: '' });
       }
     } catch (e) {
       console.error(e);
-      alert('Error submitting idea');
+      notify({ type: 'error', title: 'Network error', message: 'Could not submit idea. Please try again.', event: '' });
     } finally {
       setIsSubmitting(false);
     }
@@ -287,7 +452,6 @@ export default function EmployeeDashboard() {
 
   const renderField = (field) => {
     const value = formData[field.id];
-
     switch (field.type) {
       case 'textarea':
         return (
@@ -335,18 +499,12 @@ export default function EmployeeDashboard() {
       case 'voice':
         return (
           <VoiceRecorder
-            onRecorded={(data) => {
-              setVoiceNote(data);
-              setFormData(prev => ({ ...prev, [field.id]: data.url }));
-            }}
+            onRecorded={(data) => { setVoiceNote(data); setFormData(prev => ({ ...prev, [field.id]: data.url })); }}
             existingUrl={voiceNote?.url}
-            onRemove={() => {
-              setVoiceNote(null);
-              setFormData(prev => ({ ...prev, [field.id]: '' }));
-            }}
+            onRemove={() => { setVoiceNote(null); setFormData(prev => ({ ...prev, [field.id]: '' })); }}
           />
         );
-      default: // text
+      default:
         return (
           <input type="text" required={field.required} value={value || ''} onChange={e => handleChange(field.id, e.target.value)}
             className={inputClass} placeholder={`Enter ${field.label.toLowerCase()}`} />
@@ -378,7 +536,6 @@ export default function EmployeeDashboard() {
             categories.map(category => {
               const CatIcon = CATEGORY_ICONS[category] || FileText;
               const categoryTemplates = allowedTemplates.filter(t => t.category === category);
-
               if (categoryTemplates.length === 0) return null;
 
               return (
@@ -416,54 +573,84 @@ export default function EmployeeDashboard() {
 
       {/* STEP 2: FILL FORM */}
       {step === 2 && selectedTemplate && (
-        <Card className="border-t-4 border-t-brand-blue shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <FileText className="h-5 w-5 text-brand-blue" /> {selectedTemplate.name}
-              </CardTitle>
-              <CardDescription className="mt-1">{selectedTemplate.description}</CardDescription>
+        <div className="space-y-4">
+          {/* AI Autofill button (collapsed) */}
+          {!showAIBar && (
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAIBar(true)}
+                className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 font-semibold shadow-sm"
+              >
+                <Sparkles size={16} className="text-blue-500" />
+                Fill with AI
+              </Button>
+              <span className="text-xs text-gray-400">Describe your idea and Gemini will fill the form automatically</span>
             </div>
-            <Button variant="outline" size="sm" onClick={handleBack} className="gap-2 shrink-0">
-              <ArrowLeft size={16} /> Back to Templates
-            </Button>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-xl bg-gray-50 border border-gray-100">
-                {selectedTemplate.fields.map(field => (
-                  <div key={field.id} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
+          )}
+
+          {/* AI Input Bar (expanded) */}
+          {showAIBar && (
+            <AIAutofillBar
+              fields={selectedTemplate.fields}
+              onAutofill={handleAIAutofill}
+              onClose={() => setShowAIBar(false)}
+            />
+          )}
+
+          <Card className="border-t-4 border-t-brand-blue shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <FileText className="h-5 w-5 text-brand-blue" /> {selectedTemplate.name}
+                </CardTitle>
+                <CardDescription className="mt-1">{selectedTemplate.description}</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleBack} className="gap-2 shrink-0">
+                <ArrowLeft size={16} /> Back to Templates
+              </Button>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="relative grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                  {/* AI Loader Overlay */}
+                  {isAIFilling && <AILoader />}
+
+                  {selectedTemplate.fields.map(field => (
+                    <div key={field.id} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
+                      <label className="mb-1.5 block text-sm font-semibold text-gray-700 flex items-center gap-1">
+                        {field.label} {field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      {renderField(field)}
+                    </div>
+                  ))}
+
+                  {/* Voice Note — always shown at bottom */}
+                  <div className="md:col-span-2">
                     <label className="mb-1.5 block text-sm font-semibold text-gray-700 flex items-center gap-1">
-                      {field.label} {field.required && <span className="text-red-500">*</span>}
+                      <Mic size={14} className="text-gray-400" /> Voice Note (Optional)
                     </label>
-                    {renderField(field)}
+                    <VoiceRecorder
+                      onRecorded={(data) => setVoiceNote(data)}
+                      existingUrl={voiceNote?.url}
+                      onRemove={() => setVoiceNote(null)}
+                    />
                   </div>
-                ))}
-
-                {/* Voice Note — always shown at bottom */}
-                <div className="md:col-span-2">
-                  <label className="mb-1.5 block text-sm font-semibold text-gray-700 flex items-center gap-1">
-                    <Mic size={14} className="text-gray-400" /> Voice Note (Optional)
-                  </label>
-                  <VoiceRecorder
-                    onRecorded={(data) => setVoiceNote(data)}
-                    existingUrl={voiceNote?.url}
-                    onRemove={() => setVoiceNote(null)}
-                  />
                 </div>
-              </div>
 
-              <hr className="border-gray-200" />
+                <hr className="border-gray-200" />
 
-              <div className="flex justify-between items-center px-2">
-                <p className="text-xs text-gray-400">Required fields are marked with <span className="text-red-500 text-sm">*</span></p>
-                <Button type="submit" disabled={isSubmitting} size="lg" className="w-full md:w-64 shadow-md hover:shadow-lg transition-all">
-                  <Send className="mr-2 h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Submit Idea for Review'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="flex justify-between items-center px-2">
+                  <p className="text-xs text-gray-400">Required fields are marked with <span className="text-red-500 text-sm">*</span></p>
+                  <Button type="submit" disabled={isSubmitting || isAIFilling} size="lg" className="w-full md:w-64 shadow-md hover:shadow-lg transition-all">
+                    <Send className="mr-2 h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Submit Idea for Review'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

@@ -9,6 +9,7 @@ const formFieldsRoutes = require('./routes/form-fields');
 const templatesRoutes = require('./routes/templates');
 const uploadRoutes = require('./routes/upload');
 const projectsRoutes = require('./routes/projects');
+const { sendTestEmail } = require('./services/emailService');
 const runSeed = require('./scripts/seed');
 
 const app = express();
@@ -31,6 +32,25 @@ app.use('/api/projects', projectsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Zuari Catalyst Backend Running' });
+});
+
+// POST /api/test-email — verify Outlook email config
+app.post('/api/test-email', async (req, res) => {
+  const { toEmail, subject, message } = req.body;
+  if (!toEmail || !subject || !message) {
+    return res.status(400).json({ error: 'toEmail, subject, and message are required' });
+  }
+  try {
+    const sent = await sendTestEmail({ toEmail, subject, message });
+    if (sent) {
+      res.json({ success: true, message: `Test email sent to ${toEmail}` });
+    } else {
+      res.status(500).json({ success: false, message: 'Email not sent — check EMAIL_USER and EMAIL_PASS in .env' });
+    }
+  } catch (err) {
+    console.error('[Test-Email]', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Run seed and then start server
