@@ -17,6 +17,7 @@ export default function Sidebar({ isMobile }) {
 
     switch (user.role) {
       case 'Superadmin':
+      case 'Central Team':
         return [
           { name: 'Review Queue', path: '/dashboard', icon: LayoutList },
           { name: 'User Management', path: '/settings/users', icon: UserCog },

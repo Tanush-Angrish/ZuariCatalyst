@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { api } from '../../services/api';
+
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../context/NotificationContext';
@@ -39,9 +41,9 @@ function VoiceRecorder({ onRecorded, existingUrl, onRemove }) {
         try {
           const fd = new FormData();
           fd.append('voice', blob, 'voice-note.webm');
-          const res = await fetch('/api/upload/voice', { method: 'POST', body: fd });
-          const data = await res.json();
+          const data = await api.uploadVoice(fd);
           setAudioUrl(data.url);
+
           onRecorded(data);
         } catch (err) {
           console.error('Voice upload error:', err);
@@ -87,7 +89,7 @@ function VoiceRecorder({ onRecorded, existingUrl, onRemove }) {
         </div>
       ) : (
         <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-2 border">
-          <audio controls src={audioUrl} className="h-8 flex-1" />
+          <audio controls src={api.getFileUrl(audioUrl)} className="h-8 flex-1" />
           <button type="button" onClick={() => { setAudioUrl(null); onRemove?.(); }} className="text-red-400 hover:text-red-600">
             <Trash2 size={14} />
           </button>
@@ -270,14 +272,11 @@ export default function EmployeeDashboard() {
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const tplRes = await fetch('/api/templates');
-        if (!tplRes.ok) throw new Error('Failed to fetch templates');
-        const data = await tplRes.json();
+        const data = await api.getTemplates();
         const allTemplates = data.templates || [];
 
-        const accessRes = await fetch('/api/templates/access');
-        if (!accessRes.ok) throw new Error('Failed to fetch template access');
-        const accessData = await accessRes.json();
+        const accessData = await api.getTemplateAccess();
+
 
         if (!Array.isArray(allTemplates) || !Array.isArray(accessData)) return;
 
@@ -341,13 +340,9 @@ export default function EmployeeDashboard() {
 
     setIsAIFilling(true);
     try {
-      const res = await fetch('/api/ideas/autofill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description, fields: fieldsPayload })
-      });
-      const data = await res.json();
+      const data = await api.autofillIdea(description, fieldsPayload);
       const filled = data.fields || {};
+
       const filledCount = Object.keys(filled).length;
 
       // Merge AI values into form state, never overwrite existing user edits for filled fields
@@ -371,14 +366,9 @@ export default function EmployeeDashboard() {
     const fd = new FormData();
     fd.append('file', file);
     try {
-      const res = await fetch('/api/upload/file', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (res.ok) {
-        setUploadedFiles(prev => [...prev, data]);
-        setFormData(prev => ({ ...prev, [fieldId]: data.url }));
-      } else {
-        alert('Upload failed: ' + data.error);
-      }
+      const data = await api.uploadFile(fd);
+      setUploadedFiles(prev => [...prev, data]);
+      setFormData(prev => ({ ...prev, [fieldId]: data.url }));
     } catch (err) {
       console.error('Upload Error:', err);
       alert('File upload failed: ' + err.message);
@@ -422,31 +412,22 @@ export default function EmployeeDashboard() {
     payload.files = allFiles;
 
     try {
-      const res = await fetch('/api/ideas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        notify({ type: 'success', title: 'Idea submitted!', message: 'Your idea has been sent for review.', event: 'idea_submitted' });
-        setFormData({});
-        setSelectedTemplate(null);
-        setUploadedFiles([]);
-        setVoiceNote(null);
-        setStep(1);
-        navigate('/dashboard/my-ideas');
-      } else {
-        const errorData = await res.json();
-        notify({ type: 'error', title: 'Submission failed', message: errorData.error, event: '' });
-      }
+      await api.submitIdea(payload);
+      notify({ type: 'success', title: 'Idea submitted!', message: 'Your idea has been sent for review.', event: 'idea_submitted' });
+      setFormData({});
+      setSelectedTemplate(null);
+      setUploadedFiles([]);
+      setVoiceNote(null);
+      setStep(1);
+      navigate('/dashboard/my-ideas');
     } catch (e) {
       console.error(e);
-      notify({ type: 'error', title: 'Network error', message: 'Could not submit idea. Please try again.', event: '' });
+      notify({ type: 'error', title: 'Submission failed', message: e.message, event: '' });
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const inputClass = 'w-full rounded-md border border-gray-300 p-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue transition-colors';
 
@@ -500,7 +481,7 @@ export default function EmployeeDashboard() {
         return (
           <VoiceRecorder
             onRecorded={(data) => { setVoiceNote(data); setFormData(prev => ({ ...prev, [field.id]: data.url })); }}
-            existingUrl={voiceNote?.url}
+            existingUrl={api.getFileUrl(voiceNote?.url)}
             onRemove={() => { setVoiceNote(null); setFormData(prev => ({ ...prev, [field.id]: '' })); }}
           />
         );

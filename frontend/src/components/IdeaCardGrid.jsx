@@ -10,6 +10,8 @@ import {
   Calendar, Paperclip, Link as LinkIcon, UserCheck,
   Download, Eye, Mic, Lightbulb
 } from 'lucide-react';
+import { api } from '../services/api';
+
 
 // ─── Helper: extract field value from idea ─────────────────────────────────
 function getFieldValue(fieldId, idea) {
@@ -105,7 +107,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
 
     if (ext === 'txt') {
       setLoadingFile(true);
-      fetch(viewingFile.url)
+      fetch(api.getFileUrl(viewingFile.url))
         .then(res => res.text())
         .then(text => {
           setFileContent({ type: 'txt', content: text });
@@ -117,7 +119,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
         });
     } else if (ext === 'docx') {
       setLoadingFile(true);
-      fetch(viewingFile.url)
+      fetch(api.getFileUrl(viewingFile.url))
         .then(res => res.arrayBuffer())
         .then(buffer => mammoth.convertToHtml({ arrayBuffer: buffer }))
         .then(result => {
@@ -130,6 +132,28 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
         });
     }
   }, [viewingFile]);
+  
+  const handleDownload = async (e, url, fileName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Download failed");
+      const blob = await resp.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName || 'download';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download Error:", err);
+      // Fallback to direct link if fetch fails (e.g. CORS)
+      window.open(url, '_blank');
+    }
+  };
 
   const problem = getFieldValue('problemDescription', idea);
   const solution = getFieldValue('proposedSolution', idea);
@@ -307,9 +331,13 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
                       >
                         <Eye size={12} />View
                       </button>
-                      <a href={f.url} download className="text-brand-blue hover:underline text-xs flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDownload(e, api.getFileUrl(f.url), f.name)} 
+                        className="text-brand-blue hover:underline text-xs flex items-center gap-1"
+                      >
                         <Download size={12} />Download
-                      </a>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -324,7 +352,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
                   {voiceNotes.map((v, i) => (
                     <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-purple-50/50 border border-purple-100">
                       <Mic size={16} className="text-purple-600 shrink-0" />
-                      <audio controls src={v.url} className="h-8 flex-1" />
+                      <audio controls src={api.getFileUrl(v.url)} className="h-8 flex-1" />
                     </div>
                   ))}
                 </div>
@@ -434,14 +462,14 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
               ) : viewingFile.url.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/) ? (
                 <div className="flex-1 flex items-center justify-center">
                   <img
-                    src={viewingFile.url}
+                    src={api.getFileUrl(viewingFile.url)}
                     alt={viewingFile.name}
                     className="max-w-full max-h-full object-contain p-4"
                   />
                 </div>
               ) : viewingFile.url.toLowerCase().endsWith('.pdf') ? (
                 <iframe
-                  src={`${viewingFile.url}#toolbar=0`}
+                  src={`${api.getFileUrl(viewingFile.url)}#toolbar=0`}
                   className="w-full h-full border-none"
                   title={viewingFile.name}
                 />
@@ -449,13 +477,13 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                   <FileText size={48} className="mx-auto text-gray-300 mb-4" />
                   <p className="text-gray-500 mb-6">Preview not available for this file type.</p>
-                  <a
-                    href={viewingFile.url}
-                    download
+                  <button
+                    type="button"
+                    onClick={(e) => handleDownload(e, api.getFileUrl(viewingFile.url), viewingFile.name)}
                     className="inline-flex items-center justify-center px-6 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue/90 shadow-sm transition-all gap-2 text-sm font-medium"
                   >
                     <Download size={16} /> Download to View
-                  </a>
+                  </button>
                 </div>
               )}
             </div>
@@ -662,8 +690,9 @@ export default function IdeaCardGrid({
   const [templates, setTemplates] = useState([]);
 
   useEffect(() => {
-    fetch('/api/templates').then(r => r.json()).then(d => setTemplates(d.templates || [])).catch(console.error);
+    api.getTemplates().then(d => setTemplates(d.templates || [])).catch(console.error);
   }, []);
+
 
   const parsedIdeas = useMemo(() =>
     ideas.map(idea => ({

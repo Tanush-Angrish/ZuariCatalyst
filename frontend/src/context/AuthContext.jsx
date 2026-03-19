@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
+
 
 const AuthContext = createContext();
 
@@ -23,20 +25,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
+      const data = await api.login({ email, password });
       setUser(data.user);
       localStorage.setItem('demo_user', JSON.stringify(data.user));
       return data.user;
@@ -48,20 +37,7 @@ export const AuthProvider = ({ children }) => {
 
   const msLogin = async (idToken) => {
     try {
-      const response = await fetch('/api/auth/ms-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ idToken })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Microsoft Login failed');
-      }
-
+      const data = await api.msLogin({ idToken });
       setUser(data.user);
       localStorage.setItem('demo_user', JSON.stringify(data.user));
       return data.user;
@@ -70,6 +46,7 @@ export const AuthProvider = ({ children }) => {
       throw error;
     }
   };
+
 
   const logout = () => {
     setUser(null);

@@ -6,6 +6,7 @@ import {
   FolderKanban, Calendar, Sparkles, Clock, Building,
   CheckCircle2, AlertCircle, Loader2, Search, Filter
 } from 'lucide-react';
+import { api } from '../../services/api';
 
 const STATUS_COLORS = {
   Initiated:   'bg-blue-100 text-blue-700 border-blue-200',
@@ -107,7 +108,7 @@ function ProjectCard({ project, onClick }) {
   );
 }
 
-// ─── Main ProjectsPage ─────────────────────────────────────────────────────
+
 export default function ProjectsPage() {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
@@ -120,13 +121,11 @@ export default function ProjectsPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({
+      const data = await api.getProjects({
         userId: user.id,
         role: user.role,
         organization: user.organization || ''
       });
-      const res = await fetch(`/api/projects?${params}`);
-      const data = await res.json();
       setProjects(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);

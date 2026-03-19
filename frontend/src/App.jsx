@@ -33,16 +33,17 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
-// Route director
+// Route director — maps role to default landing component
 const DashboardDirector = () => {
   const { user } = useAuth();
 
   if (user?.role === 'Superadmin') return <SuperadminDashboard />;
+  if (user?.role === 'Central Team') return <SuperadminDashboard />;
   if (user?.role === 'Org Admin') return <OrgAdminDashboard />;
   if (user?.role === 'Employee') return <EmployeeDashboard />;
 
   return <Navigate to="/" replace />;
-}
+};
 
 function App() {
   return (
@@ -56,9 +57,9 @@ function App() {
             {/* General Dashboard routes */}
             <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route index element={<DashboardDirector />} />
-              <Route path="my-ideas" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin']}><MyIdeas /></ProtectedRoute>} />
+              <Route path="my-ideas" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><MyIdeas /></ProtectedRoute>} />
               <Route path="team-ideas" element={<ProtectedRoute allowedRoles={['Org Admin']}><TeamIdeas /></ProtectedRoute>} />
-              <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin']}><ProjectsPage /></ProtectedRoute>} />
+              <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><ProjectsPage /></ProtectedRoute>} />
             </Route>
 
             {/* Central Team / Hub routes */}
@@ -67,7 +68,7 @@ function App() {
             </Route>
 
             {/* Global Settings */}
-            <Route path="/settings" element={<ProtectedRoute allowedRoles={['Superadmin']}><DashboardLayout /></ProtectedRoute>}>
+            <Route path="/settings" element={<ProtectedRoute allowedRoles={['Superadmin', 'Central Team']}><DashboardLayout /></ProtectedRoute>}>
               <Route path="users" element={<UserManagement />} />
               <Route path="templates" element={<TemplateConfig />} />
               <Route path="access" element={<TemplateAccess />} />

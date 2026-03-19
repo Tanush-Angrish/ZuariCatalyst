@@ -9,6 +9,7 @@ import {
   Loader2, AtSign, CheckCircle2, AlertCircle, Pause, User
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
+import { api } from '../services/api';
 
 const STATUS_COLORS = {
   Initiated:   'bg-blue-100 text-blue-700 border-blue-200',
@@ -197,8 +198,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
   // ── Fetch steps & messages ────────────────────────────────────────────────
   const fetchSteps = useCallback(async () => {
     try {
-      const res = await fetch(`/api/projects/${project.id}`);
-      const data = await res.json();
+      const data = await api.getProjectDetails(project.id);
       setSteps(data.steps || []);
       setMessages(data.messages || []);
     } catch (e) { console.error(e); }
@@ -206,8 +206,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
 
   const fetchParticipants = useCallback(async () => {
     try {
-      const res = await fetch(`/api/projects/${project.id}/participants`);
-      const data = await res.json();
+      const data = await api.getProjectParticipants(project.id);
       setParticipants(data);
     } catch (e) { console.error(e); }
   }, [project.id]);
@@ -227,16 +226,10 @@ export default function ProjectModal({ project: initialProject, onClose, current
   const handleAddStep = async () => {
     if (!newStepDesc.trim()) return;
     try {
-      const res = await fetch(`/api/projects/${project.id}/steps`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: newStepDesc, deadline: newStepDeadline || null })
-      });
-      if (res.ok) {
-        setNewStepDesc(''); setNewStepDeadline(''); setAddingStep(false);
-        fetchSteps();
-        notify({ type: 'success', title: 'Step Added', message: 'The project step has been created.' });
-      }
+      await api.addProjectStep(project.id, { description: newStepDesc, deadline: newStepDeadline || null });
+      setNewStepDesc(''); setNewStepDeadline(''); setAddingStep(false);
+      fetchSteps();
+      notify({ type: 'success', title: 'Step Added', message: 'The project step has been created.' });
     } catch (e) {
       console.error(e);
       notify({ type: 'error', title: 'Error', message: 'Failed to add step.' });
@@ -245,11 +238,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
 
   const handleEditStep = async (stepId, data) => {
     try {
-      await fetch(`/api/projects/${project.id}/steps/${stepId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      await api.updateProjectStep(project.id, stepId, data);
       fetchSteps();
       notify({ type: 'success', title: 'Step Updated' });
     } catch (e) {
@@ -261,7 +250,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
   const handleDeleteStep = async (stepId) => {
     if (!window.confirm('Delete this step?')) return;
     try {
-      await fetch(`/api/projects/${project.id}/steps/${stepId}`, { method: 'DELETE' });
+      await api.deleteProjectStep(project.id, stepId);
       fetchSteps();
       notify({ type: 'info', title: 'Step Deleted' });
     } catch (e) { console.error(e); }
@@ -271,16 +260,11 @@ export default function ProjectModal({ project: initialProject, onClose, current
   const handleGeminiPlan = async () => {
     setGeminiLoading(true);
     try {
-      const res = await fetch(`/api/projects/${project.id}/gemini-plan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: project.title,
-          problemDescription: '',
-          proposedSolution: project.aiSummary || ''
-        })
+      const data = await api.generateGeminiPlan(project.id, {
+        title: project.title,
+        problemDescription: '',
+        proposedSolution: project.aiSummary || ''
       });
-      const data = await res.json();
       if (data.steps) {
         setGeminiSteps(data.steps.map(s => ({ ...s, _editing: false })));
       } else {
@@ -293,11 +277,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
   const handleSaveGeminiSteps = async () => {
     setSavingGemini(true);
     try {
-      await fetch(`/api/projects/${project.id}/steps/bulk`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ steps: geminiSteps })
-      });
+      await api.bulkAddSteps(project.id, geminiSteps);
       setGeminiSteps(null);
       fetchSteps();
       notify({ type: 'success', title: 'Plan Saved', message: 'AI generated steps have been added.' });
@@ -308,35 +288,23 @@ export default function ProjectModal({ project: initialProject, onClose, current
   // ── Status / Deadline ─────────────────────────────────────────────────────
   const handleStatusSave = async () => {
     try {
-      const res = await fetch(`/api/projects/${project.id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: selectedStatus })
-      });
-      if (res.ok) {
-        const updated = { ...project, status: selectedStatus };
-        setProject(updated);
-        onProjectUpdated?.(updated);
-        setEditStatus(false);
-        notify({ type: 'success', title: 'Status Updated', message: `Project status is now ${selectedStatus}.` });
-      }
+      await api.updateProjectStatus(project.id, selectedStatus);
+      const updated = { ...project, status: selectedStatus };
+      setProject(updated);
+      onProjectUpdated?.(updated);
+      setEditStatus(false);
+      notify({ type: 'success', title: 'Status Updated', message: `Project status is now ${selectedStatus}.` });
     } catch (e) { console.error(e); }
   };
 
   const handleDeadlineSave = async () => {
     try {
-      const res = await fetch(`/api/projects/${project.id}/deadline`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deadline: selectedDeadline || null })
-      });
-      if (res.ok) {
-        const updated = { ...project, deadline: selectedDeadline ? new Date(selectedDeadline).toISOString() : null };
-        setProject(updated);
-        onProjectUpdated?.(updated);
-        setEditDeadline(false);
-        notify({ type: 'success', title: 'Deadline Updated' });
-      }
+      await api.updateProjectDeadline(project.id, selectedDeadline || null);
+      const updated = { ...project, deadline: selectedDeadline ? new Date(selectedDeadline).toISOString() : null };
+      setProject(updated);
+      onProjectUpdated?.(updated);
+      setEditDeadline(false);
+      notify({ type: 'success', title: 'Deadline Updated' });
     } catch (e) { console.error(e); }
   };
 
@@ -369,15 +337,11 @@ export default function ProjectModal({ project: initialProject, onClose, current
     if (!chatInput.trim() || !canChat) return;
     setSendingMsg(true);
     try {
-      await fetch(`/api/projects/${project.id}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          senderId: currentUser.id,
-          senderName: currentUser.name,
-          message: chatInput,
-          mentionedUserIds: pendingMentions.map(p => p.id)
-        })
+      await api.sendProjectMessage(project.id, {
+        senderId: currentUser.id,
+        senderName: currentUser.name,
+        message: chatInput,
+        mentionedUserIds: pendingMentions.map(p => p.id)
       });
       setChatInput('');
       setPendingMentions([]);

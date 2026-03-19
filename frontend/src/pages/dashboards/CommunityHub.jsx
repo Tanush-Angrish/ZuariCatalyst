@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search } from 'lucide-react';
 import IdeaCardGrid from '../../components/IdeaCardGrid';
+import { api } from '../../services/api';
+
 
 export default function CommunityHub() {
   const [ideas, setIdeas] = useState([]);
@@ -9,8 +11,7 @@ export default function CommunityHub() {
 
   const fetchAllIdeas = async () => {
     try {
-      const res = await fetch('/api/ideas');
-      const data = await res.json();
+      const data = await api.getIdeas();
       setIdeas(data);
     } catch (e) {
       console.error('Error fetching community ideas:', e);

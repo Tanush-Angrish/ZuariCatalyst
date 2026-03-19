@@ -57,6 +57,7 @@ model IdeaTemplate {
   name        String
   description String   @default("")
   fields      String   @default("[]") // JSON array of field definitions
+  fieldOrder  String   @default("[]") // JSON array of field IDs in display order
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

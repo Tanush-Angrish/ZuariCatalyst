@@ -61,16 +61,25 @@ async function runSeed() {
 
     // 3. Seed hardcoded templates into IdeaTemplate table
     const { IDEA_TEMPLATES } = require('./template-seed-data');
+    const masterTpl = IDEA_TEMPLATES.find(t => t.id === 'MASTER_TEMPLATE');
+    const masterFieldIds = masterTpl ? masterTpl.fields.map(f => f.id) : [];
+
     for (const t of IDEA_TEMPLATES) {
       const existingTpl = await prisma.ideaTemplate.findUnique({ where: { id: t.id } });
       if (!existingTpl) {
+        // Build default fieldOrder: master field IDs first, then template-specific field IDs
+        const fieldOrder = t.id === 'MASTER_TEMPLATE'
+          ? masterFieldIds
+          : [...masterFieldIds, ...t.fields.map(f => f.id).filter(id => !masterFieldIds.includes(id))];
+
         await prisma.ideaTemplate.create({
           data: {
             id: t.id,
             category: t.category,
             name: t.name,
             description: t.description || '',
-            fields: JSON.stringify(t.fields)
+            fields: JSON.stringify(t.fields),
+            fieldOrder: JSON.stringify(fieldOrder)
           }
         });
         console.log(`Seeded missing template: ${t.name}`);

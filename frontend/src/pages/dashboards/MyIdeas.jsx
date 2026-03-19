@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
 import { FileText } from 'lucide-react';
 import IdeaCardGrid from '../../components/IdeaCardGrid';
+import { api } from '../../services/api';
+
 
 export default function MyIdeas() {
   const { user } = useAuth();
@@ -11,15 +13,14 @@ export default function MyIdeas() {
   useEffect(() => {
     const fetchMyIdeas = async () => {
       try {
-        const res = await fetch(`/api/ideas/my-ideas/${user.id}`);
-        const data = await res.json();
+        const data = await api.getMyIdeas(user.id);
         setIdeas(data);
       } catch (e) {
         console.error(e);
       }
     };
-    fetchMyIdeas();
-  }, [user.id]);
+    if (user?.id) fetchMyIdeas();
+  }, [user?.id]);
 
   const getStatusBadgeVariant = (status) => {
     switch (status) {

@@ -68,20 +68,75 @@ router.get('/my-ideas/:userId', async (req, res) => {
   }
 });
 
-// GET pending ideas (For Superadmin)
+// GET pending ideas (For Superadmin — Tab 1: Ideas to Review)
 router.get('/pending', async (req, res) => {
   try {
     const ideas = await prisma.idea.findMany({
       where: { status: 'Pending Review' },
-      include: { author: { select: { name: true } } },
+      include: { author: { select: { name: true, organization: true } } },
       orderBy: { createdAt: 'desc' }
     });
-    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name }));
+    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name, authorOrganization: idea.author.organization }));
     res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+// GET all assigned ideas for Central Team — Tab 2: Assigned to Org Admin
+router.get('/central/assigned', async (req, res) => {
+  try {
+    const ideas = await prisma.idea.findMany({
+      where: { status: 'Assigned to Org Admin' },
+      include: {
+        author: { select: { name: true, organization: true } },
+        assignedTo: { select: { id: true, name: true, organization: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    const formatted = ideas.map(idea => ({
+      ...idea,
+      authorName: idea.author.name,
+      authorOrganization: idea.author.organization,
+      assignedToName: idea.assignedTo?.name || 'Unknown',
+      assignedToOrg: idea.assignedTo?.organization || '—'
+    }));
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET approved ideas for Central Team — Tab 3: Approved by Me (with project IDs)
+router.get('/central/approved', async (req, res) => {
+  try {
+    const ideas = await prisma.idea.findMany({
+      where: { status: 'Approved' },
+      include: { author: { select: { name: true, organization: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Attach project info
+    const ideaIds = ideas.map(i => i.id);
+    const projects = await prisma.project.findMany({
+      where: { ideaId: { in: ideaIds } },
+      select: { ideaId: true, projectId: true, status: true }
+    });
+    const projectMap = {};
+    projects.forEach(p => { projectMap[p.ideaId] = p; });
+
+    const formatted = ideas.map(idea => ({
+      ...idea,
+      authorName: idea.author.name,
+      authorOrganization: idea.author.organization,
+      project: projectMap[idea.id] || null
+    }));
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // GET assigned ideas (For Org Admin)
 router.get('/assigned/:userId', async (req, res) => {

@@ -7,8 +7,9 @@
  * e.g., to "http://<ec2-ip>:5000". If empty, it assumes the API is served on the same domain.
  */
 
-// Use empty string fallback for AWS production where static frontend and backend share the same domain/proxy
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+// Default to localhost:5000 for local development if no VITE_API_URL is provided
+const DEFAULT_API_URL = 'http://localhost:5000';
+const BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
 console.log("Loaded API Base URL:", BASE_URL);
 
 async function request(endpoint, options = {}) {
@@ -20,6 +21,7 @@ async function request(endpoint, options = {}) {
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   } else {
+    // DO NOT set any Content-Type header for FormData, the browser must set it with the boundary
     delete headers['Content-Type'];
   }
 
@@ -39,6 +41,14 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
+  // Helper to resolve relative backend URLs (like /uploads/...) to absolute ones
+  getFileUrl: (path) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    const cleanBase = BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL;
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${cleanBase}${cleanPath}`;
+  },
   // Auth
   login: (credentials) => request('/api/auth/login', {
     method: 'POST',
@@ -50,9 +60,19 @@ export const api = {
   }),
 
   // Ideas
-  getIdeas: () => request('/api/ideas'),
+  // Ideas
+  getIdeas: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/ideas${qs ? '?' + qs : ''}`);
+  },
   getPendingIdeas: () => request('/api/ideas/pending'),
+  getCentralAssigned: () => request('/api/ideas/central/assigned'),
+  getCentralApproved: () => request('/api/ideas/central/approved'),
   getAssignedIdeas: (userId) => request(`/api/ideas/assigned/${userId}`),
+  getMyIdeas: (userId) => request(`/api/ideas/my-ideas/${userId}`),
+  getOrgIdeas: (orgName) => request(`/api/ideas/team/${encodeURIComponent(orgName)}`),
+  getOrgAdmins: () => request('/api/ideas/orgadmins'),
+  getInnovationProjects: () => request('/api/ideas/projects'), // For community feed
   submitIdea: (payload) => request('/api/ideas', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -71,7 +91,10 @@ export const api = {
   }),
 
   // Projects
-  getProjects: () => request('/api/ideas/projects'),
+  getProjects: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/projects${qs ? '?' + qs : ''}`);
+  },
   getProjectDetails: (id) => request(`/api/projects/${id}`),
   updateProjectStatus: (id, status) => request(`/api/projects/${id}/status`, {
     method: 'PUT',
@@ -112,16 +135,42 @@ export const api = {
 
   // Templates & Fields
   getTemplates: () => request('/api/templates'),
+  createTemplate: (data) => request('/api/templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateTemplate: (id, data) => request(`/api/templates/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  deleteTemplate: (id) => request(`/api/templates/${id}`, {
+    method: 'DELETE',
+  }),
+  saveFieldOrder: (id, fieldOrder) => request(`/api/templates/${id}/field-order`, {
+    method: 'PUT',
+    body: JSON.stringify({ fieldOrder }),
+  }),
   getTemplateAccess: () => request('/api/templates/access'),
   getOrganizations: () => request('/api/templates/organizations'),
   updateTemplateAccess: (payload) => request('/api/templates/access', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  }),
+  getFormFields: (type) => request(`/api/form-fields/${type}`),
+  createFormField: (payload) => request('/api/form-fields', {
     method: 'POST',
     body: JSON.stringify(payload),
   }),
-  getFormFields: () => request('/api/form-fields'),
-  saveFormFields: (fields) => request('/api/form-fields', {
-    method: 'POST',
-    body: JSON.stringify({ fields }),
+  updateFormField: (id, payload) => request(`/api/form-fields/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  }),
+  deleteFormField: (id) => request(`/api/form-fields/${id}`, {
+    method: 'DELETE',
+  }),
+  reorderFormFields: (type, fieldOrder) => request(`/api/form-fields/reorder/${type}`, {
+    method: 'PUT',
+    body: JSON.stringify({ fieldOrder }),
   }),
   getUserFields: () => request('/api/form-fields/user'),
 
@@ -135,19 +184,26 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ users }),
   }),
+  updateUserRole: (id, role) => request(`/api/users/${id}/role`, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
+  }),
+  deleteUser: (id) => request(`/api/users/${id}`, {
+    method: 'DELETE',
+  }),
 
   // Notifications
   getNotifications: (userId) => request(`/api/notifications/${userId}`),
-  markNotificationRead: (id) => request(`/api/notifications/${id}/read`, {
+  markAllNotificationsRead: (userId) => request(`/api/notifications/user/${userId}/read-all`, {
     method: 'PUT',
   }),
-  markAllNotificationsRead: (userId) => request(`/api/notifications/user/${userId}/read-all`, {
+  markNotificationRead: (id) => request(`/api/notifications/${id}/read`, {
     method: 'PUT',
   }),
   deleteNotification: (id) => request(`/api/notifications/${id}`, {
     method: 'DELETE',
   }),
-  clearNotifications: (userId) => request(`/api/notifications/user/${userId}`, {
+  clearAllNotifications: (userId) => request(`/api/notifications/user/${userId}`, {
     method: 'DELETE',
   }),
 
@@ -160,4 +216,5 @@ export const api = {
     method: 'POST',
     body: formData,
   }),
+
 };

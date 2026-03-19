@@ -9,24 +9,15 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode`. The third param '' loads all variables.
   const env = loadEnv(mode, process.cwd(), '');
-  const apiTarget = env.VITE_API_URL || 'http://localhost:5000';
 
   return {
+    base: '/',
     plugins: [
       tailwindcss(),
       react()
     ],
     server: {
-      proxy: {
-        '/api': {
-          target: apiTarget,
-          changeOrigin: true,
-        },
-        '/uploads': {
-          target: apiTarget,
-          changeOrigin: true,
-        }
-      }
+      // Proxy removed as requested
     }
   }
 })
