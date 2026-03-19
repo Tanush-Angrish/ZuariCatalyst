@@ -8,7 +8,7 @@
  */
 
 // Default to localhost:5000 for local development if no VITE_API_URL is provided
-const DEFAULT_API_URL = 'http://localhost:5000';
+const DEFAULT_API_URL = '';
 const BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
 console.log("Loaded API Base URL:", BASE_URL);
 
