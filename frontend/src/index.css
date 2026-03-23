@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -7,11 +8,72 @@
   --color-brand-black: #000000;
 }
 
+:root {
+  /* Raw HTML Snippet Variables */
+  --bg: #ffffff;
+  --bg2: #f4f4f5;
+  --bg3: #e4e4e7;
+  --ink: #0f0e1a;
+  --ink2: #27272a;
+  --muted: #71717a;
+  --pale: #a1a1aa;
+  
+  --purple: #5B4CF5;
+  --purple-l: #F0EEFF;
+  --teal: #0E9E78;
+  --teal-l: #E8F7F2;
+  --amber: #D4820A;
+  --amber-l: #FFF8EE;
+  --accent: #2563EB;
+  --body: #3f3f46;
+
+  /* Fonts */
+  --fb: 'Inter', sans-serif;
+  --fd: 'Outfit', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background-color: #f9fafb;
-  color: #000000;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--fb);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, .outfit-font {
+  font-family: var(--fd);
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 14, 26, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 14, 26, 0.25);
+}
+
+/* Scroll Reveal Utilities */
+.sr {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sr.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Custom Animations */
@@ -30,7 +92,6 @@ body {
   50% { box-shadow: 0 0 15px 5px rgba(0, 53, 128, 0.1); }
 }
 
-/* Animation Utility Classes */
 .animate-fade-in-up {
   animation: fadeInUp 0.6s ease-out forwards;
 }
@@ -43,7 +104,6 @@ body {
   animation: pulseGlow 3s infinite;
 }
 
-/* Modal Scale-In Animation */
 @keyframes fadeScaleIn {
   from { opacity: 0; transform: scale(0.95) translateY(8px); }
   to   { opacity: 1; transform: scale(1)    translateY(0);   }
@@ -53,13 +113,11 @@ body {
   animation: fadeScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Stagger Delays */
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 
-/* Modal Slide Transitions */
 .modal-transition-container {
   display: flex;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -86,7 +144,6 @@ body {
   }
 }
 
-/* DOCX Viewer Content Styling */
 .docx-content h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
 .docx-content h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem; }
 .docx-content h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
@@ -96,13 +153,11 @@ body {
 .docx-content table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
 .docx-content td, .docx-content th { border: 1px solid #ddd; padding: 8px; }
 
-/* Notification Toast Slide-in */
 @keyframes toastSlideIn {
   from { opacity: 0; transform: translateY(-16px) scale(0.95); }
   to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
-/* AI Autofill bar expand animation */
 @keyframes aiBarExpand {
   from { opacity: 0; transform: scaleY(0.85); }
   to   { opacity: 1; transform: scaleY(1); }
@@ -112,3 +167,6 @@ body {
   animation: aiBarExpand 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+button, a {
+  cursor: pointer;
+}
