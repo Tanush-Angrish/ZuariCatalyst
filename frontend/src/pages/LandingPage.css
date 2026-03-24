@@ -230,7 +230,7 @@
 
 /* --- TABS (HOW IT WORKS) --- */
 .htab-outer {
-  padding: 80px 24px;
+  padding: 96px 24px 48px;
   background: var(--bg);
 }
 
@@ -369,7 +369,7 @@
 
 /* --- FEATURES OVERVIEW --- */
 .features-outer {
-  padding: 100px 24px;
+  padding: 48px 24px;
   background: var(--bg);
 }
 
@@ -430,10 +430,127 @@
 @media (max-width: 768px) {
   .htab-card {
     flex-direction: column;
-    padding: 24px;
+    padding: 24px 16px;
+    gap: 30px;
   }
   .htab-mockup {
     width: 100%;
-    max-width: 320px;
+    max-width: 340px;
+    margin: 0 auto;
+    /* Scale down slightly to fit absolute tooltips inside 360px viewports effortlessly */
+    transform: scale(0.85);
+    transform-origin: top center;
   }
+  .htab-text {
+    text-align: center;
+  }
+  .htab-title {
+    font-size: 24px;
+    margin-bottom: 12px;
+  }
+  .htab-desc {
+    font-size: 14px;
+  }
+  .htab-pills {
+    padding: 0 12px;
+  }
+  .feat-intro {
+    padding: 0 16px;
+  }
+}
+
+/* --- TIMELINE ANIMATIONS (Scroll-Revealed) --- */
+.timeline-traveler {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  background-color: #003580;
+  border-radius: 50%;
+  transform: translateY(-50%) translate(-50%, 0) scale(0);
+  box-shadow: 0 0 12px 2px #003580;
+  z-index: 10;
+  opacity: 0;
+}
+
+/* Base ring for nodes */
+.timeline-pulse {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid #003580;
+  transform: scale(0.5);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Animations triggered safely when sr.visible is applied */
+.sr.visible .timeline-traveler {
+  animation: tl-travel 5.5s ease-in-out 1 forwards;
+  /* Added a tiny bit of start delay so users don't miss the start while scrolling down */
+  animation-delay: 0.3s;
+}
+.sr.visible .pulse-1 { animation: p1 5.5s ease-out 1 forwards; animation-delay: 0.3s; }
+.sr.visible .pulse-2 { animation: p2 5.5s ease-out 1 forwards; animation-delay: 0.3s; }
+.sr.visible .pulse-3 { animation: p3 5.5s ease-out 1 forwards; animation-delay: 0.3s; }
+.sr.visible .pulse-4 { animation: p4 5.5s ease-out 1 forwards; animation-delay: 0.3s; }
+.sr.visible .pulse-5-big { animation: p5 5.5s ease-out 1 forwards; animation-delay: 0.3s; }
+
+/* 5.5 seconds total. Travel and pulse smoothly. */
+@keyframes tl-travel {
+  /* Node 1 */
+  0%   { left: 0%;   opacity: 0; transform: translateY(-50%) translate(-50%, 0) scale(0); }
+  5%   { left: 0%;   opacity: 1; transform: translateY(-50%) translate(-50%, 0) scale(1.3); } 
+  15%  { left: 0%;   opacity: 1; transform: translateY(-50%) translate(-50%, 0) scale(1); } 
+  
+  /* Node 2 - 25% */
+  25%  { left: 25%;  opacity: 1; transform: translateY(-50%) translate(-50%, 0) scale(1.3); }
+  35%  { left: 25%;  opacity: 1; transform: translateY(-50%) translate(-50%, 0) scale(1); }
+  
+  /* Node 3 - 50% */
+  45%  { left: 50%;  opacity: 1; transform: translateY(-50%) translate(-50%, 0) scale(1.3); }
+  55%  { left: 50%;  opacity: 1; transform: translateY(-50%) translate(-50%, 0) scale(1); }
+  
+  /* Node 4 - 75% */
+  65%  { left: 75%;  opacity: 1; transform: translateY(-50%) translate(-50%, 0) scale(1.3); }
+  75%  { left: 75%;  opacity: 1; transform: translateY(-50%) translate(-50%, 0) scale(1); }
+  
+  /* Node 5 - 100% */
+  85%  { left: 100%; opacity: 1; transform: translateY(-50%) translate(-50%, 0) scale(1.5); } 
+  
+  /* Fade out */
+  92%  { left: 100%; opacity: 0; transform: translateY(-50%) translate(-50%, 0) scale(0); }
+  100% { left: 100%; opacity: 0; transform: translateY(-50%) translate(-50%, 0) scale(0); }
+}
+
+@keyframes p1 { 
+    5% { transform: scale(0.6); opacity: 0; } 
+    10% { opacity: 0.6; } 
+    20% { transform: scale(2); opacity: 0; } 
+    100% { opacity: 0; } 
+}
+@keyframes p2 { 
+    0%, 25% { transform: scale(0.6); opacity: 0; } 
+    30% { opacity: 0.6; } 
+    40% { transform: scale(2); opacity: 0; } 
+    100% { opacity: 0; } 
+}
+@keyframes p3 { 
+    0%, 45% { transform: scale(0.6); opacity: 0; } 
+    50% { opacity: 0.6; } 
+    60% { transform: scale(2); opacity: 0; } 
+    100% { opacity: 0; } 
+}
+@keyframes p4 { 
+    0%, 65% { transform: scale(0.6); opacity: 0; } 
+    70% { opacity: 0.6; } 
+    80% { transform: scale(2); opacity: 0; } 
+    100% { opacity: 0; } 
+}
+@keyframes p5 { 
+    0%, 85% { transform: scale(0.6); opacity: 0; border-width: 4px; border-color: #003580; } 
+    88% { opacity: 0.8; } 
+    98% { transform: scale(3.5); opacity: 0; border-width: 1px; } 
+    100% { opacity: 0; } 
 }

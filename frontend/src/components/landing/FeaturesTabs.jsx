@@ -8,7 +8,7 @@ export default function FeaturesTabs() {
       <div className="features-wrap">
         <div className="feat-intro">
           <div className="sr">
-            <div className="sec-eyebrow">Features</div>
+            <div className="sec-eyebrow" style={{ display: 'inline-flex', marginBottom: '14px', background: 'var(--teal-l)', color: 'var(--teal)', fontSize: '11px', fontWeight: '800', letterSpacing: '0.05em' }}>FEATURES</div>
             <h2 className="sec-h">Everything your org needs<br/>to make ideas matter</h2>
           </div>
           <p className="sec-p sr">Structured for enterprise. Simple enough that employees actually use it every day.</p>
@@ -29,9 +29,9 @@ export default function FeaturesTabs() {
             <div className="feat-panel active">
               <div className="htab-card" style={{ background: 'linear-gradient(145deg,#EEF0FF,#F5F7FF)' }}>
                 <div className="htab-text">
-                  <div className="htab-eyebrow">Employee</div>
+                  <div className="htab-eyebrow" style={{ color: 'var(--accent)', fontWeight: 800 }}>CHOICE</div>
                   <h3 className="htab-title">Pick a template and go</h3>
-                  <p className="htab-desc">Employees choose from categorised templates — Process, Product, Cost Saving, Culture, Customer, or General. Each is a structured form with required and optional fields, image uploads, file links, and voice notes. No blank page to stare at.</p>
+                  <p className="htab-desc">Employees choose from categorised templates — Process, Product, Cost Saving, Culture, Customer, and more. Each has mandatory fields, ensuring every proposal is well thought-out before it even hits the queue. No more blank page paralysis.</p>
                 </div>
                 <div className="htab-mockup">
                   <div className="htab-shell">

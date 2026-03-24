@@ -8,7 +8,7 @@ export default function HowItWorksTabs() {
       <div className="htab-inner">
 
         <div className="htab-header sr">
-          <div className="sec-eyebrow" style={{ display: 'inline-flex', marginBottom: '14px' }}>How it works</div>
+          <div className="sec-eyebrow" style={{ display: 'inline-flex', marginBottom: '14px', background: 'var(--teal-l)', color: 'var(--teal)', fontSize: '11px', fontWeight: '800', letterSpacing: '0.05em' }}>HOW IT WORKS</div>
           <h2 className="sec-h">One platform. The complete idea lifecycle.</h2>
           <p className="sec-p">From the moment an employee has a thought, Catalyst manages every step — with AI doing the heavy lifting.</p>
         </div>
@@ -30,9 +30,9 @@ export default function HowItWorksTabs() {
             <div className="htab-panel active">
               <div className="htab-card">
                 <div className="htab-text">
-                  <div className="htab-eyebrow">Submit an idea</div>
+                  <div className="htab-eyebrow" style={{ color: 'var(--accent)', fontWeight: 800 }}>EMPLOYEE</div>
                   <h3 className="htab-title">Every great idea starts with one click</h3>
-                  <p className="htab-desc">Employees pick from categorised templates — Process, Product, Cost Saving, Culture, and more. Or they just describe their idea to Gemini in text or voice, and AI fills the form, tags it, and checks for duplicates automatically.</p>
+                  <p className="htab-desc">Employees choose from categorised templates — Process, Product, Cost Saving, Culture, and more. Or they just describe their idea to Gemini in text or voice, and AI fills the form automatically.</p>
                 </div>
                 <div className="htab-mockup" style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', top: '10px', left: '-20px', textAlign: 'center' }}>
