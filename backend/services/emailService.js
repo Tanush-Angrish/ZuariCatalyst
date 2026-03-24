@@ -104,6 +104,9 @@ function wrapHtml(body) {
                    padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #4b5563; font-style: italic; }
       .footer { padding: 16px 32px; border-top: 1px solid #e5e7eb; background: #f9fafb;
                 font-size: 11px; color: #9ca3af; text-align: center; }
+      .btn-primary { display: inline-block; background: #003580; color: #ffffff !important; text-decoration: none;
+                     padding: 12px 24px; border-radius: 6px; font-weight: 600; font-size: 14px; margin-top: 16px; 
+                     text-align: center; }
     </style>
   </head>
   <body>
@@ -112,7 +115,13 @@ function wrapHtml(body) {
         <h1>💡 Zuari Catalyst</h1>
         <p>Idea Management &amp; Innovation Platform</p>
       </div>
-      <div class="body">${body}</div>
+      <div class="body">
+        ${body}
+        <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
+          <p style="margin-bottom: 12px; font-size: 13px; color: #6b7280;">Access the platform securely to view details and take actions.</p>
+          <a href="https://staging.catalyst.zuarione.com/" class="btn-primary">Open Zuari Catalyst</a>
+        </div>
+      </div>
       <div class="footer">This is an automated message from Zuari Catalyst. Please do not reply to this email.</div>
     </div>
   </body>
@@ -130,7 +139,6 @@ async function sendIdeaSubmittedEmail({ toEmails, ideaTitle, submittedBy, organi
       <div class="detail-row"><span class="detail-label">Organization</span><span class="detail-value">${organization}</span></div>
     </div>
     <div class="action-box">📋 <strong>Action Required:</strong> Please review the idea and assign it to the appropriate Org Admin.</div>
-    <p>Log in to Zuari Catalyst to view and take action.</p>
   `);
 
   return sendEmail({
@@ -152,7 +160,6 @@ async function sendIdeaAssignedEmail({ toEmails, ideaTitle, assignedToName, subm
       <div class="detail-row"><span class="detail-label">Organization</span><span class="detail-value">${organization}</span></div>
     </div>
     <div class="action-box">📋 <strong>Action Required:</strong> Review the idea and mark it as Approved or Rejected.</div>
-    <p>Log in to Zuari Catalyst to view the full idea details.</p>
   `);
 
   return sendEmail({
@@ -174,7 +181,6 @@ async function sendIdeaApprovedEmail({ toEmails, ideaTitle, authorName, projectI
       <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" style="color:#16a34a;">✓ Approved — Project Created</span></div>
     </div>
     <div class="action-box">📊 <strong>Next Step:</strong> Your project is now active. You can track its progress, view action steps, and collaborate with your team in Zuari Catalyst.</div>
-    <p>Log in to Zuari Catalyst to explore your project dashboard.</p>
   `);
 
   return sendEmail({
@@ -195,7 +201,6 @@ async function sendIdeaRejectedEmail({ toEmails, ideaTitle, authorName }) {
       <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" style="color:#dc2626;">✗ Rejected</span></div>
     </div>
     <div class="action-box">💡 <strong>Next Step:</strong> You are encouraged to review, improve, and resubmit your idea. Great ideas often need refinement before approval.</div>
-    <p>If you have questions, please reach out to your Org Admin or the Central Team through Zuari Catalyst.</p>
   `);
 
   return sendEmail({
@@ -218,7 +223,6 @@ async function sendMentionEmail({ toEmails, mentionedName, senderName, projectTi
     </div>
     <div class="quote-box"><strong>Message:</strong><br/>${messageExcerpt}</div>
     <div class="action-box">💬 <strong>Action Required:</strong> Please check the project discussion and respond if needed.</div>
-    <p>Log in to Zuari Catalyst to view the full conversation.</p>
   `);
 
   return sendEmail({
