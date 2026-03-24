@@ -8,7 +8,7 @@ import {
   FileText, ChevronDown, ChevronUp, X,
   Building, Tag, CheckCircle2, XCircle,
   Calendar, Paperclip, Link as LinkIcon, UserCheck,
-  Download, Eye, Mic, Lightbulb
+  Download, Eye, Mic, Lightbulb, ThumbsUp
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -501,6 +501,18 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
 // ─── Single Idea Card ──────────────────────────────────────────────────────
 function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAdmins, onAdminSelect, onDirectAction, templates }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [upvoteCount, setUpvoteCount] = useState(0);
+  const [hasUpvoted, setHasUpvoted] = useState(false);
+  const [upvoteLoading, setUpvoteLoading] = useState(false);
+
+  // Fetch upvote count on mount
+  useEffect(() => {
+    if (currentUser?.id && idea.id) {
+      api.getUpvotes(idea.id, currentUser.id)
+        .then(data => { setUpvoteCount(data.count); setHasUpvoted(data.upvoted); })
+        .catch(() => {});
+    }
+  }, [idea.id, currentUser?.id]);
 
   const problem = getFieldValue('problemDescription', idea);
   const solution = getFieldValue('proposedSolution', idea);
@@ -558,49 +570,40 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
           <h3 className="font-bold text-brand-black text-base leading-snug group-hover:text-brand-blue transition-colors line-clamp-2">
             {idea.title}
           </h3>
-
-          {viewType !== 'community' && (
-            <>
-              {/* Tags */}
-              <div className="flex flex-wrap gap-1.5">
-                {templateName && (
-                  <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-brand-blue rounded-full px-2 py-0.5 border border-blue-100">
-                    <Tag size={9} />{templateName}
-                  </span>
-                )}
-                {idea.department && (
-                  <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-500 rounded-full px-2 py-0.5">
-                    <Building size={9} />{idea.department}
-                  </span>
-                )}
-              </div>
-
-              {/* Problem — stopPropagation only on interactive elements inside */}
-              {problem && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Problem</p>
-                  <ReadMoreText text={problem} />
-                </div>
-              )}
-
-              {/* Solution */}
-              {solution && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-0.5">Solution</p>
-                  <ReadMoreText text={solution} />
-                </div>
-              )}
-            </>
-          )}
         </div>
 
         {/* Card Footer */}
-        {viewType !== 'community' && (
-          <div className="px-4 py-3 border-t border-gray-100 mt-auto">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-gray-400">
-                {new Date(idea.createdAt).toLocaleDateString()}
-              </span>
+        <div className="px-4 py-3 border-t border-gray-100 mt-auto">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
+              {/* Upvote button */}
+              {currentUser && idea.authorId !== currentUser.id && (
+                <button
+                  type="button"
+                  disabled={upvoteLoading}
+                  onClick={e => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setUpvoteLoading(true);
+                    api.toggleUpvote(idea.id, currentUser.id)
+                      .then(data => { setHasUpvoted(data.upvoted); setUpvoteCount(data.count); })
+                      .catch(() => {})
+                      .finally(() => setUpvoteLoading(false));
+                  }}
+                  onPointerDown={e => e.stopPropagation()}
+                  className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border transition-all ${hasUpvoted ? 'bg-brand-blue text-white border-brand-blue shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-brand-blue hover:text-brand-blue shadow-sm'}`}
+                >
+                  <ThumbsUp size={14} className={hasUpvoted ? 'fill-white' : ''} />
+                  {upvoteCount > 0 && <span className="font-semibold">{upvoteCount}</span>}
+                </button>
+              )}
+              {/* Show count only for own ideas or logged out */}
+              {(!currentUser || idea.authorId === currentUser.id) && upvoteCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-gray-400 font-medium px-2 py-1">
+                  <ThumbsUp size={14} />{upvoteCount}
+                </span>
+              )}
+            </div>
 
               {/* OrgAdmin buttons — single row */}
               {viewType === 'orgAdmin' && (
@@ -654,7 +657,6 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
               </div>
             )}
           </div>
-        )}
       </div>
 
       {/* Detail Modal — via portal, always centered */}

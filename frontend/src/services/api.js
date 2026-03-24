@@ -217,4 +217,21 @@ export const api = {
     body: formData,
   }),
 
+  // Upvotes
+  toggleUpvote: (ideaId, userId) => request(`/api/ideas/${ideaId}/upvote`, {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  }),
+  getUpvotes: (ideaId, userId) => request(`/api/ideas/${ideaId}/upvotes?userId=${userId}`),
+
+  // Points & Leaderboard
+  getLeaderboard: () => request('/api/points/leaderboard'),
+  getUserPoints: (userId) => request(`/api/points/user/${userId}`),
+
+  // AI Template Generation
+  generateTemplate: (prompt) => request('/api/templates/generate', {
+    method: 'POST',
+    body: JSON.stringify({ prompt }),
+  }),
+
 };

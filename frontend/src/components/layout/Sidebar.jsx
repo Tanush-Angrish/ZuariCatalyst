@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Users, PlusCircle, LayoutList, UserCog, Settings, Wrench } from 'lucide-react';
+import { LayoutDashboard, Users, PlusCircle, LayoutList, UserCog, Settings, Wrench, Trophy } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export default function Sidebar({ isMobile }) {
@@ -11,6 +11,7 @@ export default function Sidebar({ isMobile }) {
     const common = [
       { name: 'Community Hub', path: '/community-hub', icon: Users },
       { name: 'Projects', path: '/dashboard/projects', icon: LayoutList },
+      { name: 'Leaderboard', path: '/dashboard/leaderboard', icon: Trophy },
     ];
 
     if (!user) return common;

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
+const { generateTemplateFromPrompt } = require('../services/geminiService');
 
 // ─── Helper: Apply field order ──────────────────────────────────────────────
 // Given a combined list of fields and an ordered array of field IDs,
@@ -286,6 +287,26 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Template deleted' });
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Template not found' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── AI Template Generation ──────────────────────────────────────────────────
+
+// POST /api/templates/generate — Generate template fields from a prompt (Superadmin only)
+router.post('/generate', async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt || !prompt.trim()) {
+    return res.status(400).json({ error: 'prompt is required' });
+  }
+  try {
+    const result = await generateTemplateFromPrompt(prompt.trim());
+    if (!result) {
+      return res.status(500).json({ error: 'AI could not generate a template. Try a more detailed prompt.' });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error('[Templates] AI generation error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });

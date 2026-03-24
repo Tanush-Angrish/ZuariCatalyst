@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
 const { generateIdeaInsights, generateFormAutofill } = require('../services/geminiService');
+const { awardPoints } = require('../services/pointService');
 const {
   sendIdeaSubmittedEmail,
   sendIdeaAssignedEmail,
@@ -225,6 +226,9 @@ router.post('/', async (req, res) => {
       })
       .catch(err => console.error(`[AI-Queue] Error in background AI processing for ID: ${idea.id}:`, err));
 
+    // Award +10 points for idea submission
+    awardPoints(parseInt(authorId), 'idea_submitted', 10, idea.id);
+
     res.json({ id: idea.id, status: idea.status });
 
     // DB Notifications & Email
@@ -334,6 +338,9 @@ router.put('/:id/status', async (req, res) => {
         });
         console.log(`[Projects] Auto-created project ${projectId} for idea ${ideaId}`);
 
+        // Award +50 points for idea→project conversion
+        awardPoints(idea.authorId, 'idea_approved', 50, ideaId);
+
         // DB Notifications
         notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' was APPROVED. A project (${projectId}) has been created.`, ideaId);
         notifyCentralTeam('idea', `Idea '${idea.title}' approved. Project ${projectId} created.`, ideaId);
@@ -407,6 +414,69 @@ router.post('/autofill', async (req, res) => {
   } catch (error) {
     console.error('[Autofill] Error:', error.message);
     res.json({ fields: {} }); // Never fail — return empty if error
+  }
+});
+
+// ─── UPVOTE SYSTEM ────────────────────────────────────────────────────────────
+
+// POST /api/ideas/:id/upvote — Toggle upvote
+router.post('/:id/upvote', async (req, res) => {
+  const ideaId = parseInt(req.params.id);
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+
+  const uid = parseInt(userId);
+
+  try {
+    // Get the idea to check author
+    const idea = await prisma.idea.findUnique({ where: { id: ideaId }, select: { authorId: true } });
+    if (!idea) return res.status(404).json({ error: 'Idea not found' });
+
+    // Block self-upvote
+    if (idea.authorId === uid) {
+      return res.status(403).json({ error: 'Cannot upvote your own idea' });
+    }
+
+    // Check if already upvoted
+    const existing = await prisma.upvote.findUnique({
+      where: { ideaId_userId: { ideaId, userId: uid } }
+    });
+
+    if (existing) {
+      // Remove upvote
+      await prisma.upvote.delete({ where: { id: existing.id } });
+      awardPoints(idea.authorId, 'upvote_received', -5, ideaId);
+    } else {
+      // Add upvote
+      await prisma.upvote.create({ data: { ideaId, userId: uid } });
+      awardPoints(idea.authorId, 'upvote_received', 5, ideaId);
+    }
+
+    // Return new count
+    const count = await prisma.upvote.count({ where: { ideaId } });
+    res.json({ upvoted: !existing, count });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/ideas/:id/upvotes — Get upvote count + user status
+router.get('/:id/upvotes', async (req, res) => {
+  const ideaId = parseInt(req.params.id);
+  const userId = req.query.userId ? parseInt(req.query.userId) : null;
+
+  try {
+    const count = await prisma.upvote.count({ where: { ideaId } });
+    let upvoted = false;
+    if (userId) {
+      const existing = await prisma.upvote.findUnique({
+        where: { ideaId_userId: { ideaId, userId } }
+      });
+      upvoted = !!existing;
+    }
+    res.json({ count, upvoted });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

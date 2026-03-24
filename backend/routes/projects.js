@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
 const { generateProjectPlan } = require('../services/geminiService');
+const { awardPoints } = require('../services/pointService');
 const { sendMentionEmail } = require('../services/emailService');
 const {
   notifyCentralTeam,
@@ -87,6 +88,11 @@ router.put('/:id/status', async (req, res) => {
     notifyUser(project.createdById, 'project', `Project '${project.title}' status changed to ${status}.`, project.id);
     notifyOrgAdmins(project.orgId, 'project', `Project '${project.title}' status changed to ${status}.`, project.id);
     notifyCentralTeam('project', `Project '${project.title}' status changed to ${status}.`, project.id);
+
+    // Award +100 points on project completion
+    if (status === 'Completed') {
+      awardPoints(project.createdById, 'project_completed', 100, project.id);
+    }
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Project not found' });
     res.status(500).json({ error: error.message });

@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import {
   Plus, Pencil, Trash2, Save, X, GripVertical,
-  AlertCircle, Settings2, Globe, ChevronDown, ChevronUp
+  AlertCircle, Settings2, Globe, ChevronDown, ChevronUp, Sparkles, Loader2, Mic
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -476,6 +476,10 @@ export default function TemplateConfig() {
   const [view, setView] = useState('list');
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [isNew, setIsNew] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   const fetchTemplates = async () => {
     try {
@@ -510,6 +514,39 @@ export default function TemplateConfig() {
     });
     setIsNew(true);
     setView('template');
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const result = await api.generateTemplate(aiPrompt.trim());
+      // Build a pre-populated template from AI result
+      const globalFields = masterTemplate ? JSON.parse(JSON.stringify(masterTemplate.fields || [])) : [];
+      const aiFields = (result.fields || []).map(f => ({
+        id: f.id || 'ai_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        label: f.label || '',
+        type: f.type || 'text',
+        required: f.required || false,
+        options: f.options || [],
+      }));
+      setEditingTemplate({
+        id: null,
+        category: 'GENERAL',
+        name: result.template_name || '',
+        description: result.description || '',
+        fields: [...globalFields, ...aiFields],
+      });
+      setIsNew(true);
+      setAiModalOpen(false);
+      setAiPrompt('');
+      setView('template');
+    } catch (e) {
+      setAiError(e.message || 'AI generation failed. Try again.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleEditTemplate = (template) => {
@@ -565,9 +602,20 @@ export default function TemplateConfig() {
           </h1>
           <p className="text-gray-500 mt-1">Manage global fields and per-template layouts.</p>
         </div>
-        <Button onClick={handleCreateTemplate} className="gap-2 shrink-0 shadow-md">
-          <Plus size={18} />New Template
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          {['superadmin', 'central team'].includes(user?.role?.toLowerCase()) && (
+            <Button
+              variant="outline"
+              onClick={() => setAiModalOpen(true)}
+              className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 shadow-sm"
+            >
+              <Sparkles size={16} />Create with AI
+            </Button>
+          )}
+          <Button onClick={handleCreateTemplate} className="gap-2 shrink-0 shadow-md">
+            <Plus size={18} />New Template
+          </Button>
+        </div>
       </div>
 
       {/* Master Template Section */}
@@ -697,6 +745,84 @@ export default function TemplateConfig() {
           </div>
         )}
       </div>
+
+      {/* AI Template Generation Modal */}
+      {aiModalOpen && (
+        <div
+          className="fixed inset-0 z-[9999] p-4 pt-[12vh] sm:pt-[15vh] flex justify-center items-start transition-all duration-300"
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(16px)' }}
+          onClick={e => { if (e.target === e.currentTarget) { setAiModalOpen(false); setAiError(''); } }}
+        >
+          <div className="bg-white/95 rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.05)] w-full max-w-2xl p-6 sm:p-8 transform transition-all animate-modal-in">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-100 to-fuchsia-50 text-purple-600 shadow-sm">
+                  <Sparkles size={24} className="animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-brand-black tracking-tight" style={{ fontFamily: 'var(--fd, inherit)' }}>
+                    Create with AI
+                  </h2>
+                  <p className="text-sm text-gray-500 font-medium">Describe your ideal template</p>
+                </div>
+              </div>
+              <button onClick={() => { setAiModalOpen(false); setAiError(''); }}
+                className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="relative group">
+              <textarea
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                rows={4}
+                placeholder='e.g. "Create a process improvement template with fields for department, problem, solution, expected cost savings..."'
+                className="w-full rounded-2xl border-2 border-gray-100 bg-gray-50/50 p-5 pr-14 text-base focus:border-purple-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-purple-400/10 transition-all resize-none text-gray-800 placeholder:text-gray-400"
+                disabled={aiLoading}
+              />
+              <div className="absolute bottom-4 right-4 flex items-center gap-2">
+                <button
+                   type="button"
+                   className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-full transition-colors"
+                   title="Voice input coming soon"
+                >
+                   <Mic size={18} />
+                </button>
+              </div>
+            </div>
+
+            {aiError && (
+              <div className="mt-4 p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm flex items-start gap-2.5">
+                <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                <span className="font-medium leading-snug">{aiError}</span>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-6 gap-4">
+              <p className="text-[11px] text-gray-400 font-medium">
+                Powered by Gemini AI • <span className="text-gray-500">Fields are fully editable later</span>
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" className="rounded-xl px-5" onClick={() => { setAiModalOpen(false); setAiError(''); }}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAiGenerate}
+                  disabled={aiLoading || !aiPrompt.trim()}
+                  className="gap-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-6 shadow-md shadow-purple-200 transition-all transform active:scale-95"
+                >
+                  {aiLoading ? (
+                    <><Loader2 size={18} className="animate-spin" />Generating…</>
+                  ) : (
+                    <><Sparkles size={18} />Generate</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

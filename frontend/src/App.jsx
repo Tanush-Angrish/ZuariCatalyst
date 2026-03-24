@@ -16,6 +16,7 @@ import UserManagement from './pages/dashboards/UserManagement';
 import TemplateAccess from './pages/dashboards/TemplateAccess';
 import TemplateConfig from './pages/dashboards/TemplateConfig';
 import CommunityHub from './pages/dashboards/CommunityHub';
+import Leaderboard from './pages/dashboards/Leaderboard';
 
 // Protect Routes based on roles
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -60,6 +61,7 @@ function App() {
               <Route path="my-ideas" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><MyIdeas /></ProtectedRoute>} />
               <Route path="team-ideas" element={<ProtectedRoute allowedRoles={['Org Admin']}><TeamIdeas /></ProtectedRoute>} />
               <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><ProjectsPage /></ProtectedRoute>} />
+              <Route path="leaderboard" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><Leaderboard /></ProtectedRoute>} />
             </Route>
 
             {/* Central Team / Hub routes */}

@@ -23,6 +23,8 @@ model User {
   authoredIdeas Idea[]         @relation("IdeaAuthor")
   assignedIdeas Idea[]         @relation("IdeaAssignee")
   notifications Notification[] @relation("UserNotifications")
+  points        UserPoint?     @relation("UserPoints")
+  upvotes       Upvote[]
 
   @@map("users")
 }
@@ -149,4 +151,40 @@ model Notification {
 
   @@index([userId])
   @@map("notifications")
+}
+
+// ─── Scoring System ──────────────────────────────────────────────────────────
+
+model UserPoint {
+  id          Int  @id @default(autoincrement())
+  userId      Int  @unique
+  totalPoints Int  @default(0)
+
+  user        User @relation("UserPoints", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_points")
+}
+
+model PointLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  actionType  String   // 'idea_submitted','idea_approved','upvote_received','project_completed'
+  points      Int
+  referenceId Int?     // ideaId or projectId
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@unique([userId, actionType, referenceId])
+  @@map("point_logs")
+}
+
+model Upvote {
+  id     Int @id @default(autoincrement())
+  ideaId Int
+  userId Int
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([ideaId, userId])
+  @@map("upvotes")
 }

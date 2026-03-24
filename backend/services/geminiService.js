@@ -209,8 +209,79 @@ Example valid response:
   return null;
 }
 
+/**
+ * Generates a template structure from a natural-language prompt.
+ * @param {string} userPrompt - e.g. "Create a process improvement template..."
+ * @returns {Promise<{template_name: string, fields: Array}>}
+ */
+async function generateTemplateFromPrompt(userPrompt) {
+  console.log(`[AI] Generating template from prompt: "${userPrompt.slice(0, 80)}..."`);
+
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_api_key_here') {
+    console.warn("[AI] GEMINI_API_KEY not set. Skipping template generation.");
+    return null;
+  }
+
+  const prompt = `
+You are a form template designer. Based on the user's description below, generate a structured template for an idea submission system.
+
+User Request: "${userPrompt}"
+
+Supported field types: text, textarea, number, select, date, file, voice
+
+Rules:
+1. Generate a template name and 4-10 relevant fields
+2. Each field needs: id (camelCase), label (human readable), type (from supported list), required (true/false), options (array, only for "select" type)
+3. Make fields practical and relevant to the user's request
+4. Do NOT include basic fields like "title" or "description" — those are handled by the system
+5. For "select" fields, provide 3-6 relevant options
+
+Response must be valid JSON:
+{
+  "template_name": "...",
+  "description": "one-line description of the template",
+  "fields": [
+    { "id": "fieldId", "label": "Field Label", "type": "text", "required": true, "options": [] }
+  ]
+}
+Return ONLY the JSON, no other text.
+`.trim();
+
+  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  let lastError = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`[AI] Attempting template generation with model: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error(`[AI] No JSON found in template response from ${modelName}`);
+        continue;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.template_name && Array.isArray(parsed.fields)) {
+        console.log(`[AI] Template generated via ${modelName}: "${parsed.template_name}" with ${parsed.fields.length} fields`);
+        return parsed;
+      }
+    } catch (error) {
+      console.error(`[AI] Template generation failed with ${modelName}:`, error.message);
+      lastError = error;
+    }
+  }
+
+  console.error("[AI] All models failed for template generation:", lastError?.message);
+  return null;
+}
+
 module.exports = {
   generateIdeaInsights,
   generateProjectPlan,
-  generateFormAutofill
+  generateFormAutofill,
+  generateTemplateFromPrompt
 };
