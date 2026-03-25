@@ -8,7 +8,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { api } from '../../services/api';
 import {
   Inbox, UserCheck, CheckCircle2, Building,
-  RotateCcw, ExternalLink, Loader2, Hash
+  RotateCcw, ExternalLink, Loader2, Hash, Search, X
 } from 'lucide-react';
 
 // ─── Tab definitions ────────────────────────────────────────────────────────
@@ -186,6 +186,7 @@ export default function SuperadminDashboard() {
   const [orgAdmins, setOrgAdmins] = useState([]);
   const [selectedAdmins, setSelectedAdmins] = useState({});
   const [loading, setLoading] = useState({ review: true, assigned: true, approved: true });
+  const [tabSearch, setTabSearch] = useState('');
 
   const fetchAll = useCallback(async () => {
     setLoading({ review: true, assigned: true, approved: true });
@@ -225,6 +226,21 @@ export default function SuperadminDashboard() {
     }
   };
 
+  // Tab-level search filter
+  const filterBySearch = (list) => {
+    if (!tabSearch.trim()) return list;
+    const q = tabSearch.toLowerCase();
+    return list.filter(idea =>
+      idea.title?.toLowerCase().includes(q) ||
+      idea.authorName?.toLowerCase().includes(q) ||
+      idea.authorOrganization?.toLowerCase().includes(q) ||
+      idea.assignedToName?.toLowerCase().includes(q)
+    );
+  };
+
+  const filteredAssigned = filterBySearch(assignedIdeas);
+  const filteredApproved = filterBySearch(approvedIdeas);
+
   const handleDirectAction = async (ideaId, status) => {
     try {
       await api.updateIdeaStatus(ideaId, status);
@@ -247,6 +263,29 @@ export default function SuperadminDashboard() {
     approved: approvedIdeas.length,
   };
 
+  // Search input shared across Assigned/Approved tabs (review uses IdeaCardGrid's built-in search)
+  const ListSearchBar = () => (activeTab !== 'review') ? (
+    <div className="relative">
+      <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      <input
+        type="text"
+        value={tabSearch}
+        onChange={e => setTabSearch(e.target.value)}
+        placeholder="Search by title, author, or organization…"
+        className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue/40 transition-all"
+      />
+      {tabSearch && (
+        <button
+          type="button"
+          onClick={() => setTabSearch('')}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        >
+          <X size={14} />
+        </button>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -264,7 +303,7 @@ export default function SuperadminDashboard() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); setTabSearch(''); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
                 isActive
                   ? `${tab.activeBg} text-white border-transparent shadow-md`
@@ -285,7 +324,7 @@ export default function SuperadminDashboard() {
         })}
       </div>
 
-      {/* Tab header description */}
+      {/* Tab header description + search */}
       {(() => {
         const tab = TABS.find(t => t.id === activeTab);
         return (
@@ -295,6 +334,9 @@ export default function SuperadminDashboard() {
           </div>
         );
       })()}
+
+      {/* Per-tab search for Assigned / Approved lists */}
+      <ListSearchBar />
 
       {/* ── TAB 1: Ideas to Review ─────────────────────────────────────────── */}
       {activeTab === 'review' && (
@@ -327,9 +369,14 @@ export default function SuperadminDashboard() {
             <h3 className="text-lg font-medium text-brand-black">No ideas currently assigned</h3>
             <p className="text-sm mt-1">Ideas you assign to Org Admins will appear here.</p>
           </div>
+        ) : filteredAssigned.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 p-10 text-center text-gray-400 bg-white">
+            <Search className="mx-auto h-8 w-8 text-gray-200 mb-2" />
+            <p className="text-sm font-semibold">No results match your search.</p>
+          </div>
         ) : (
           <div className="grid gap-3">
-            {assignedIdeas.map(idea => (
+            {filteredAssigned.map(idea => (
               <AssignedIdeaRow
                 key={idea.id}
                 idea={idea}
@@ -353,9 +400,14 @@ export default function SuperadminDashboard() {
             <h3 className="text-lg font-medium text-brand-black">No approved ideas yet</h3>
             <p className="text-sm mt-1">Ideas you approve directly will appear here with their project IDs.</p>
           </div>
+        ) : filteredApproved.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 p-10 text-center text-gray-400 bg-white">
+            <Search className="mx-auto h-8 w-8 text-gray-200 mb-2" />
+            <p className="text-sm font-semibold">No results match your search.</p>
+          </div>
         ) : (
           <div className="grid gap-3">
-            {approvedIdeas.map(idea => (
+            {filteredApproved.map(idea => (
               <ApprovedIdeaRow
                 key={idea.id}
                 idea={idea}

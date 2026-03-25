@@ -234,4 +234,18 @@ export const api = {
     body: JSON.stringify({ prompt }),
   }),
 
+  // Template Categories
+  getCategories: () => request('/api/templates/categories'),
+  createCategory: (name) => request('/api/templates/categories', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  }),
+  updateCategory: (id, name) => request(`/api/templates/categories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
+  }),
+  deleteCategory: (id) => request(`/api/templates/categories/${id}`, {
+    method: 'DELETE',
+  }),
+
 };

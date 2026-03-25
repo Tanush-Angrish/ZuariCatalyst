@@ -188,3 +188,13 @@ model Upvote {
   @@unique([ideaId, userId])
   @@map("upvotes")
 }
+
+// ─── Template Categories ──────────────────────────────────────────────────────
+
+model TemplateCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("template_categories")
+}

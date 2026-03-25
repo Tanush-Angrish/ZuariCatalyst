@@ -8,7 +8,7 @@ import {
   FileText, ChevronDown, ChevronUp, X,
   Building, Tag, CheckCircle2, XCircle,
   Calendar, Paperclip, Link as LinkIcon, UserCheck,
-  Download, Eye, Mic, Lightbulb, ThumbsUp
+  Download, Eye, Mic, Lightbulb, ThumbsUp, Search, SlidersHorizontal
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -686,15 +686,17 @@ export default function IdeaCardGrid({
   orgAdmins,
   selectedAdmins,
   onAdminSelect,
-  onDirectAction
+  onDirectAction,
+  showSearch = true,
 }) {
   const { user: currentUser } = useAuth();
   const [templates, setTemplates] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
 
   useEffect(() => {
     api.getTemplates().then(d => setTemplates(d.templates || [])).catch(console.error);
   }, []);
-
 
   const parsedIdeas = useMemo(() =>
     ideas.map(idea => ({
@@ -704,6 +706,46 @@ export default function IdeaCardGrid({
         : (idea.extraFields || {})
     }))
     , [ideas]);
+
+  // Collect unique statuses for filter chips
+  const allStatuses = useMemo(() => {
+    const s = new Set(parsedIdeas.map(i => i.status).filter(Boolean));
+    return ['All', ...Array.from(s)];
+  }, [parsedIdeas]);
+
+  // Robust multi-field search + status filter
+  const filteredIdeas = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return parsedIdeas.filter(idea => {
+      // Status filter
+      if (statusFilter !== 'All' && idea.status !== statusFilter) return false;
+      if (!q) return true;
+      // Search across multiple fields
+      const extraText = Object.values(idea.extra || {}).join(' ');
+      return (
+        idea.title?.toLowerCase().includes(q) ||
+        idea.authorName?.toLowerCase().includes(q) ||
+        idea.authorOrganization?.toLowerCase().includes(q) ||
+        idea.department?.toLowerCase().includes(q) ||
+        idea.aiSummary?.toLowerCase().includes(q) ||
+        idea.status?.toLowerCase().includes(q) ||
+        extraText.toLowerCase().includes(q)
+      );
+    });
+  }, [parsedIdeas, searchQuery, statusFilter]);
+
+  // Status chip color helper
+  const chipColor = (status) => {
+    if (status === 'All') return statusFilter === 'All' ? 'bg-brand-blue text-white border-brand-blue' : 'bg-white text-gray-600 border-gray-200 hover:border-brand-blue hover:text-brand-blue';
+    if (statusFilter === status) {
+      if (status === 'Approved') return 'bg-green-600 text-white border-green-600';
+      if (status === 'Rejected') return 'bg-red-600 text-white border-red-600';
+      return 'bg-brand-blue text-white border-brand-blue';
+    }
+    return 'bg-white text-gray-600 border-gray-200 hover:border-brand-blue hover:text-brand-blue';
+  };
+
+  const showSearchUI = showSearch && parsedIdeas.length > 0;
 
   if (parsedIdeas.length === 0) {
     return (
@@ -721,21 +763,93 @@ export default function IdeaCardGrid({
     : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3';
 
   return (
-    <div className={`grid ${gridCols} gap-5 animate-fade-in-up`}>
-      {parsedIdeas.map(idea => (
-        <IdeaCard
-          key={idea.id}
-          idea={idea}
-          viewType={viewType}
-          currentUser={currentUser}
-          onAction={onAction}
-          orgAdmins={orgAdmins}
-          selectedAdmins={selectedAdmins}
-          onAdminSelect={onAdminSelect}
-          onDirectAction={onDirectAction}
-          templates={templates}
-        />
-      ))}
+    <div className="space-y-4">
+      {/* ── Search + Filter Bar ─────────────────────────────────────── */}
+      {showSearchUI && (
+        <div className="space-y-3">
+          {/* Search input */}
+          <div className="relative">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by title, author, summary, department…"
+              className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue/40 transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Status filter chips */}
+          {allStatuses.length > 2 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <SlidersHorizontal size={13} className="text-gray-400 shrink-0" />
+              {allStatuses.map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatusFilter(s)}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${chipColor(s)}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Result count */}
+          {(searchQuery || statusFilter !== 'All') && (
+            <p className="text-xs text-gray-400">
+              Showing <strong className="text-gray-700">{filteredIdeas.length}</strong> of {parsedIdeas.length} ideas
+              {searchQuery && <> matching &ldquo;<em>{searchQuery}</em>&rdquo;</>}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── No results state ────────────────────────────────────────── */}
+      {filteredIdeas.length === 0 && (
+        <div className="rounded-xl border border-dashed border-gray-200 p-12 text-center text-gray-400 bg-white">
+          <Search className="mx-auto h-10 w-10 text-gray-200 mb-3" />
+          <h3 className="text-base font-semibold text-gray-600 mb-1">No results found</h3>
+          <p className="text-sm">Try adjusting your search or clearing the status filter.</p>
+          <button
+            type="button"
+            onClick={() => { setSearchQuery(''); setStatusFilter('All'); }}
+            className="mt-3 text-xs font-semibold text-brand-blue hover:underline"
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
+
+      {/* ── Ideas grid ──────────────────────────────────────────────── */}
+      {filteredIdeas.length > 0 && (
+        <div className={`grid ${gridCols} gap-5 animate-fade-in-up`}>
+          {filteredIdeas.map(idea => (
+            <IdeaCard
+              key={idea.id}
+              idea={idea}
+              viewType={viewType}
+              currentUser={currentUser}
+              onAction={onAction}
+              orgAdmins={orgAdmins}
+              selectedAdmins={selectedAdmins}
+              onAdminSelect={onAdminSelect}
+              onDirectAction={onDirectAction}
+              templates={templates}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

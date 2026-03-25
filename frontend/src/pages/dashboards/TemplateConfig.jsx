@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import {
   Plus, Pencil, Trash2, Save, X, GripVertical,
-  AlertCircle, Settings2, Globe, ChevronDown, ChevronUp, Sparkles, Loader2, Mic
+  AlertCircle, Settings2, Globe, ChevronDown, ChevronUp, Sparkles, Loader2, Mic,
+  FolderOpen, Check
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -20,8 +21,6 @@ const FIELD_TYPES = [
   { value: 'url',      label: 'URL' },
 ];
 
-const CATEGORIES = ['GENERAL', 'MANUFACTURING', 'EPC', 'EXCEL AUTOMATION'];
-
 const inputClass =
   'w-full rounded-md border border-gray-300 p-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue transition-colors';
 
@@ -29,14 +28,13 @@ const inputClass =
 function FieldRow({
   field, index, total,
   isGlobal,
-  canReorder,     // whether this row can be dragged (template editor)
-  canEdit,        // whether label/type/options are editable
-  canDelete,      // whether delete button is shown
+  canReorder,
+  canEdit,
+  canDelete,
   onUpdate,
   onRemove,
   onMoveUp,
   onMoveDown,
-  // drag
   dragging,
   dragOver,
   onDragStart,
@@ -58,7 +56,6 @@ function FieldRow({
       onDragEnd={onDragEnd}
     >
       <div className="flex items-center gap-2">
-        {/* Drag handle or up/down buttons */}
         {canReorder ? (
           <div
             className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 p-0.5 shrink-0"
@@ -82,7 +79,6 @@ function FieldRow({
         <span className="text-xs text-gray-400 font-mono w-5 text-center shrink-0">{index + 1}</span>
 
         <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2">
-          {/* Label */}
           <input
             value={field.label}
             onChange={e => onUpdate('label', e.target.value)}
@@ -90,7 +86,6 @@ function FieldRow({
             placeholder="Field label"
             disabled={!canEdit}
           />
-          {/* ID */}
           <input
             value={field.id}
             onChange={e => onUpdate('id', e.target.value)}
@@ -98,7 +93,6 @@ function FieldRow({
             placeholder="field_id"
             disabled={!canEdit}
           />
-          {/* Type */}
           <select
             value={field.type}
             onChange={e => onUpdate('type', e.target.value)}
@@ -108,7 +102,6 @@ function FieldRow({
             {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
 
-          {/* Required + actions */}
           <div className="flex items-center gap-3">
             <label className={`flex items-center gap-1.5 text-sm cursor-pointer ${!canEdit ? 'text-gray-400' : 'text-gray-600'}`}>
               <input
@@ -136,7 +129,6 @@ function FieldRow({
         </div>
       </div>
 
-      {/* Dropdown options */}
       {field.type === 'select' && (
         <div className="ml-10 space-y-1.5">
           <p className="text-xs font-medium text-gray-500">Dropdown Options</p>
@@ -176,7 +168,6 @@ function FieldRow({
 }
 
 // ─── Master Template Editor ──────────────────────────────────────────────────
-// Only manages add/edit/remove of global fields. No per-template ordering here.
 function MasterEditor({ masterTemplate, onCancel, onSaved }) {
   const [fields, setFields] = useState(() =>
     masterTemplate ? JSON.parse(JSON.stringify(masterTemplate.fields || [])) : []
@@ -283,28 +274,201 @@ function MasterEditor({ masterTemplate, onCancel, onSaved }) {
   );
 }
 
+// ─── Manage Categories Modal ──────────────────────────────────────────────────
+function ManageCategoriesModal({ categories, onClose, onChanged }) {
+  const [list, setList] = useState(categories);
+  const [newName, setNewName] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const refresh = async () => {
+    const data = await api.getCategories();
+    setList(data);
+    onChanged(data);
+  };
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    setError('');
+    setSaving(true);
+    try {
+      await api.createCategory(newName.trim());
+      setNewName('');
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = async (id) => {
+    if (!editValue.trim()) return;
+    setError('');
+    setSaving(true);
+    try {
+      await api.updateCategory(id, editValue.trim());
+      setEditingId(null);
+      setEditValue('');
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this category? Existing templates will keep their current category value.')) return;
+    setSaving(true);
+    try {
+      await api.deleteCategory(id);
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-start justify-center p-4 pt-16 overflow-y-auto"
+      style={{ backgroundColor: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b">
+          <div className="flex items-center gap-2">
+            <FolderOpen size={18} className="text-brand-blue" />
+            <h2 className="text-lg font-bold text-brand-black">Manage Categories</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-4 space-y-3">
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</div>
+          )}
+
+          {/* Existing categories */}
+          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            {list.map(cat => (
+              <div key={cat.id} className="flex items-center gap-2 group px-1 py-0.5 rounded-lg hover:bg-gray-50">
+                {editingId === cat.id ? (
+                  <>
+                    <input
+                      autoFocus
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleEdit(cat.id); if (e.key === 'Escape') setEditingId(null); }}
+                      className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                    />
+                    <button onClick={() => handleEdit(cat.id)} disabled={saving}
+                      className="p-1.5 bg-brand-blue text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      <Check size={13} />
+                    </button>
+                    <button onClick={() => setEditingId(null)}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                      <X size={13} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm font-medium text-gray-800 py-1.5">{cat.name}</span>
+                    <button onClick={() => { setEditingId(cat.id); setEditValue(cat.name); }}
+                      className="p-1.5 text-gray-400 hover:text-brand-blue hover:bg-blue-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
+                      <Pencil size={13} />
+                    </button>
+                    <button onClick={() => handleDelete(cat.id)} disabled={saving}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all">
+                      <Trash2 size={13} />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+            {list.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-4">No categories yet</p>
+            )}
+          </div>
+
+          {/* Add new */}
+          <div className="flex gap-2 pt-2 border-t">
+            <input
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
+              placeholder="New category name…"
+              className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue"
+            />
+            <Button size="sm" onClick={handleAdd} disabled={saving || !newName.trim()} className="gap-1.5 shrink-0">
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+              Add
+            </Button>
+          </div>
+          <p className="text-[11px] text-gray-400">
+            Categories are stored in uppercase. Renaming propagates to all existing templates instantly.
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6">
+          <Button variant="outline" className="w-full" onClick={onClose}>Done</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Category Dropdown with inline "Manage" trigger ──────────────────────────
+function CategorySelect({ value, onChange, categories, onManage }) {
+  return (
+    <div className="flex gap-1.5">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className={inputClass + ' flex-1'}
+      >
+        <option value="">Select category…</option>
+        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+      </select>
+      <button
+        type="button"
+        onClick={onManage}
+        title="Manage categories"
+        className="px-2.5 border border-gray-300 rounded-md text-gray-500 hover:text-brand-blue hover:border-brand-blue hover:bg-blue-50 transition-colors"
+      >
+        <FolderOpen size={15} />
+      </button>
+    </div>
+  );
+}
+
 // ─── Template Editor (Per-Template) ─────────────────────────────────────────
-// Shows global + template fields with drag-and-drop ordering.
-// Global fields are locked (no edit/delete) but freely reorderable.
-function TemplateEditor({ template, masterTemplate, isNew, onCancel, onSaved }) {
+function TemplateEditor({ template, masterTemplate, isNew, onCancel, onSaved, categories, onCategoriesChange }) {
   const masterFields = masterTemplate?.fields || [];
   const masterIds = new Set(masterFields.map(f => f.id));
 
-  // Build initial combined fields in the correct order
   const buildCombined = () => {
-    // template.fields from API is already ordered (server applies fieldOrder)
     if (template?.fields?.length > 0) return JSON.parse(JSON.stringify(template.fields));
-    // New template: global fields first
     return JSON.parse(JSON.stringify(masterFields));
   };
 
   const [meta, setMeta] = useState({
     name: template?.name || '',
-    category: template?.category || 'GENERAL',
+    category: template?.category || categories[0]?.name || '',
     description: template?.description || '',
   });
   const [fields, setFields] = useState(buildCombined);
   const [saving, setSaving] = useState(false);
+  const [manageCatOpen, setManageCatOpen] = useState(false);
 
   // Drag state
   const dragIndexRef = useRef(null);
@@ -340,13 +504,11 @@ function TemplateEditor({ template, masterTemplate, isNew, onCancel, onSaved }) 
 
   const handleSave = async () => {
     if (!meta.name.trim()) return alert('Template name is required');
+    if (!meta.category) return alert('Please select a category');
     setSaving(true);
     try {
-      // Template-specific fields only (global fields are stored in master)
       const templateOnlyFields = fields.filter(f => !masterIds.has(f.id));
-      // Full field order (IDs of all fields in current order)
       const fieldOrder = fields.map(f => f.id);
-
       const payload = {
         category: meta.category,
         name: meta.name,
@@ -354,7 +516,6 @@ function TemplateEditor({ template, masterTemplate, isNew, onCancel, onSaved }) 
         fields: templateOnlyFields,
         fieldOrder,
       };
-
       if (isNew) {
         await api.createTemplate(payload);
       } else {
@@ -370,6 +531,14 @@ function TemplateEditor({ template, masterTemplate, isNew, onCancel, onSaved }) 
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      {manageCatOpen && (
+        <ManageCategoriesModal
+          categories={categories}
+          onClose={() => setManageCatOpen(false)}
+          onChanged={onCategoriesChange}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-brand-black">
           {isNew ? 'Create Template' : 'Edit Template'}
@@ -394,10 +563,12 @@ function TemplateEditor({ template, masterTemplate, isNew, onCancel, onSaved }) 
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-              <select value={meta.category} onChange={e => setMeta(m => ({ ...m, category: e.target.value }))}
-                className={inputClass}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <CategorySelect
+                value={meta.category}
+                onChange={val => setMeta(m => ({ ...m, category: val }))}
+                categories={categories}
+                onManage={() => setManageCatOpen(true)}
+              />
             </div>
           </div>
           <div>
@@ -471,6 +642,8 @@ export default function TemplateConfig() {
   const [templates, setTemplates] = useState([]);
   const [masterTemplate, setMasterTemplate] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [manageCatOpen, setManageCatOpen] = useState(false);
 
   // view: 'list' | 'master' | 'template'
   const [view, setView] = useState('list');
@@ -481,20 +654,21 @@ export default function TemplateConfig() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await api.getTemplates();
+      const [data, cats] = await Promise.all([api.getTemplates(), api.getCategories()]);
       setTemplates(data.templates || []);
       setMasterTemplate(data.master || null);
+      setCategories(cats || []);
     } catch (e) {
       console.error('Fetch error:', e);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchTemplates(); }, []);
+  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
 
   const handleSaved = async () => {
     await fetchTemplates();
@@ -504,10 +678,9 @@ export default function TemplateConfig() {
   };
 
   const handleCreateTemplate = () => {
-    // Pre-populate with all global fields
     setEditingTemplate({
       id: null,
-      category: 'GENERAL',
+      category: categories[0]?.name || '',
       name: '',
       description: '',
       fields: masterTemplate ? JSON.parse(JSON.stringify(masterTemplate.fields || [])) : [],
@@ -522,7 +695,6 @@ export default function TemplateConfig() {
     setAiError('');
     try {
       const result = await api.generateTemplate(aiPrompt.trim());
-      // Build a pre-populated template from AI result
       const globalFields = masterTemplate ? JSON.parse(JSON.stringify(masterTemplate.fields || [])) : [];
       const aiFields = (result.fields || []).map(f => ({
         id: f.id || 'ai_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
@@ -531,9 +703,13 @@ export default function TemplateConfig() {
         required: f.required || false,
         options: f.options || [],
       }));
+      // Try to match AI-suggested category; fallback to first available
+      const aiCat = result.category
+        ? (categories.find(c => c.name.toUpperCase() === result.category.toUpperCase())?.name || categories[0]?.name || '')
+        : (categories[0]?.name || '');
       setEditingTemplate({
         id: null,
-        category: 'GENERAL',
+        category: aiCat,
         name: result.template_name || '',
         description: result.description || '',
         fields: [...globalFields, ...aiFields],
@@ -555,9 +731,7 @@ export default function TemplateConfig() {
     setView('template');
   };
 
-  const handleEditMaster = () => {
-    setView('master');
-  };
+  const handleEditMaster = () => { setView('master'); };
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this template? This cannot be undone.')) return;
@@ -588,13 +762,27 @@ export default function TemplateConfig() {
         isNew={isNew}
         onCancel={() => { setView('list'); setEditingTemplate(null); setIsNew(false); }}
         onSaved={handleSaved}
+        categories={categories}
+        onCategoriesChange={setCategories}
       />
     );
   }
 
   // ── Template List View ──────────────────────────────────────────────────
+  // Group templates by category dynamically
+  const usedCategories = [...new Set(templates.map(t => t.category).filter(Boolean))];
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
+      {/* Manage Categories Modal (from list view) */}
+      {manageCatOpen && (
+        <ManageCategoriesModal
+          categories={categories}
+          onClose={() => setManageCatOpen(false)}
+          onChanged={(cats) => { setCategories(cats); fetchTemplates(); }}
+        />
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-brand-black flex items-center gap-2">
@@ -602,15 +790,24 @@ export default function TemplateConfig() {
           </h1>
           <p className="text-gray-500 mt-1">Manage global fields and per-template layouts.</p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap">
           {['superadmin', 'central team'].includes(user?.role?.toLowerCase()) && (
-            <Button
-              variant="outline"
-              onClick={() => setAiModalOpen(true)}
-              className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 shadow-sm"
-            >
-              <Sparkles size={16} />Create with AI
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setManageCatOpen(true)}
+                className="gap-2 border-gray-200 text-gray-600 hover:bg-gray-50 shadow-sm"
+              >
+                <FolderOpen size={15} />Manage Categories
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setAiModalOpen(true)}
+                className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 shadow-sm"
+              >
+                <Sparkles size={16} />Create with AI
+              </Button>
+            </>
           )}
           <Button onClick={handleCreateTemplate} className="gap-2 shrink-0 shadow-md">
             <Plus size={18} />New Template
@@ -690,9 +887,8 @@ export default function TemplateConfig() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {CATEGORIES.map(cat => {
+            {usedCategories.map(cat => {
               const catTemplates = templates.filter(t => t.category === cat);
-              if (catTemplates.length === 0) return null;
               return (
                 <div key={cat} className="mb-4">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-2 ml-1">
@@ -760,7 +956,7 @@ export default function TemplateConfig() {
                   <Sparkles size={24} className="animate-pulse" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-extrabold text-brand-black tracking-tight" style={{ fontFamily: 'var(--fd, inherit)' }}>
+                  <h2 className="text-xl font-extrabold text-brand-black tracking-tight">
                     Create with AI
                   </h2>
                   <p className="text-sm text-gray-500 font-medium">Describe your ideal template</p>

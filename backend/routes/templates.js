@@ -311,4 +311,69 @@ router.post('/generate', async (req, res) => {
   }
 });
 
+// ─── Template Categories CRUD ─────────────────────────────────────────────────
+
+// GET /api/templates/categories — list all categories
+router.get('/categories', async (req, res) => {
+  try {
+    const cats = await prisma.templateCategory.findMany({ orderBy: { name: 'asc' } });
+    res.json(cats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/templates/categories — create category
+router.post('/categories', async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
+  const normalized = name.trim().toUpperCase();
+  try {
+    const cat = await prisma.templateCategory.create({ data: { name: normalized } });
+    res.json(cat);
+  } catch (error) {
+    if (error.code === 'P2002') return res.status(409).json({ error: 'Category already exists' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/templates/categories/:id — rename category
+router.put('/categories/:id', async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
+  const normalized = name.trim().toUpperCase();
+  try {
+    // Read old name FIRST
+    const existing = await prisma.templateCategory.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Category not found' });
+    const oldName = existing.name;
+
+    // Update the category record
+    const cat = await prisma.templateCategory.update({ where: { id }, data: { name: normalized } });
+
+    // Propagate rename to all templates that use the old category name
+    await prisma.ideaTemplate.updateMany({ where: { category: oldName }, data: { category: normalized } });
+
+    res.json(cat);
+  } catch (error) {
+    if (error.code === 'P2002') return res.status(409).json({ error: 'Category name already exists' });
+    if (error.code === 'P2025') return res.status(404).json({ error: 'Category not found' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/templates/categories/:id — delete category
+router.delete('/categories/:id', async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    await prisma.templateCategory.delete({ where: { id } });
+    res.json({ message: 'Category deleted' });
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'Category not found' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
+

@@ -428,7 +428,7 @@ router.post('/:id/upvote', async (req, res) => {
   const uid = parseInt(userId);
 
   try {
-    // Get the idea to check author
+    // Get the idea to find author
     const idea = await prisma.idea.findUnique({ where: { id: ideaId }, select: { authorId: true } });
     if (!idea) return res.status(404).json({ error: 'Idea not found' });
 
@@ -443,23 +443,26 @@ router.post('/:id/upvote', async (req, res) => {
     });
 
     if (existing) {
-      // Remove upvote
+      // ── REMOVE UPVOTE ─────────────────────────────────────────────────
+      // Revoke points FIRST using the upvote.id while it still exists
+      await awardPoints(idea.authorId, 'upvote_received', -5, existing.id);
+      // Then delete the upvote row
       await prisma.upvote.delete({ where: { id: existing.id } });
-      awardPoints(idea.authorId, 'upvote_received', -5, ideaId);
-    } else {
-      // Add upvote
-      await prisma.upvote.create({ data: { ideaId, userId: uid } });
-      awardPoints(idea.authorId, 'upvote_received', 5, ideaId);
-    }
 
-    // Return new count
-    const count = await prisma.upvote.count({ where: { ideaId } });
-    res.json({ upvoted: !existing, count });
+      const count = await prisma.upvote.count({ where: { ideaId } });
+      return res.json({ upvoted: false, count });
+    } else {
+      // ── ADD UPVOTE ────────────────────────────────────────────────────
+      const newUpvote = await prisma.upvote.create({ data: { ideaId, userId: uid } });
+      await awardPoints(idea.authorId, 'upvote_received', 5, newUpvote.id);
+
+      const count = await prisma.upvote.count({ where: { ideaId } });
+      return res.json({ upvoted: true, count });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
 // GET /api/ideas/:id/upvotes — Get upvote count + user status
 router.get('/:id/upvotes', async (req, res) => {
   const ideaId = parseInt(req.params.id);
