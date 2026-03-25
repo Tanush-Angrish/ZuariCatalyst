@@ -35,6 +35,8 @@ export default function LandingPage() {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('visible');
+        } else {
+          entry.target.classList.remove('visible');
         }
       });
     }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
@@ -109,14 +111,11 @@ export default function LandingPage() {
             <div className="h-6 md:h-10 w-[1px] md:w-[1.5px] bg-[#E5E7EB] rounded-full shrink-0"></div> {/* Divider */}
             
             <div className="flex items-center gap-2 md:gap-2.5">
-              <div className="w-7 h-7 md:w-10 md:h-10 rounded-[6px] md:rounded-[10px] bg-[#1d3368] flex items-center justify-center shadow-sm shrink-0">
-                <Lightbulb className="text-white w-[16px] h-[16px] md:w-[22px] md:h-[22px]" strokeWidth={2.5} />
-              </div>
               <div className="flex flex-col justify-center">
-                <span className="text-[16px] md:text-[22px] font-extrabold text-[#1d3368] tracking-tight leading-none" style={{fontFamily: 'var(--fd)'}}>
+                <span className="text-[20px] md:text-[28px] font-extrabold text-[#1d3368] tracking-tight leading-none" style={{fontFamily: 'var(--fd)'}}>
                   Catalyst
                 </span>
-                <span className="hidden sm:block text-[8.5px] font-extrabold text-[#4B5563] tracking-[0.15em] uppercase mt-1">
+                <span className="hidden sm:block text-[9px] font-extrabold text-[#4B5563] tracking-[0.15em] uppercase mt-1.5">
                   Ignite. Innovate. Implement.
                 </span>
               </div>
@@ -203,7 +202,7 @@ export default function LandingPage() {
           </p>
           
           <div className="max-w-4xl mx-auto relative px-4">
-            <div className="absolute top-[12px] left-[10%] w-[80%] h-[2px] bg-gray-200 hidden md:block" style={{ zIndex: 0 }}>
+            <div className="absolute top-[12px] h-[2px] bg-gray-200 hidden md:block" style={{ left: '12.5%', width: '75%', zIndex: 0 }}>
               <div className="timeline-traveler hidden md:block"></div>
             </div>
             
@@ -217,17 +216,11 @@ export default function LandingPage() {
                 <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Submit<br className="md:hidden"/> an idea</div>
               </div>
               
-              <div className="flex flex-col items-center flex-1">
-                <div className="shrink-0 w-7 h-7 bg-brand-blue border-[6px] border-white rounded-full mb-3 shadow-[0_0_0_1px_rgba(0,53,128,0.15)] relative">
-                  <div className="timeline-pulse pulse-2 hidden md:block"></div>
-                </div>
-                <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{fontFamily: 'var(--fd)'}}>25 pts</div>
-                <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Idea<br className="md:hidden"/> approved</div>
-              </div>
+
 
               <div className="flex flex-col items-center flex-1">
                 <div className="shrink-0 w-7 h-7 bg-brand-blue border-[6px] border-white rounded-full mb-3 shadow-[0_0_0_1px_rgba(0,53,128,0.15)] relative">
-                  <div className="timeline-pulse pulse-3 hidden md:block"></div>
+                  <div className="timeline-pulse pulse-2 hidden md:block"></div>
                 </div>
                 <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{fontFamily: 'var(--fd)'}}>5 pts</div>
                 <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Per upvote<br className="md:hidden"/> received</div>
@@ -235,7 +228,7 @@ export default function LandingPage() {
               
               <div className="flex flex-col items-center flex-1">
                 <div className="shrink-0 w-7 h-7 bg-brand-blue border-[6px] border-white rounded-full mb-3 shadow-[0_0_0_1px_rgba(0,53,128,0.15)] relative">
-                  <div className="timeline-pulse pulse-4 hidden md:block"></div>
+                  <div className="timeline-pulse pulse-3 hidden md:block"></div>
                 </div>
                 <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{fontFamily: 'var(--fd)'}}>50 pts</div>
                 <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Converted to<br className="md:hidden"/> project</div>
@@ -243,7 +236,7 @@ export default function LandingPage() {
               
               <div className="flex flex-col items-center flex-1 relative">
                 <div className="shrink-0 w-7 h-7 bg-brand-blue border-[6px] border-white rounded-full mb-3 shadow-[0_0_0_1px_rgba(0,53,128,0.3)] ring-4 ring-brand-blue/10 relative">
-                  <div className="timeline-pulse pulse-5-big hidden md:block"></div>
+                  <div className="timeline-pulse pulse-4-big hidden md:block"></div>
                 </div>
                 <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{fontFamily: 'var(--fd)'}}>100 pts</div>
                 <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Project<br className="md:hidden"/> completed</div>
@@ -334,7 +327,7 @@ export default function LandingPage() {
               Your ideas deserve more<br/>than an email chain
             </h2>
             <p className="text-[18px] text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-              Catalyst gives every Zuari employee a structured way to submit, track, and see their ideas become real projects — fully managed, fully visible, end to end.
+              Catalyst gives every employee a structured way to submit, track, and see their ideas become real projects — fully managed, fully visible, end to end.
             </p>
             {/* No button in image */}
           </div>
@@ -429,14 +422,8 @@ export default function LandingPage() {
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-[#0f0e1a] py-8 px-6 lg:px-12 border-t border-gray-800/60 flex flex-col md:flex-row items-center justify-between text-[13px] text-gray-500 font-medium">
+      <footer className="bg-[#0f0e1a] py-3 px-6 lg:px-12 border-t border-gray-800/60 flex items-center justify-center text-[13px] text-gray-500 font-medium">
         <div>&copy; 2026 Catalyst. All rights reserved.</div>
-        <div className="flex gap-8 mt-6 md:mt-0">
-          <a href="#" className="hover:text-white transition-colors">Privacy</a>
-          <a href="#" className="hover:text-white transition-colors">Terms</a>
-          <a href="#" className="hover:text-white transition-colors">Security</a>
-          <a href="#" className="hover:text-white transition-colors">Contact</a>
-        </div>
       </footer>
 
       {/* SCROLL TO TOP BUTTON */}

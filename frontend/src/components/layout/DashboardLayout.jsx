@@ -20,7 +20,7 @@ export default function DashboardLayout() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#fdfdfd]">
-          <div key={location.pathname} className="mx-auto max-w-6xl animate-fade-in-up">
+          <div key={location.pathname} className="w-full max-w-[1600px] animate-fade-in-up">
             <Outlet />
           </div>
         </main>

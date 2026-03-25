@@ -48,7 +48,7 @@ export default function Sidebar({ isMobile }) {
   return (
     <aside className={cn(
       "border-r bg-white p-4",
-      isMobile ? "w-full" : "w-64 min-h-[calc(100vh-4rem)] hidden md:block"
+      isMobile ? "w-full" : "w-72 min-h-[calc(100vh-4rem)] hidden md:block"
     )}>
       <div className="flex flex-col gap-2">
         <div className="py-2 text-xs font-semibold uppercase text-gray-400 tracking-wider">

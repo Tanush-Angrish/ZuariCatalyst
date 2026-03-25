@@ -1,7 +1,7 @@
 /**
  * NotificationContext.jsx
  *
- * Fully unified Database-Backed Notification System for Zuari Catalyst.
+ * Fully unified Database-Backed Notification System for Catalyst.
  *
  * - Toasts: Ephemeral, driven by local frontend state for immediate feedback.
  * - Bell: Persistent, user-specific, strictly synced with the backend Database.

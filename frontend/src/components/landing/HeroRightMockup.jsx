@@ -3,6 +3,17 @@ import React, { useState } from 'react';
 export default function HeroRightMockup() {
   const [activeMock, setActiveMock] = useState(0);
 
+  const getMockUrl = () => {
+    switch (activeMock) {
+      case 0: return 'catalyst.zuarione.com/dashboard';
+      case 1: return 'catalyst.zuarione.com/submit';
+      case 2: return 'catalyst.zuarione.com/idea-hub';
+      case 3: return 'catalyst.zuarione.com/leaderboard';
+      case 4: return 'catalyst.zuarione.com/projects';
+      default: return 'catalyst.zuarione.com/dashboard';
+    }
+  };
+
   return (
     <div className="hero-right">
       <div className="hero-app">
@@ -10,7 +21,7 @@ export default function HeroRightMockup() {
           <div className="app-dot" style={{ background: '#FF5F57' }}></div>
           <div className="app-dot" style={{ background: '#FEBC2E' }}></div>
           <div className="app-dot" style={{ background: '#28C840' }}></div>
-          <div className="app-url" id="mockUrl">catalyst.zuarione.com/dashboard</div>
+          <div className="app-url" style={{ transition: 'all 0.3s ease' }} id="mockUrl">{getMockUrl()}</div>
         </div>
         <div className="app-body">
           <div className="app-sidebar">

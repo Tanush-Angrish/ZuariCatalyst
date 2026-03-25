@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { Link } from 'react-router-dom';
-import { LogOut, Lightbulb, Menu } from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
 import { NotificationBell } from '../../context/NotificationContext';
 
 export default function Navbar({ onMenuToggle }) {
@@ -22,10 +22,7 @@ export default function Navbar({ onMenuToggle }) {
           </Button>
         )}
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-blue text-white shadow-sm">
-            <Lightbulb size={20} strokeWidth={2.5} />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-brand-blue">Zuari Catalyst</span>
+          <span className="text-[22px] font-extrabold tracking-tight text-brand-blue" style={{fontFamily: 'var(--fd)'}}>Catalyst</span>
         </Link>
       </div>
 
