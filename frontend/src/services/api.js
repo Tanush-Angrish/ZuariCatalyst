@@ -77,9 +77,9 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(payload),
   }),
-  updateIdeaStatus: (id, status) => request(`/api/ideas/${id}/status`, {
+  updateIdeaStatus: (id, status, rejectionReason) => request(`/api/ideas/${id}/status`, {
     method: 'PUT',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, ...(rejectionReason ? { rejectionReason } : {}) }),
   }),
   assignIdea: (id, assignedToId) => request(`/api/ideas/${id}/assign`, {
     method: 'PUT',
@@ -118,9 +118,15 @@ export const api = {
   deleteProjectStep: (id, stepId) => request(`/api/projects/${id}/steps/${stepId}`, {
     method: 'DELETE',
   }),
-  bulkAddSteps: (id, steps) => request(`/api/projects/${id}/steps/bulk`, {
+  bulkAddSteps: (id, steps, finalize = false) => request(`/api/projects/${id}/steps/bulk`, {
     method: 'POST',
-    body: JSON.stringify({ steps }),
+    body: JSON.stringify({ steps, finalize }),
+  }),
+  deleteAllProjectSteps: (id) => request(`/api/projects/${id}/steps/all`, {
+    method: 'DELETE',
+  }),
+  finalizeProjectSteps: (id) => request(`/api/projects/${id}/finalize-steps`, {
+    method: 'PUT',
   }),
   generateGeminiPlan: (id, data) => request(`/api/projects/${id}/gemini-plan`, {
     method: 'POST',

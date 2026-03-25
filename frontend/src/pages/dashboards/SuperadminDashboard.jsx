@@ -241,9 +241,9 @@ export default function SuperadminDashboard() {
   const filteredAssigned = filterBySearch(assignedIdeas);
   const filteredApproved = filterBySearch(approvedIdeas);
 
-  const handleDirectAction = async (ideaId, status) => {
+  const handleDirectAction = async (ideaId, status, rejectionReason) => {
     try {
-      await api.updateIdeaStatus(ideaId, status);
+      await api.updateIdeaStatus(ideaId, status, rejectionReason);
       const isApp = status === 'Approved';
       notify({
         type: isApp ? 'success' : 'info',

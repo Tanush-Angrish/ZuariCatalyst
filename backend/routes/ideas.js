@@ -304,16 +304,23 @@ router.put('/:id/assign', async (req, res) => {
 // PUT update status (Org Admin approve/reject)
 router.put('/:id/status', async (req, res) => {
   const ideaId = parseInt(req.params.id);
-  const { status } = req.body; // 'Approved' or 'Rejected'
+  const { status, rejectionReason } = req.body; // 'Approved' or 'Rejected'
   
   if (!['Approved', 'Rejected'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
 
+  if (status === 'Rejected' && (!rejectionReason || !rejectionReason.trim())) {
+    return res.status(400).json({ error: 'Rejection reason is required' });
+  }
+
   try {
     const idea = await prisma.idea.update({
       where: { id: ideaId },
-      data: { status },
+      data: {
+        status,
+        ...(status === 'Rejected' ? { rejectionReason: rejectionReason.trim() } : {})
+      },
       include: { author: { select: { name: true, organization: true } } }
     });
 
@@ -361,11 +368,12 @@ router.put('/:id/status', async (req, res) => {
         }
       }
     } else if (status === 'Rejected') {
+      const reason = rejectionReason.trim();
       // DB Notifications
-      notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' has been REJECTED.`, ideaId);
-      notifyCentralTeam('idea', `Idea '${idea.title}' was rejected.`, ideaId);
+      notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' has been REJECTED. Reason: ${reason}`, ideaId);
+      notifyCentralTeam('idea', `Idea '${idea.title}' was rejected. Reason: ${reason}`, ideaId);
 
-      // Email author + Central Team about rejection in background
+      // Email author + Central Team about rejection
       const [author, centralEmails] = await Promise.all([
         prisma.user.findUnique({ where: { id: idea.authorId }, select: { name: true, email: true } }),
         getCentralTeamEmails()
@@ -375,7 +383,8 @@ router.put('/:id/status', async (req, res) => {
         sendIdeaRejectedEmail({
           toEmails: rejectedRecipients,
           ideaTitle: idea.title,
-          authorName: author?.name || 'User'
+          authorName: author?.name || 'User',
+          rejectionReason: reason
         }).catch(console.error);
       }
     }

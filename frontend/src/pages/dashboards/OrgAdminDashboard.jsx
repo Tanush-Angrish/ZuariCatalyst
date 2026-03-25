@@ -30,9 +30,9 @@ export default function OrgAdminDashboard() {
     fetchAssigned();
   }, [fetchAssigned]);
 
-  const handleStatusUpdate = async (ideaId, newStatus) => {
+  const handleStatusUpdate = async (ideaId, newStatus, rejectionReason) => {
     try {
-      await api.updateIdeaStatus(ideaId, newStatus);
+      await api.updateIdeaStatus(ideaId, newStatus, rejectionReason);
       fetchAssigned();
 
       const isApproved = newStatus === 'Approved';

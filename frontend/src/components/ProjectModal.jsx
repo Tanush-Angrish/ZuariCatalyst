@@ -4,9 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import {
-  X, Plus, Trash2, Edit3, Check, ChevronDown, 
+  X, Plus, Trash2, Edit3, Check, ChevronDown,
   MessageSquare, Send, Sparkles, Calendar, Clock,
-  Loader2, AtSign, CheckCircle2, AlertCircle, Pause, User
+  Loader2, AtSign, CheckCircle2, AlertCircle, Pause, User,
+  RefreshCw, Lock, ShieldCheck, AlertTriangle
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import { api } from '../services/api';
@@ -27,10 +28,35 @@ const STEP_STATUS_COLORS = {
 const PROJECT_STATUSES = ['Initiated', 'In Progress', 'On Hold', 'Completed'];
 const STEP_STATUSES    = ['Pending', 'In Progress', 'Completed'];
 
-// ─── Format date helper ────────────────────────────────────────────────────
 function fmtDate(d) {
   if (!d) return null;
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// ─── Confirm Dialog ────────────────────────────────────────────────────────
+function ConfirmDialog({ title, body, confirmLabel, confirmClass = '', onConfirm, onCancel, icon }) {
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 z-[99999] flex items-start justify-center pt-20 p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-start gap-3 px-6 pt-6 pb-4 border-b">
+          {icon && <div className="shrink-0 mt-0.5">{icon}</div>}
+          <div>
+            <h2 className="text-base font-bold text-gray-900">{title}</h2>
+            <p className="text-sm text-gray-500 mt-1 leading-relaxed">{body}</p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4">
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button onClick={onConfirm} className={confirmClass}>{confirmLabel}</Button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 // ─── Section Divider ───────────────────────────────────────────────────────
@@ -47,7 +73,7 @@ function Section({ title, children, action }) {
 }
 
 // ─── Step Card ─────────────────────────────────────────────────────────────
-function StepCard({ step, canEdit, onEdit, onDelete, onStatusChange }) {
+function StepCard({ step, canEdit, onEdit, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [desc, setDesc] = useState(step.description);
   const [status, setStatus] = useState(step.status);
@@ -158,9 +184,14 @@ export default function ProjectModal({ project: initialProject, onClose, current
   const [steps, setSteps] = useState([]);
   const [messages, setMessages] = useState([]);
   const [participants, setParticipants] = useState([]);
-  const [activeTab, setActiveTab] = useState('overview'); // overview | steps | chat
+  const [activeTab, setActiveTab] = useState('overview');
   const { notify } = useNotifications();
-  
+
+  // AI finalization state — derived from project.isStepsFinalized (persisted)
+  const [isFinalized, setIsFinalized] = useState(!!initialProject.isStepsFinalized);
+  const [hasGenerated, setHasGenerated] = useState(false);   // has Gemini been triggered at least once?
+  const [hasRegenerated, setHasRegenerated] = useState(false); // has Regenerate been used once already?
+
   // Steps state
   const [addingStep, setAddingStep] = useState(false);
   const [newStepDesc, setNewStepDesc] = useState('');
@@ -168,6 +199,10 @@ export default function ProjectModal({ project: initialProject, onClose, current
   const [geminiLoading, setGeminiLoading] = useState(false);
   const [geminiSteps, setGeminiSteps] = useState(null); // pending review
   const [savingGemini, setSavingGemini] = useState(false);
+
+  // Confirmation dialogs
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
   // Status/deadline
   const [editStatus, setEditStatus] = useState(false);
@@ -181,7 +216,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
   const [chatInput, setChatInput] = useState('');
   const [mentionDropdown, setMentionDropdown] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
-  const [pendingMentions, setPendingMentions] = useState([]); // { id, name }
+  const [pendingMentions, setPendingMentions] = useState([]);
   const [sendingMsg, setSendingMsg] = useState(false);
   const chatEndRef = useRef(null);
   const chatInputRef = useRef(null);
@@ -201,6 +236,10 @@ export default function ProjectModal({ project: initialProject, onClose, current
       const data = await api.getProjectDetails(project.id);
       setSteps(data.steps || []);
       setMessages(data.messages || []);
+      // Keep finalization state in sync with DB
+      if (data.isStepsFinalized !== undefined) {
+        setIsFinalized(data.isStepsFinalized);
+      }
     } catch (e) { console.error(e); }
   }, [project.id]);
 
@@ -214,7 +253,6 @@ export default function ProjectModal({ project: initialProject, onClose, current
   useEffect(() => { fetchSteps(); fetchParticipants(); }, [fetchSteps, fetchParticipants]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // Keyboard close
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
@@ -256,8 +294,8 @@ export default function ProjectModal({ project: initialProject, onClose, current
     } catch (e) { console.error(e); }
   };
 
-  // ── Gemini plan ───────────────────────────────────────────────────────────
-  const handleGeminiPlan = async () => {
+  // ── Gemini — INITIAL GENERATE ─────────────────────────────────────────────
+  const runGeminiGenerate = async () => {
     setGeminiLoading(true);
     try {
       const data = await api.generateGeminiPlan(project.id, {
@@ -267,21 +305,51 @@ export default function ProjectModal({ project: initialProject, onClose, current
       });
       if (data.steps) {
         setGeminiSteps(data.steps.map(s => ({ ...s, _editing: false })));
+        setHasGenerated(true); // mark generate as used — enables Regenerate once
       } else {
-        alert('Gemini could not generate a plan. Please check your API key.');
+        notify({ type: 'error', title: 'AI Error', message: 'Gemini could not generate a plan. Check your API key.' });
       }
-    } catch (e) { alert('Error calling Gemini AI.'); }
+    } catch (e) {
+      notify({ type: 'error', title: 'AI Error', message: 'Error calling Gemini AI.' });
+    }
     setGeminiLoading(false);
   };
 
-  const handleSaveGeminiSteps = async () => {
+  // ── Gemini — REGENERATE (wipe + re-generate) ──────────────────────────────
+  const handleRegenerateConfirmed = async () => {
+    setShowRegenerateConfirm(false);
+    setGeminiSteps(null);
+    // Wipe all current DB steps first
+    try {
+      await api.deleteAllProjectSteps(project.id);
+      await fetchSteps(); // refresh to show empty list
+    } catch (e) {
+      notify({ type: 'error', title: 'Error', message: 'Failed to clear existing steps.' });
+      return;
+    }
+    // Then generate fresh — mark regenerate as spent (max 1 use)
+    setHasRegenerated(true);
+    await runGeminiGenerate();
+  };
+
+  // ── Gemini — SAVE & FINALIZE ──────────────────────────────────────────────
+  const handleSaveConfirmed = async () => {
+    setShowSaveConfirm(false);
     setSavingGemini(true);
     try {
-      await api.bulkAddSteps(project.id, geminiSteps);
+      // Pass finalize=true so backend locks AI in same transaction
+      await api.bulkAddSteps(project.id, geminiSteps, true);
       setGeminiSteps(null);
-      fetchSteps();
-      notify({ type: 'success', title: 'Plan Saved', message: 'AI generated steps have been added.' });
-    } catch (e) { alert('Error saving steps.'); }
+      setIsFinalized(true);
+      // Sync parent project state
+      const updated = { ...project, isStepsFinalized: true };
+      setProject(updated);
+      onProjectUpdated?.(updated);
+      await fetchSteps();
+      notify({ type: 'success', title: 'Plan Saved & Locked', message: 'AI-generated steps saved. AI planning is now disabled for this project.' });
+    } catch (e) {
+      notify({ type: 'error', title: 'Error', message: 'Failed to save steps.' });
+    }
     setSavingGemini(false);
   };
 
@@ -345,7 +413,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
       });
       setChatInput('');
       setPendingMentions([]);
-      fetchSteps(); // also refreshes messages
+      fetchSteps();
       notify({ type: 'success', title: 'Message Sent' });
     } catch (e) { console.error(e); }
     setSendingMsg(false);
@@ -362,6 +430,32 @@ export default function ProjectModal({ project: initialProject, onClose, current
       style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
       onPointerDown={e => { if (e.target === e.currentTarget) onClose(); }}
     >
+      {/* Confirmation: Regenerate warning */}
+      {showRegenerateConfirm && (
+        <ConfirmDialog
+          title="Regenerate AI Steps?"
+          body="This will permanently DELETE all existing steps and generate a brand-new plan with Gemini AI. This cannot be undone."
+          confirmLabel="Yes, Regenerate"
+          confirmClass="bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+          icon={<AlertTriangle size={20} className="text-amber-500" />}
+          onConfirm={handleRegenerateConfirmed}
+          onCancel={() => setShowRegenerateConfirm(false)}
+        />
+      )}
+
+      {/* Confirmation: Save & lock */}
+      {showSaveConfirm && (
+        <ConfirmDialog
+          title="Save & Lock AI Planning?"
+          body="Once saved, AI planning (Gemini) will be permanently disabled for this project. You can still add, edit, and delete steps manually."
+          confirmLabel="Confirm & Save"
+          confirmClass="bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
+          icon={<Lock size={20} className="text-purple-500" />}
+          onConfirm={handleSaveConfirmed}
+          onCancel={() => setShowSaveConfirm(false)}
+        />
+      )}
+
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col animate-modal-in"
         onPointerDown={e => e.stopPropagation()}
@@ -376,6 +470,11 @@ export default function ProjectModal({ project: initialProject, onClose, current
               <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${STATUS_COLORS[project.status] || STATUS_COLORS.Initiated}`}>
                 {project.status}
               </span>
+              {isFinalized && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200 bg-purple-50 text-purple-700 flex items-center gap-1">
+                  <Lock size={9} />AI Locked
+                </span>
+              )}
             </div>
             <h2 className="text-xl font-bold text-gray-900 leading-snug">{project.title}</h2>
             <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
@@ -415,7 +514,6 @@ export default function ProjectModal({ project: initialProject, onClose, current
           {/* ───── OVERVIEW ───── */}
           {activeTab === 'overview' && (
             <div className="space-y-5">
-              {/* AI Summary */}
               {project.aiSummary && (
                 <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-100">
                   <div className="flex items-center gap-2 mb-2">
@@ -426,7 +524,6 @@ export default function ProjectModal({ project: initialProject, onClose, current
                 </div>
               )}
 
-              {/* Info Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Status */}
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
@@ -487,20 +584,17 @@ export default function ProjectModal({ project: initialProject, onClose, current
                   )}
                 </div>
 
-                {/* Organization */}
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Organization</p>
                   <p className="text-sm font-medium text-gray-700">{project.orgId}</p>
                 </div>
 
-                {/* Created On */}
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Created On</p>
                   <p className="text-sm font-medium text-gray-700">{fmtDate(project.createdAt)}</p>
                 </div>
               </div>
 
-              {/* Step progress indicator */}
               {steps.length > 0 && (
                 <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Progress</p>
@@ -508,9 +602,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
                     <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-green-500 rounded-full transition-all duration-500"
-                        style={{
-                          width: `${Math.round((steps.filter(s => s.status === 'Completed').length / steps.length) * 100)}%`
-                        }}
+                        style={{ width: `${Math.round((steps.filter(s => s.status === 'Completed').length / steps.length) * 100)}%` }}
                       />
                     </div>
                     <span className="text-xs text-gray-500 shrink-0">
@@ -525,21 +617,93 @@ export default function ProjectModal({ project: initialProject, onClose, current
           {/* ───── STEPS ───── */}
           {activeTab === 'steps' && (
             <div className="space-y-4">
-              {/* Gemini button */}
-              {isPrivileged && !geminiSteps && (
-                <div className="flex items-center gap-3 flex-wrap">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
-                    onClick={handleGeminiPlan}
-                    disabled={geminiLoading}
-                  >
-                    {geminiLoading
-                      ? <><Loader2 size={14} className="animate-spin" />Generating...</>
-                      : <><Sparkles size={14} />Use Gemini for Planning</>
-                    }
-                  </Button>
+
+              {/* ── AI Status Banner ── */}
+              {isPrivileged && isFinalized && (
+                <div className="flex items-start gap-3 p-3.5 rounded-xl bg-purple-50 border border-purple-200">
+                  <ShieldCheck size={16} className="text-purple-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-purple-800">AI Planning Locked</p>
+                    <p className="text-xs text-purple-600 mt-0.5">
+                      Gemini step generation has been finalized. You can still add, edit, and delete steps manually below.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── AI Toolbar (only when NOT finalized) ── */}
+              {isPrivileged && !isFinalized && !geminiSteps && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* Initial generate — shown if Gemini hasn't been used yet */}
+                    {!hasGenerated && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
+                        onClick={runGeminiGenerate}
+                        disabled={geminiLoading}
+                      >
+                        {geminiLoading
+                          ? <><Loader2 size={14} className="animate-spin" />Generating...</>
+                          : <><Sparkles size={14} />Use Gemini for Planning</>
+                        }
+                      </Button>
+                    )}
+
+                    {/* Regenerate — shown after first generate, disabled/hidden after one use */}
+                    {hasGenerated && !hasRegenerated && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 border-amber-200 text-amber-700 hover:bg-amber-50"
+                        onClick={() => setShowRegenerateConfirm(true)}
+                        disabled={geminiLoading}
+                      >
+                        {geminiLoading
+                          ? <><Loader2 size={14} className="animate-spin" />Generating...</>
+                          : <><RefreshCw size={14} />Regenerate Steps</>
+                        }
+                      </Button>
+                    )}
+
+                    {/* After both generate + regenerate used — show locked message */}
+                    {hasGenerated && hasRegenerated && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-200">
+                        <Lock size={12} className="text-gray-400" />
+                        <span className="text-xs text-gray-500 font-medium">AI generation limit reached (1 generate + 1 regenerate)</span>
+                      </div>
+                    )}
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setAddingStep(!addingStep)}
+                    >
+                      <Plus size={14} />Add Step Manually
+                    </Button>
+                  </div>
+
+                  {/* Helper text about limits — only visible before any generation */}
+                  {!hasGenerated && (
+                    <p className="text-[11px] text-gray-400">
+                      <Sparkles size={10} className="inline mr-1 text-purple-400" />
+                      Gemini can generate once and regenerate <strong>once</strong>. After saving, AI is permanently disabled.
+                    </p>
+                  )}
+                  {hasGenerated && !hasRegenerated && (
+                    <p className="text-[11px] text-amber-600">
+                      <AlertTriangle size={10} className="inline mr-1" />
+                      Regenerate is available <strong>one more time</strong>. It will delete all current steps and create a new plan.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ── Manual add (always visible for privileged, even after finalize) ── */}
+              {isPrivileged && isFinalized && !geminiSteps && (
+                <div className="flex items-center gap-3">
                   <Button
                     size="sm"
                     variant="outline"
@@ -579,17 +743,27 @@ export default function ProjectModal({ project: initialProject, onClose, current
                 </div>
               )}
 
-              {/* Gemini steps preview */}
+              {/* ── Gemini Steps Preview Panel ── */}
               {geminiSteps && (
                 <div className="rounded-xl border-2 border-purple-200 bg-purple-50 p-4 space-y-3">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <Sparkles size={15} className="text-purple-600" />
                     <span className="text-sm font-bold text-purple-700">Gemini-Generated Plan</span>
                     <span className="text-xs text-purple-500">— review and edit before saving</span>
                   </div>
+
+                  {/* Warning about lock */}
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                    <Lock size={13} className="text-amber-600 mt-0.5 shrink-0" />
+                    <p className="text-xs text-amber-700">
+                      <strong>Note:</strong> Saving these steps will <strong>permanently lock AI planning</strong> for this project.
+                      You can still add/edit/delete steps manually after saving.
+                    </p>
+                  </div>
+
                   {geminiSteps.map((s, i) => (
                     <div key={i} className="flex gap-2 items-start">
-                      <span className="text-xs font-bold text-purple-400 mt-2 shrink-0 w-5">{i+1}.</span>
+                      <span className="text-xs font-bold text-purple-400 mt-2 shrink-0 w-5">{i + 1}.</span>
                       <textarea
                         className="flex-1 border border-purple-200 rounded-lg p-2 text-sm resize-none bg-white focus:ring-1 focus:ring-purple-400"
                         rows={2}
@@ -608,16 +782,35 @@ export default function ProjectModal({ project: initialProject, onClose, current
                       </button>
                     </div>
                   ))}
-                  <div className="flex gap-2 pt-1">
+
+                  <div className="flex gap-2 pt-1 flex-wrap">
+                    {/* Save & Finalize (with confirm dialog) */}
                     <Button
                       size="sm"
                       className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
-                      onClick={handleSaveGeminiSteps}
-                      disabled={savingGemini}
+                      onClick={() => setShowSaveConfirm(true)}
+                      disabled={savingGemini || geminiSteps.length === 0}
                     >
-                      {savingGemini ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                      Confirm & Save
+                      {savingGemini ? <Loader2 size={13} className="animate-spin" /> : <Lock size={13} />}
+                      Save Steps
                     </Button>
+                    {/* Regenerate inside preview — only if regeneration hasn't been used */}
+                    {!hasRegenerated && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 border-amber-200 text-amber-700 hover:bg-amber-50"
+                        onClick={() => setShowRegenerateConfirm(true)}
+                        disabled={savingGemini}
+                      >
+                        <RefreshCw size={13} />Regenerate
+                      </Button>
+                    )}
+                    {hasRegenerated && (
+                      <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                        <Lock size={10} />Regenerate used — not available again
+                      </span>
+                    )}
                     <Button size="sm" variant="outline" onClick={() => setGeminiSteps(null)} className="text-xs text-gray-500">
                       Discard
                     </Button>
@@ -625,13 +818,15 @@ export default function ProjectModal({ project: initialProject, onClose, current
                 </div>
               )}
 
-              {/* Steps list */}
+              {/* ── Empty state ── */}
               {steps.length === 0 && !geminiSteps && (
                 <div className="text-center py-10 text-gray-400">
                   <CheckCircle2 className="mx-auto mb-3 text-gray-200" size={40} />
-                  <p className="text-sm">No steps yet.{isPrivileged && ' Add steps manually or use Gemini to plan.'}</p>
+                  <p className="text-sm">No steps yet.{isPrivileged && !isFinalized && ' Add steps manually or use Gemini to plan.'}</p>
                 </div>
               )}
+
+              {/* ── Steps List ── */}
               <div className="space-y-2">
                 {steps.map(step => (
                   <StepCard
@@ -640,7 +835,6 @@ export default function ProjectModal({ project: initialProject, onClose, current
                     canEdit={isPrivileged}
                     onEdit={handleEditStep}
                     onDelete={handleDeleteStep}
-                    onStatusChange={handleEditStep}
                   />
                 ))}
               </div>
@@ -650,7 +844,6 @@ export default function ProjectModal({ project: initialProject, onClose, current
           {/* ───── CHAT ───── */}
           {activeTab === 'chat' && (
             <div className="flex flex-col gap-4 h-full" style={{ minHeight: 320 }}>
-              {/* Messages */}
               <div className="flex-1 space-y-3 overflow-y-auto pr-1" style={{ maxHeight: 350 }}>
                 {messages.length === 0 ? (
                   <div className="text-center py-10 text-gray-400">
@@ -665,7 +858,6 @@ export default function ProjectModal({ project: initialProject, onClose, current
                 <div ref={chatEndRef} />
               </div>
 
-              {/* Mention dropdown */}
               {mentionDropdown && filteredParticipants.length > 0 && (
                 <div className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
                   {filteredParticipants.slice(0, 5).map(p => (
@@ -686,7 +878,6 @@ export default function ProjectModal({ project: initialProject, onClose, current
                 </div>
               )}
 
-              {/* Input area */}
               {canChat ? (
                 <div className="flex gap-2 items-end">
                   <div className="flex-1 relative">

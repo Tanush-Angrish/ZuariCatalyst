@@ -39,6 +39,7 @@ model Idea {
   extraFields    String   @default("{}") // Storing JSON as string to match old sqlite approach initially
   files          String   @default("[]") // JSON array of { name, url, type } objects
   status         String   @default("Pending Review")
+  rejectionReason String?
   aiSummary      String?
   aiTags         String   @default("[]") // JSON array of tags
   createdAt      DateTime @default(now())
@@ -93,19 +94,20 @@ model TemplateAccess {
 // ─── Project Lifecycle Models ────────────────────────────────────────────────
 
 model Project {
-  id          Int       @id @default(autoincrement())
-  projectId   String    @unique // e.g. PROJ-0001
-  ideaId      Int       @unique
-  orgId       String    // organization name
-  createdById Int       // authorId of the original idea
-  title       String
-  aiSummary   String?
-  status      String    @default("Initiated")
-  deadline    DateTime?
-  createdAt   DateTime  @default(now())
+  id                Int       @id @default(autoincrement())
+  projectId         String    @unique // e.g. PROJ-0001
+  ideaId            Int       @unique
+  orgId             String    // organization name
+  createdById       Int       // authorId of the original idea
+  title             String
+  aiSummary         String?
+  status            String    @default("Initiated")
+  deadline          DateTime?
+  isStepsFinalized  Boolean   @default(false)
+  createdAt         DateTime  @default(now())
 
-  steps       ProjectStep[]
-  messages    ProjectMessage[]
+  steps             ProjectStep[]
+  messages          ProjectMessage[]
 
   @@map("projects")
 }

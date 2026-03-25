@@ -8,9 +8,80 @@ import {
   FileText, ChevronDown, ChevronUp, X,
   Building, Tag, CheckCircle2, XCircle,
   Calendar, Paperclip, Link as LinkIcon, UserCheck,
-  Download, Eye, Mic, Lightbulb, ThumbsUp, Search, SlidersHorizontal
+  Download, Eye, Mic, Lightbulb, ThumbsUp, Search, SlidersHorizontal,
+  AlertTriangle, RefreshCw
 } from 'lucide-react';
 import { api } from '../services/api';
+
+// ─── Reject Reason Modal ───────────────────────────────────────────────────
+function RejectReasonModal({ ideaTitle, onConfirm, onCancel }) {
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = () => {
+    if (!reason.trim()) { setError('Please provide a reason for rejection.'); return; }
+    onConfirm(reason.trim());
+  };
+
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 z-[99999] flex items-start justify-center pt-20 p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-6 pt-6 pb-4 border-b">
+          <div className="p-2 rounded-xl bg-red-50 text-red-500">
+            <XCircle size={20} />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Reject Idea</h2>
+            <p className="text-xs text-gray-500 mt-0.5 truncate max-w-sm">{ideaTitle}</p>
+          </div>
+          <button onClick={onCancel} className="ml-auto p-1.5 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Reason for Rejection <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            autoFocus
+            value={reason}
+            onChange={e => { setReason(e.target.value); setError(''); }}
+            rows={4}
+            placeholder="Explain why this idea is being rejected. This feedback will be shared with the employee to help them improve and resubmit…"
+            className="w-full rounded-xl border border-gray-300 p-3 text-sm focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100 resize-none transition-all"
+          />
+          {error && (
+            <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
+              <AlertTriangle size={12} />{error}
+            </p>
+          )}
+          <p className="mt-2 text-[11px] text-gray-400">
+            This reason will be shown to the employee in the app and in the email notification.
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 px-6 pb-6">
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button
+            onClick={handleSubmit}
+            className="bg-red-600 hover:bg-red-700 text-white gap-1.5"
+          >
+            <XCircle size={15} />Confirm Reject
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 
 // ─── Helper: extract field value from idea ─────────────────────────────────
@@ -72,8 +143,28 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
   const [viewingFile, setViewingFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
   const [loadingFile, setLoadingFile] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [pendingRejectTarget, setPendingRejectTarget] = useState(null); // { id, via: 'orgAdmin'|'superadmin' }
   const templateDef = (templates || []).find(t => t.id === idea.extra?._templateId);
   const fields = templateDef?.fields ?? [];
+
+  const isEmployee = viewType === 'employee' || viewType === 'myIdeas' || viewType === 'community';
+  const isOwnIdea = currentUser && idea.authorId === currentUser.id;
+  const showRejectionBanner = idea.status === 'Rejected' && (isEmployee || isOwnIdea);
+
+  const handleRejectClick = (ideaId, via) => {
+    setPendingRejectTarget({ id: ideaId, via });
+    setRejectModalOpen(true);
+  };
+
+  const handleRejectConfirm = (reason) => {
+    setRejectModalOpen(false);
+    if (!pendingRejectTarget) return;
+    const { id, via } = pendingRejectTarget;
+    if (via === 'orgAdmin') onAction?.(id, 'Rejected', reason);
+    else onDirectAction?.(id, 'Rejected', reason);
+    onClose();
+  };
 
   // Parse files from idea
   const ideaFiles = useMemo(() => {
@@ -205,7 +296,39 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
 
           {/* Body */}
           <div className="px-6 py-5 space-y-5">
-            {/* AI Insights Section */}
+            {/* Rejection reason banner — shown to employees for their own rejected ideas */}
+          {showRejectionBanner && idea.rejectionReason && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <XCircle size={16} className="text-red-500 shrink-0" />
+                <h3 className="text-sm font-bold text-red-700">Rejected — Reviewer Feedback</h3>
+              </div>
+              <p className="text-sm text-red-800 leading-relaxed">{idea.rejectionReason}</p>
+              <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <RefreshCw size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-amber-800">Coming Soon — Resubmit Feature</p>
+                  <p className="text-xs text-amber-700 mt-0.5">We are working on a feature that will let you update and resubmit your idea for review. Stay tuned!</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Rejection placeholder when no reason stored (old ideas) */}
+          {showRejectionBanner && !idea.rejectionReason && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center gap-2">
+                <XCircle size={16} className="text-red-500 shrink-0" />
+                <span className="text-sm font-semibold text-red-700">Idea Rejected</span>
+              </div>
+              <div className="mt-2 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <RefreshCw size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700">We are working on a resubmission feature. Stay tuned!</p>
+              </div>
+            </div>
+          )}
+
+          {/* AI Insights Section */}
             {idea.aiSummary && (
               <div className="p-4 rounded-xl bg-gradient-to-br from-brand-blue/5 to-purple-50 border border-brand-blue/10">
                 <div className="flex items-center gap-2 mb-2">
@@ -391,11 +514,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
                 size="sm"
                 variant="outline"
                 className="text-red-600 border-red-200 hover:bg-red-50 font-semibold gap-1.5"
-                onClick={() => {
-                  if (viewType === 'orgAdmin') onAction?.(idea.id, 'Rejected');
-                  else onDirectAction?.(idea.id, 'Rejected');
-                  onClose();
-                }}
+                onClick={() => handleRejectClick(idea.id, viewType === 'orgAdmin' ? 'orgAdmin' : 'superadmin')}
               >
                 <XCircle size={15} />Reject
               </Button>
@@ -490,6 +609,13 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
           </div>
         )}
       </div>
+      {rejectModalOpen && (
+        <RejectReasonModal
+          ideaTitle={idea.title}
+          onConfirm={handleRejectConfirm}
+          onCancel={() => { setRejectModalOpen(false); setPendingRejectTarget(null); }}
+        />
+      )}
     </div>
   );
 
@@ -504,6 +630,8 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
   const [upvoteCount, setUpvoteCount] = useState(0);
   const [hasUpvoted, setHasUpvoted] = useState(false);
   const [upvoteLoading, setUpvoteLoading] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [pendingRejectVia, setPendingRejectVia] = useState(null);
 
   // Fetch upvote count on mount
   useEffect(() => {
@@ -610,7 +738,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
                 <div className="flex gap-2" onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
                   <Button size="sm" variant="outline"
                     className="text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto font-semibold gap-1"
-                    onClick={e => { e.stopPropagation(); onAction?.(idea.id, 'Rejected'); }}>
+                    onClick={e => { e.stopPropagation(); setPendingRejectVia('orgAdmin'); setRejectModalOpen(true); }}>
                     <XCircle size={13} />Reject
                   </Button>
                   <Button size="sm"
@@ -650,7 +778,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
                   </Button>
                   <Button size="sm" variant="outline"
                     className="flex-1 text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto font-semibold gap-1"
-                    onClick={e => { e.stopPropagation(); onDirectAction?.(idea.id, 'Rejected'); }}>
+                    onClick={e => { e.stopPropagation(); setPendingRejectVia('superadmin'); setRejectModalOpen(true); }}>
                     <XCircle size={13} />Reject
                   </Button>
                 </div>
@@ -658,6 +786,18 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
             )}
           </div>
       </div>
+
+      {rejectModalOpen && (
+        <RejectReasonModal
+          ideaTitle={idea.title}
+          onConfirm={(reason) => {
+            setRejectModalOpen(false);
+            if (pendingRejectVia === 'orgAdmin') onAction?.(idea.id, 'Rejected', reason);
+            else onDirectAction?.(idea.id, 'Rejected', reason);
+          }}
+          onCancel={() => { setRejectModalOpen(false); setPendingRejectVia(null); }}
+        />
+      )}
 
       {/* Detail Modal — via portal, always centered */}
       {modalOpen && (

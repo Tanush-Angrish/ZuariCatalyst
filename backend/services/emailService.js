@@ -192,15 +192,18 @@ async function sendIdeaApprovedEmail({ toEmails, ideaTitle, authorName, projectI
 }
 
 // ─── Template D: Idea Rejected ─────────────────────────────────────────────
-async function sendIdeaRejectedEmail({ toEmails, ideaTitle, authorName }) {
+async function sendIdeaRejectedEmail({ toEmails, ideaTitle, authorName, rejectionReason }) {
   const html = wrapHtml(`
     <p>Hello ${authorName},</p>
     <p>Thank you for submitting your idea. After careful review, it has been marked as <strong style="color:#dc2626;">not approved</strong> at this time.</p>
     <div class="detail-box">
       <div class="detail-row"><span class="detail-label">Idea Title</span><span class="detail-value">${ideaTitle}</span></div>
       <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" style="color:#dc2626;">✗ Rejected</span></div>
+      ${rejectionReason ? `<div class="detail-row"><span class="detail-label">Reason</span><span class="detail-value" style="color:#374151;">${rejectionReason}</span></div>` : ''}
     </div>
-    <div class="action-box">💡 <strong>Next Step:</strong> You are encouraged to review, improve, and resubmit your idea. Great ideas often need refinement before approval.</div>
+    <div class="action-box">🔄 <strong>Coming Soon — Resubmit Feature:</strong> We are working on a new feature that will allow you to update and resubmit your idea for review after making improvements. Stay tuned!</div>
+    <div class="action-box">💡 <strong>Next Step:</strong> Review the feedback above, refine your idea, and look out for the resubmission feature in Zuari Catalyst soon.</div>
+    <p style="margin-top:16px;">You can view your idea and its status at any time in the <a href="https://staging.catalyst.zuarione.com/" style="color:#003580;">Zuari Catalyst portal</a>.</p>
   `);
 
   return sendEmail({

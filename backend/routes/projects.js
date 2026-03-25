@@ -176,6 +176,17 @@ router.put('/:id/steps/:stepId', async (req, res) => {
   }
 });
 
+// ─── DELETE /api/projects/:id/steps/all ───────────────────────────────────
+// MUST be declared BEFORE /:id/steps/:stepId — otherwise Express treats 'all' as a stepId
+router.delete('/:id/steps/all', async (req, res) => {
+  try {
+    await prisma.projectStep.deleteMany({ where: { projectId: parseInt(req.params.id) } });
+    res.json({ message: 'All steps deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ─── DELETE /api/projects/:id/steps/:stepId ───────────────────────────────
 router.delete('/:id/steps/:stepId', async (req, res) => {
   try {
@@ -188,9 +199,10 @@ router.delete('/:id/steps/:stepId', async (req, res) => {
 });
 
 // ─── POST /api/projects/:id/steps/bulk ────────────────────────────────────
-// Save multiple steps at once (used after Gemini plan confirmation)
+// Save multiple steps at once and optionally finalize (lock AI)
 router.post('/:id/steps/bulk', async (req, res) => {
-  const { steps } = req.body; // array of { description, status, deadline }
+  const projectId = parseInt(req.params.id);
+  const { steps, finalize } = req.body; // finalize: boolean
   if (!Array.isArray(steps) || steps.length === 0) {
     return res.status(400).json({ error: 'steps array is required' });
   }
@@ -198,15 +210,34 @@ router.post('/:id/steps/bulk', async (req, res) => {
     const created = await prisma.$transaction(
       steps.map(s => prisma.projectStep.create({
         data: {
-          projectId: parseInt(req.params.id),
+          projectId,
           description: s.description,
           status: s.status || 'Pending',
           deadline: s.deadline ? new Date(s.deadline) : null
         }
       }))
     );
-    res.json(created);
+    if (finalize) {
+      await prisma.project.update({ where: { id: projectId }, data: { isStepsFinalized: true } });
+    }
+    res.json({ steps: created, isStepsFinalized: !!finalize });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// ─── PUT /api/projects/:id/finalize-steps ─────────────────────────────────
+// Permanently lock AI step generation for this project
+router.put('/:id/finalize-steps', async (req, res) => {
+  try {
+    const project = await prisma.project.update({
+      where: { id: parseInt(req.params.id) },
+      data: { isStepsFinalized: true }
+    });
+    res.json({ isStepsFinalized: project.isStepsFinalized });
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'Project not found' });
     res.status(500).json({ error: error.message });
   }
 });
