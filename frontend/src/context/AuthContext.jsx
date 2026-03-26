@@ -35,8 +35,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // msLogin removed — MSAL/Outlook SSO is disabled
-  // const msLogin = async (idToken) => { ... };
+  const msLogin = async (idToken) => {
+    try {
+      const data = await api.msLogin({ idToken });
+      setUser(data.user);
+      localStorage.setItem('demo_user', JSON.stringify(data.user));
+      return data.user;
+    } catch (error) {
+      console.error('MS Login Error:', error);
+      throw error;
+    }
+  };
+
 
   const logout = () => {
     setUser(null);
@@ -48,7 +58,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, msLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -58,11 +58,10 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(credentials),
   }),
-  // msLogin removed — MSAL/Outlook SSO is disabled
-  // msLogin: (data) => request('/api/auth/ms-login', {
-  //   method: 'POST',
-  //   body: JSON.stringify(data),
-  // }),
+  msLogin: (data) => request('/api/auth/ms-login', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 
   // Ideas
   // Ideas

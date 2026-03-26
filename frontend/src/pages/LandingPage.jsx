@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-// MSAL / Outlook SSO imports removed — see msalConfig.js
+import { useMsal } from '@azure/msal-react';
+import { loginRequest } from '../lib/msalConfig';
 import { ArrowRight, AlertCircle, X, Check, Activity, Shield, Lightbulb, ChevronUp } from 'lucide-react';
 
 import './LandingPage.css';
@@ -12,7 +13,8 @@ import FeaturesTabs from '../components/landing/FeaturesTabs';
 const ALLOWED_DOMAIN = '@adventz.com';
 
 export default function LandingPage() {
-  const { login } = useAuth();
+  const { login, msLogin } = useAuth();
+  const { instance } = useMsal();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -70,7 +72,22 @@ export default function LandingPage() {
     }
   };
 
-  // handleOutlookLogin removed — MSAL/Outlook SSO is disabled
+  const handleOutlookLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const response = await instance.loginPopup(loginRequest);
+      if (response && response.idToken) {
+        await msLogin(response.idToken);
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Microsoft authentication failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
@@ -341,7 +358,7 @@ export default function LandingPage() {
               </div>
               
               <form onSubmit={handleLogin} className="space-y-5">
-                {/* Microsoft Outlook button
+                {/* Microsoft Outlook button */}
                 <button 
                   type="button" 
                   onClick={handleOutlookLogin}
@@ -351,7 +368,7 @@ export default function LandingPage() {
                   <svg viewBox="0 0 23 23" className="w-[18px] h-[18px]">
                     <path fill="#f35325" d="M1 1h10v10H1z" />
                     <path fill="#81bc06" d="M12 1h10v10H12z" />
-                    <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                    <path fill="#05a6f0" d="M1 12h10v10H12z" />
                     <path fill="#ffba08" d="M12 12h10v10H12z" />
                   </svg>
                   Continue with Microsoft
@@ -362,7 +379,6 @@ export default function LandingPage() {
                   <span className="px-4 text-[11px] uppercase font-bold text-gray-400 tracking-wider">Or</span>
                   <div className="flex-grow border-t border-gray-100"></div>
                 </div>
-                */}
 
                 {error && (
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-[13px] font-semibold border border-red-100">
