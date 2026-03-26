@@ -7,10 +7,14 @@
  * e.g., to "http://<ec2-ip>:5000". If empty, it assumes the API is served on the same domain.
  */
 
-// Default to localhost:5000 for local development if no VITE_API_URL is provided
-const DEFAULT_API_URL = '';
-const BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
-console.log("Loaded API Base URL:", BASE_URL);
+// Smart BASE_URL resolution — works in all environments with zero config:
+//   npm run dev  (port 5173) → API on http://<same-hostname>:5000
+//   npm run serve / AWS      → API on same origin (empty string = relative paths)
+const isViteDev = window.location.port === '5173';
+const BASE_URL = import.meta.env.VITE_API_URL ||
+  (isViteDev ? `http://${window.location.hostname}:5000` : '');
+console.log("Loaded API Base URL:", BASE_URL || '(same origin)');
+
 
 async function request(endpoint, options = {}) {
   // Always prepend BASE_URL to the endpoint so that static AWS builds can route requests to your EC2 backend
@@ -54,10 +58,11 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(credentials),
   }),
-  msLogin: (data) => request('/api/auth/ms-login', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
+  // msLogin removed — MSAL/Outlook SSO is disabled
+  // msLogin: (data) => request('/api/auth/ms-login', {
+  //   method: 'POST',
+  //   body: JSON.stringify(data),
+  // }),
 
   // Ideas
   // Ideas

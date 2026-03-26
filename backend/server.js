@@ -57,6 +57,25 @@ app.post('/api/test-email', async (req, res) => {
   }
 });
 
+// ── Unified server: serve the built React frontend ────────────────────────
+// When running via `npm run serve`, the frontend is built into frontend/dist.
+// Express serves those static files and falls back to index.html for React Router.
+// This makes the app work from a single URL on any network (local, same-network, AWS).
+const FRONTEND_DIST = path.join(__dirname, '../frontend/dist');
+const frontendDistExists = require('fs').existsSync(path.join(FRONTEND_DIST, 'index.html'));
+
+if (frontendDistExists) {
+  app.use(express.static(FRONTEND_DIST));
+  // Express 5 catch-all: named wildcard is required (bare '*' is not valid in Express 5)
+  app.get('/{*path}', (req, res) => {
+    res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
+  });
+  console.log('[Server] Serving built frontend from frontend/dist');
+} else {
+  console.log('[Server] No frontend/dist found — run "npm run serve" from root to build. Running API-only mode.');
+}
+
+
 // Run seed and then start server
 runSeed().then(() => {
   const server = app.listen(PORT, () => {
