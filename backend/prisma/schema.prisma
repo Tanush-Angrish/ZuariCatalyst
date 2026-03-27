@@ -123,9 +123,12 @@ model ProjectStep {
   projectId   Int
   description String
   status      String    @default("Pending") // Pending | In Progress | Completed
-  deadline    DateTime?
+  deadline         DateTime?
+  dependencyStepId Int?
 
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  dependencyStep ProjectStep?  @relation("StepDependencies", fields: [dependencyStepId], references: [id])
+  dependentSteps ProjectStep[] @relation("StepDependencies")
 
   @@map("project_steps")
 }

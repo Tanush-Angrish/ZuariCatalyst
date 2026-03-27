@@ -318,22 +318,21 @@ router.put('/:id/assign', async (req, res) => {
     });
     res.json({ message: 'Idea assigned successfully' });
 
-    // Email Org Admin + Central Team in background
-    const [orgAdmin, centralEmails] = await Promise.all([
-      prisma.user.findUnique({ where: { id: parseInt(assignedToId) }, select: { name: true, email: true } }),
-      getCentralTeamEmails()
-    ]);
+    // Fetch Org Admin details for email/notification
+    const orgAdmin = await prisma.user.findUnique({ 
+      where: { id: parseInt(assignedToId) }, 
+      select: { name: true, email: true } 
+    });
 
     // DB Notifications
     notifyUser(updatedIdea.authorId, 'idea', `Your idea '${updatedIdea.title}' has been assigned to an Org Admin for review.`, ideaId);
     notifyUser(parseInt(assignedToId), 'idea', `You have been assigned to review idea: ${updatedIdea.title}`, ideaId);
     notifyCentralTeam('idea', `Idea '${updatedIdea.title}' assigned to ${orgAdmin?.name}`, ideaId);
 
-    // Email Org Admin + Central Team in background
-    const toEmails = [...new Set([orgAdmin?.email, ...centralEmails].filter(Boolean))];
-    if (toEmails.length > 0 && orgAdmin) {
+    // Email Org Admin in background (Central Team removed as per new rule)
+    if (orgAdmin && orgAdmin.email) {
       sendIdeaAssignedEmail({
-        toEmails,
+        toEmails: [orgAdmin.email],
         ideaTitle: updatedIdea.title,
         assignedToName: orgAdmin.name,
         submittedBy: updatedIdea.author.name,

@@ -73,14 +73,25 @@ function Section({ title, children, action }) {
 }
 
 // ─── Step Card ─────────────────────────────────────────────────────────────
-function StepCard({ step, canEdit, onEdit, onDelete }) {
+function StepCard({ step, allSteps = [], canEdit, onEdit, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [desc, setDesc] = useState(step.description);
   const [status, setStatus] = useState(step.status);
   const [deadline, setDeadline] = useState(step.deadline ? step.deadline.split('T')[0] : '');
+  const [depId, setDepId] = useState(step.dependencyStepId ? String(step.dependencyStepId) : '');
+
+  const myIndex = allSteps.findIndex(s => s.id === step.id);
+  const availableDependencies = myIndex > 0 ? allSteps.slice(0, myIndex) : [];
+  
+  const depStep = step.dependencyStepId ? allSteps.find(s => s.id === step.dependencyStepId) : null;
 
   const handleSave = () => {
-    onEdit(step.id, { description: desc, status, deadline: deadline || null });
+    onEdit(step.id, { 
+      description: desc, 
+      status: step.isLocked ? 'Pending' : status, 
+      deadline: deadline || null,
+      dependencyStepId: depId ? parseInt(depId) : null 
+    });
     setEditing(false);
   };
 
@@ -94,20 +105,39 @@ function StepCard({ step, canEdit, onEdit, onDelete }) {
             value={desc}
             onChange={e => setDesc(e.target.value)}
           />
-          <div className="flex gap-2 flex-wrap">
-            <select
-              className="border border-gray-300 rounded-lg text-xs p-1.5 bg-white focus:ring-1 focus:ring-blue-500"
-              value={status}
-              onChange={e => setStatus(e.target.value)}
-            >
-              {STEP_STATUSES.map(s => <option key={s}>{s}</option>)}
-            </select>
+          <div className="flex gap-2 flex-wrap items-center">
+            {step.isLocked ? (
+              <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-200 flex items-center gap-1">
+                <Lock size={12} /> Dependency Locked
+              </span>
+            ) : (
+              <select
+                className="border border-gray-300 rounded-lg text-xs p-1.5 bg-white focus:ring-1 focus:ring-blue-500"
+                value={status}
+                onChange={e => setStatus(e.target.value)}
+              >
+                {STEP_STATUSES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            )}
             <input
               type="date"
               className="border border-gray-300 rounded-lg text-xs p-1.5 bg-white focus:ring-1 focus:ring-blue-500"
               value={deadline}
+              min={step.minDate || ''}
               onChange={e => setDeadline(e.target.value)}
             />
+            {availableDependencies.length > 0 && (
+              <select
+                className="border border-gray-300 rounded-lg text-xs p-1.5 bg-white focus:ring-1 focus:ring-blue-500 max-w-[150px] truncate"
+                value={depId}
+                onChange={e => setDepId(e.target.value)}
+              >
+                <option value="">No Dependency</option>
+                {availableDependencies.map((d, i) => (
+                  <option key={d.id} value={d.id}>Depends on Step {i + 1}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={handleSave} className="text-xs h-auto py-1.5">
@@ -129,6 +159,12 @@ function StepCard({ step, canEdit, onEdit, onDelete }) {
               {step.deadline && (
                 <span className="text-[10px] text-gray-400 flex items-center gap-1">
                   <Calendar size={9} />Due {fmtDate(step.deadline)}
+                </span>
+              )}
+              {depStep && (
+                <span className={`text-[10px] flex items-center gap-1 font-medium px-1.5 py-0.5 rounded border ${step.isLocked ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                  {step.isLocked ? <Lock size={9} /> : <CheckCircle2 size={9} className="text-green-500" />}
+                  Depends on: Step {allSteps.findIndex(s => s.id === depStep.id) + 1}
                 </span>
               )}
             </div>
@@ -196,6 +232,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
   const [addingStep, setAddingStep] = useState(false);
   const [newStepDesc, setNewStepDesc] = useState('');
   const [newStepDeadline, setNewStepDeadline] = useState('');
+  const [newStepDependencyId, setNewStepDependencyId] = useState('');
   const [geminiLoading, setGeminiLoading] = useState(false);
   const [geminiSteps, setGeminiSteps] = useState(null); // pending review
   const [savingGemini, setSavingGemini] = useState(false);
@@ -230,6 +267,68 @@ export default function ProjectModal({ project: initialProject, onClose, current
   });
   const canChat = isPrivileged || isMentioned;
 
+  // ── State Engine: Deterministic Workflow ──
+  const derivedSteps = React.useMemo(() => {
+    if (!steps || steps.length === 0) return [];
+    const derived = [...steps];
+    let isPreviousLocked = false;
+    
+    for (let i = 0; i < derived.length; i++) {
+      const step = { ...derived[i] };
+      const prevStep = i > 0 ? derived[i - 1] : null;
+
+      let depLocked = false;
+      let depDeadline = null;
+      if (step.dependencyStepId) {
+        const dep = derived.find(s => s.id === step.dependencyStepId);
+        if (dep) {
+          if (dep.status !== 'Completed') depLocked = true;
+          if (dep.deadline) depDeadline = new Date(dep.deadline).getTime();
+        }
+      }
+
+      const isLocked = isPreviousLocked || depLocked;
+      if (isLocked) isPreviousLocked = true;
+      step.isLocked = isLocked;
+
+      let minTime = null;
+      if (prevStep && prevStep.deadline) minTime = new Date(prevStep.deadline).getTime();
+      if (depDeadline && (minTime === null || depDeadline > minTime)) minTime = depDeadline;
+
+      if (minTime !== null) {
+        const minDate = new Date(minTime);
+        minDate.setDate(minDate.getDate() + 1);
+        step.minDate = minDate.toISOString().split('T')[0];
+      } else {
+        step.minDate = '';
+      }
+
+      derived[i] = step;
+    }
+    return derived;
+  }, [steps]);
+
+  const newStepMinDate = React.useMemo(() => {
+    if (!derivedSteps || derivedSteps.length === 0) return '';
+    const lastStep = derivedSteps[derivedSteps.length - 1];
+    let minTime = null;
+    if (lastStep && lastStep.deadline) minTime = new Date(lastStep.deadline).getTime();
+    
+    if (newStepDependencyId) {
+      const dep = derivedSteps.find(s => s.id === parseInt(newStepDependencyId));
+      if (dep && dep.deadline) {
+        const depTime = new Date(dep.deadline).getTime();
+        if (minTime === null || depTime > minTime) minTime = depTime;
+      }
+    }
+    if (minTime !== null) {
+      const minDate = new Date(minTime);
+      minDate.setDate(minDate.getDate() + 1);
+      return minDate.toISOString().split('T')[0];
+    }
+    return '';
+  }, [derivedSteps, newStepDependencyId]);
+
   // ── Fetch steps & messages ────────────────────────────────────────────────
   const fetchSteps = useCallback(async () => {
     try {
@@ -263,9 +362,14 @@ export default function ProjectModal({ project: initialProject, onClose, current
   // ── Step actions ─────────────────────────────────────────────────────────
   const handleAddStep = async () => {
     if (!newStepDesc.trim()) return;
+
     try {
-      await api.addProjectStep(project.id, { description: newStepDesc, deadline: newStepDeadline || null });
-      setNewStepDesc(''); setNewStepDeadline(''); setAddingStep(false);
+      await api.addProjectStep(project.id, { 
+        description: newStepDesc, 
+        deadline: newStepDeadline || null,
+        dependencyStepId: newStepDependencyId ? parseInt(newStepDependencyId) : null 
+      });
+      setNewStepDesc(''); setNewStepDeadline(''); setNewStepDependencyId(''); setAddingStep(false);
       fetchSteps();
       notify({ type: 'success', title: 'Step Added', message: 'The project step has been created.' });
     } catch (e) {
@@ -756,8 +860,21 @@ export default function ProjectModal({ project: initialProject, onClose, current
                       type="date"
                       className="border border-gray-300 rounded-lg text-xs p-1.5 bg-white"
                       value={newStepDeadline}
+                      min={newStepMinDate}
                       onChange={e => setNewStepDeadline(e.target.value)}
                     />
+                    {derivedSteps.length > 0 && (
+                      <select
+                        className="border border-gray-300 rounded-lg text-xs p-1.5 bg-white max-w-[140px] truncate"
+                        value={newStepDependencyId}
+                        onChange={e => setNewStepDependencyId(e.target.value)}
+                      >
+                        <option value="">No Dependency</option>
+                        {derivedSteps.map((s, i) => (
+                          <option key={s.id} value={s.id}>Depends on Step {i + 1}</option>
+                        ))}
+                      </select>
+                    )}
                     <Button size="sm" onClick={handleAddStep} className="text-xs">
                       <Plus size={12} className="mr-1" />Add
                     </Button>
@@ -853,10 +970,11 @@ export default function ProjectModal({ project: initialProject, onClose, current
 
               {/* ── Steps List ── */}
               <div className="space-y-2">
-                {steps.map(step => (
+                {derivedSteps.map(step => (
                   <StepCard
                     key={step.id}
                     step={step}
+                    allSteps={derivedSteps}
                     canEdit={isPrivileged}
                     onEdit={handleEditStep}
                     onDelete={handleDeleteStep}

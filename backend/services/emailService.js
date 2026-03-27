@@ -56,16 +56,26 @@ async function sendEmail({ to, subject, html, eventType = 'unknown' }) {
     return false;
   }
 
-  const recipients = Array.isArray(to) ? to.filter(Boolean).join(', ') : to;
-  if (!recipients) {
+  // System copy logic — ensure the app email always gets a copy
+  const systemEmail = process.env.EMAIL_USER;
+  let recipients = Array.isArray(to) ? to.filter(Boolean) : [to].filter(Boolean);
+  
+  // Add system email if not already present
+  if (systemEmail && !recipients.includes(systemEmail)) {
+    recipients.push(systemEmail);
+  }
+
+  const toStr = recipients.join(', ');
+
+  if (!toStr) {
     console.warn(`[Email] Skipping email (${eventType}): no recipients`);
     return false;
   }
 
   try {
     const info = await transporter.sendMail({
-      from: `"Zuari Catalyst" <${process.env.EMAIL_USER}>`,
-      to: recipients,
+      from: `"Zuari Catalyst" <${systemEmail}>`,
+      to: toStr,
       subject,
       html
     });
