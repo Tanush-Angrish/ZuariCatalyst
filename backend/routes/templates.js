@@ -300,10 +300,24 @@ router.post('/generate', async (req, res) => {
     return res.status(400).json({ error: 'prompt is required' });
   }
   try {
-    const result = await generateTemplateFromPrompt(prompt.trim());
+    // Fetch Master Template fields so Gemini knows what NOT to generate
+    let masterFields = [];
+    try {
+      const master = await prisma.ideaTemplate.findUnique({ where: { id: 'MASTER_TEMPLATE' } });
+      if (master && master.fields) {
+        masterFields = JSON.parse(master.fields);
+      }
+    } catch (e) {
+      console.warn('[Templates] Could not fetch master template for AI context:', e.message);
+    }
+
+    const result = await generateTemplateFromPrompt(prompt.trim(), masterFields);
+
     if (!result) {
       return res.status(500).json({ error: 'AI could not generate a template. Try a more detailed prompt.' });
     }
+
+    // Partial success: return even if Gemini returned fewer fields than expected
     res.json(result);
   } catch (error) {
     console.error('[Templates] AI generation error:', error.message);
@@ -313,11 +327,41 @@ router.post('/generate', async (req, res) => {
 
 // ─── Template Categories CRUD ─────────────────────────────────────────────────
 
-// GET /api/templates/categories — list all categories
+// GET /api/templates/categories — list all categories (self-healing)
+// Also scans existing templates and auto-adds any category not yet in the table.
+// This prevents mismatch between template data and the categories UI on any environment.
 router.get('/categories', async (req, res) => {
   try {
-    const cats = await prisma.templateCategory.findMany({ orderBy: { name: 'asc' } });
-    res.json(cats);
+    // 1. Fetch all categories already in the table
+    const tableCats = await prisma.templateCategory.findMany({ orderBy: { name: 'asc' } });
+    const tableNames = new Set(tableCats.map(c => c.name));
+
+    // 2. Scan all templates (excluding master) for their current category field
+    const templates = await prisma.ideaTemplate.findMany({
+      where: { id: { not: 'MASTER_TEMPLATE' } },
+      select: { category: true }
+    });
+
+    // 3. Find any categories used in templates but missing from the table
+    const usedCatNames = [...new Set(templates.map(t => t.category).filter(Boolean))];
+    const missingCatNames = usedCatNames.filter(name => !tableNames.has(name));
+
+    // 4. Auto-add missing categories so the UI is always consistent
+    if (missingCatNames.length > 0) {
+      await prisma.$transaction(
+        missingCatNames.map(name =>
+          prisma.templateCategory.upsert({
+            where: { name },
+            update: {},
+            create: { name }
+          })
+        )
+      );
+    }
+
+    // 5. Return the fresh, complete list
+    const allCats = await prisma.templateCategory.findMany({ orderBy: { name: 'asc' } });
+    res.json(allCats);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

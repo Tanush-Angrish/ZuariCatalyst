@@ -44,10 +44,29 @@ router.get('/', async (req, res) => {
     const where = buildProjectFilter(parseInt(userId), role, organization || '');
     const projects = await prisma.project.findMany({
       where,
-      include: { steps: true },
+      include: {
+        steps: true,
+        // Join idea to get submitter + approver names
+        idea: {
+          select: {
+            author: { select: { name: true } },
+            approvedBy: { select: { name: true } },
+            approvedByRole: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
-    res.json(projects);
+
+    // Flatten idea attribution fields onto project
+    const formatted = projects.map(p => ({
+      ...p,
+      submittedByName: p.idea?.author?.name || null,
+      approvedByName: p.idea?.approvedBy?.name || null,
+      approvedByRole: p.idea?.approvedByRole || null,
+      idea: undefined  // don't expose entire idea object
+    }));
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -60,11 +79,26 @@ router.get('/:id', async (req, res) => {
       where: { id: parseInt(req.params.id) },
       include: {
         steps: { orderBy: { id: 'asc' } },
-        messages: { orderBy: { createdAt: 'asc' } }
+        messages: { orderBy: { createdAt: 'asc' } },
+        idea: {
+          select: {
+            author: { select: { name: true } },
+            approvedBy: { select: { name: true } },
+            approvedByRole: true
+          }
+        }
       }
     });
     if (!project) return res.status(404).json({ error: 'Project not found' });
-    res.json(project);
+
+    const formatted = {
+      ...project,
+      submittedByName: project.idea?.author?.name || null,
+      approvedByName: project.idea?.approvedBy?.name || null,
+      approvedByRole: project.idea?.approvedByRole || null,
+      idea: undefined
+    };
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

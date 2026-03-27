@@ -307,10 +307,10 @@ export default function ProjectModal({ project: initialProject, onClose, current
         setGeminiSteps(data.steps.map(s => ({ ...s, _editing: false })));
         setHasGenerated(true); // mark generate as used — enables Regenerate once
       } else {
-        notify({ type: 'error', title: 'AI Error', message: 'Gemini could not generate a plan. Check your API key.' });
+        notify({ type: 'error', title: 'AI Error', message: 'AI could not generate a plan. Check your API key.' });
       }
     } catch (e) {
-      notify({ type: 'error', title: 'AI Error', message: 'Error calling Gemini AI.' });
+      notify({ type: 'error', title: 'AI Error', message: 'Error calling AI.' });
     }
     setGeminiLoading(false);
   };
@@ -434,7 +434,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
       {showRegenerateConfirm && (
         <ConfirmDialog
           title="Regenerate AI Steps?"
-          body="This will permanently DELETE all existing steps and generate a brand-new plan with Gemini AI. This cannot be undone."
+          body="This will permanently DELETE all existing steps and generate a brand-new plan with AI. This cannot be undone."
           confirmLabel="Yes, Regenerate"
           confirmClass="bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
           icon={<AlertTriangle size={20} className="text-amber-500" />}
@@ -447,7 +447,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
       {showSaveConfirm && (
         <ConfirmDialog
           title="Save & Lock AI Planning?"
-          body="Once saved, AI planning (Gemini) will be permanently disabled for this project. You can still add, edit, and delete steps manually."
+          body="Once saved, AI planning will be permanently disabled for this project. You can still add, edit, and delete steps manually."
           confirmLabel="Confirm & Save"
           confirmClass="bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
           icon={<Lock size={20} className="text-purple-500" />}
@@ -593,6 +593,31 @@ export default function ProjectModal({ project: initialProject, onClose, current
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Created On</p>
                   <p className="text-sm font-medium text-gray-700">{fmtDate(project.createdAt)}</p>
                 </div>
+
+                {/* Submitted By */}
+                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-2">Submitted By</p>
+                  <p className="text-sm font-semibold text-blue-800">
+                    {project.submittedByName || <span className="text-gray-400 font-normal">—</span>}
+                  </p>
+                </div>
+
+                {/* Approved By */}
+                <div className="p-4 rounded-xl bg-green-50 border border-green-100">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-green-400 mb-2">Approved By</p>
+                  {project.approvedByName ? (
+                    <div>
+                      <p className="text-sm font-semibold text-green-800">{project.approvedByName}</p>
+                      {project.approvedByRole && (
+                        <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 border border-green-200 text-green-700">
+                          {project.approvedByRole === 'central' ? 'Central Team' : 'Org Admin'}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">—</p>
+                  )}
+                </div>
               </div>
 
               {steps.length > 0 && (
@@ -625,7 +650,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
                   <div>
                     <p className="text-sm font-semibold text-purple-800">AI Planning Locked</p>
                     <p className="text-xs text-purple-600 mt-0.5">
-                      Gemini step generation has been finalized. You can still add, edit, and delete steps manually below.
+                      AI step generation has been finalized. You can still add, edit, and delete steps manually below.
                     </p>
                   </div>
                 </div>
@@ -646,7 +671,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
                       >
                         {geminiLoading
                           ? <><Loader2 size={14} className="animate-spin" />Generating...</>
-                          : <><Sparkles size={14} />Use Gemini for Planning</>
+                          : <><Sparkles size={14} />Use AI for Planning</>
                         }
                       </Button>
                     )}
@@ -689,7 +714,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
                   {!hasGenerated && (
                     <p className="text-[11px] text-gray-400">
                       <Sparkles size={10} className="inline mr-1 text-purple-400" />
-                      Gemini can generate once and regenerate <strong>once</strong>. After saving, AI is permanently disabled.
+                      AI can generate once and regenerate <strong>once</strong>. After saving, AI is permanently disabled.
                     </p>
                   )}
                   {hasGenerated && !hasRegenerated && (
@@ -748,7 +773,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
                 <div className="rounded-xl border-2 border-purple-200 bg-purple-50 p-4 space-y-3">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <Sparkles size={15} className="text-purple-600" />
-                    <span className="text-sm font-bold text-purple-700">Gemini-Generated Plan</span>
+                    <span className="text-sm font-bold text-purple-700">AI-Generated Plan</span>
                     <span className="text-xs text-purple-500">— review and edit before saving</span>
                   </div>
 

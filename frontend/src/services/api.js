@@ -72,6 +72,7 @@ export const api = {
   getPendingIdeas: () => request('/api/ideas/pending'),
   getCentralAssigned: () => request('/api/ideas/central/assigned'),
   getCentralApproved: () => request('/api/ideas/central/approved'),
+  getCentralApprovedByAdmin: () => request('/api/ideas/central/approved-by-admin'),
   getAssignedIdeas: (userId) => request(`/api/ideas/assigned/${userId}`),
   getMyIdeas: (userId) => request(`/api/ideas/my-ideas/${userId}`),
   getOrgIdeas: (orgName) => request(`/api/ideas/team/${encodeURIComponent(orgName)}`),
@@ -81,9 +82,13 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(payload),
   }),
-  updateIdeaStatus: (id, status, rejectionReason) => request(`/api/ideas/${id}/status`, {
+  updateIdeaStatus: (id, status, rejectionReason, approvedById, approvedByRole) => request(`/api/ideas/${id}/status`, {
     method: 'PUT',
-    body: JSON.stringify({ status, ...(rejectionReason ? { rejectionReason } : {}) }),
+    body: JSON.stringify({
+      status,
+      ...(rejectionReason ? { rejectionReason } : {}),
+      ...(approvedById ? { approvedById, approvedByRole } : {})
+    }),
   }),
   assignIdea: (id, assignedToId) => request(`/api/ideas/${id}/assign`, {
     method: 'PUT',

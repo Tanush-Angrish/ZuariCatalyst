@@ -6,6 +6,9 @@ const prisma = require('../db/prisma');
 router.get('/leaderboard', async (req, res) => {
   try {
     const leaderboard = await prisma.userPoint.findMany({
+      where: {
+        user: { role: 'Employee' }
+      },
       orderBy: { totalPoints: 'desc' },
       take: 10,
       include: {
@@ -34,6 +37,12 @@ router.get('/leaderboard', async (req, res) => {
 router.get('/user/:userId', async (req, res) => {
   const userId = parseInt(req.params.userId);
   try {
+    // Determine if user is eligible to have points (Employee only)
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    if (!user || user.role !== 'Employee') {
+      return res.json({ totalPoints: 0, logs: [] });
+    }
+
     const userPoint = await prisma.userPoint.findUnique({
       where: { userId }
     });

@@ -61,7 +61,7 @@ export default function Leaderboard() {
       </div>
 
       {/* My Points Card */}
-      {user && (
+      {user && user.role === 'Employee' && (
         <div className="flex items-center justify-between p-4 rounded-xl bg-brand-blue/5 border border-brand-blue/10">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-brand-blue text-white flex items-center justify-center font-bold text-sm">

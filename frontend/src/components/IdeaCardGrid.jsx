@@ -139,7 +139,7 @@ function ReadMoreText({ text }) {
 }
 
 // ─── Detail Modal (rendered via Portal for proper centering) ───────────────
-function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAdmins, selectedAdmins, onAdminSelect, onDirectAction, templates }) {
+function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAdmins, selectedAdmins, onAdminSelect, onDirectAction, templates, isEmployee }) {
   const [viewingFile, setViewingFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
   const [loadingFile, setLoadingFile] = useState(false);
@@ -148,9 +148,9 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
   const templateDef = (templates || []).find(t => t.id === idea.extra?._templateId);
   const fields = templateDef?.fields ?? [];
 
-  const isEmployee = viewType === 'employee' || viewType === 'myIdeas' || viewType === 'community';
+  const isEmployeeView = viewType === 'employee' || viewType === 'myIdeas';
   const isOwnIdea = currentUser && idea.authorId === currentUser.id;
-  const showRejectionBanner = idea.status === 'Rejected' && (isEmployee || isOwnIdea);
+  const showRejectionBanner = idea.status === 'Rejected' && (isEmployeeView || isOwnIdea);
 
   const handleRejectClick = (ideaId, via) => {
     setPendingRejectTarget({ id: ideaId, via });
@@ -272,13 +272,15 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold text-brand-black leading-snug">{idea.title}</h2>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                <Badge variant={statusVariant(idea.status)}>{idea.status}</Badge>
-                {idea.authorOrganization && (
+                {!(isEmployee && viewType === 'community') && (
+                  <Badge variant={statusVariant(idea.status)}>{idea.status}</Badge>
+                )}
+                {idea.authorOrganization && !(isEmployee && viewType === 'community') && (
                   <span className="text-xs text-gray-400 flex items-center gap-1">
                     <Building size={10} />{idea.authorOrganization}
                   </span>
                 )}
-                {idea.department && (
+                {idea.department && !(isEmployee && viewType === 'community') && (
                   <span className="text-xs text-gray-400 flex items-center gap-1">
                     <Tag size={10} />{idea.department}
                   </span>
@@ -297,7 +299,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
           {/* Body */}
           <div className="px-6 py-5 space-y-5">
             {/* Rejection reason banner — shown to employees for their own rejected ideas */}
-          {showRejectionBanner && idea.rejectionReason && (
+          {showRejectionBanner && idea.rejectionReason && !(isEmployee && viewType === 'community') && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <XCircle size={16} className="text-red-500 shrink-0" />
@@ -315,7 +317,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
           )}
 
           {/* Rejection placeholder when no reason stored (old ideas) */}
-          {showRejectionBanner && !idea.rejectionReason && (
+          {showRejectionBanner && !idea.rejectionReason && !(isEmployee && viewType === 'community') && (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4">
               <div className="flex items-center gap-2">
                 <XCircle size={16} className="text-red-500 shrink-0" />
@@ -362,14 +364,16 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
               </div>
             )}
 
-            {/* Author block */}
+            {/* Author block (Shown to all) */}
             <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
               <div className="h-9 w-9 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center font-bold text-sm shrink-0">
                 {displayName.charAt(0)}
               </div>
               <div>
                 <p className="text-sm font-semibold text-brand-black">{displayName}</p>
-                <p className="text-xs text-gray-400">{idea.authorOrganization || 'No organization'}</p>
+                {!(isEmployee && viewType === 'community') && (
+                  <p className="text-xs text-gray-400">{idea.authorOrganization || 'No organization'}</p>
+                )}
               </div>
               <div className="ml-auto text-xs text-gray-400 flex items-center gap-1">
                 <Calendar size={11} />
@@ -377,133 +381,138 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
               </div>
             </div>
 
-            {/* Problem Description */}
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Problem Description</h3>
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-red-50/50 border border-red-100 rounded-lg p-3">
-                {problem || '—'}
-              </p>
-            </div>
+            {/* Everything below is HIDDEN in strict Employee Community mode */}
+            {!(isEmployee && viewType === 'community') && (
+              <>
+                {/* Problem Description */}
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Problem Description</h3>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-red-50/50 border border-red-100 rounded-lg p-3">
+                    {problem || '—'}
+                  </p>
+                </div>
 
-            {/* Proposed Solution */}
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Proposed Solution</h3>
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-green-50/50 border border-green-100 rounded-lg p-3">
-                {solution || '—'}
-              </p>
-            </div>
+                {/* Proposed Solution */}
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Proposed Solution</h3>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-green-50/50 border border-green-100 rounded-lg p-3">
+                    {solution || '—'}
+                  </p>
+                </div>
 
-            {/* Expected Impact */}
-            {idea.expectedImpact && (
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Expected Impact</h3>
-                <p className="text-sm text-gray-700 leading-relaxed bg-blue-50/50 border border-blue-100 rounded-lg p-3">
-                  {idea.expectedImpact}
-                </p>
-              </div>
-            )}
+                {/* Expected Impact */}
+                {idea.expectedImpact && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Expected Impact</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed bg-blue-50/50 border border-blue-100 rounded-lg p-3">
+                      {idea.expectedImpact}
+                    </p>
+                  </div>
+                )}
 
-            {/* Extra template-specific fields */}
-            {extraFields.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {extraFields.map(f => {
-                  const val = idea.extra?.[f.id];
-                  if (!val) return null;
-                  if (f.type === 'url') return (
-                    <div key={f.id}>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{f.label}</h3>
-                      <a href={val} target="_blank" rel="noreferrer" className="text-brand-blue text-sm flex items-center gap-1 hover:underline">
-                        <LinkIcon size={12} />View Link
-                      </a>
+                {/* Extra template-specific fields */}
+                {extraFields.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {extraFields.map(f => {
+                      const val = idea.extra?.[f.id];
+                      if (!val) return null;
+                      if (f.type === 'url') return (
+                        <div key={f.id}>
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{f.label}</h3>
+                          <a href={val} target="_blank" rel="noreferrer" className="text-brand-blue text-sm flex items-center gap-1 hover:underline">
+                            <LinkIcon size={12} />View Link
+                          </a>
+                        </div>
+                      );
+                      return (
+                        <div key={f.id}>
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{f.label}</h3>
+                          <p className="text-sm text-gray-700">{val}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Supporting link */}
+                {idea.supportingLink && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Supporting Link</h3>
+                    <a href={idea.supportingLink} target="_blank" rel="noreferrer"
+                      className="text-brand-blue text-sm flex items-center gap-1 hover:underline">
+                      <Paperclip size={12} />View Attachment
+                    </a>
+                  </div>
+                )}
+
+                {/* File Attachments */}
+                {fileAttachments.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Attached Files</h3>
+                    <div className="space-y-2">
+                      {fileAttachments.map((f, i) => (
+                        <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                          <FileText size={16} className="text-brand-blue shrink-0" />
+                          <span className="text-sm text-gray-700 flex-1 truncate">{f.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setViewingFile(f)}
+                            className="text-brand-blue hover:underline text-xs flex items-center gap-1"
+                          >
+                            <Eye size={12} />View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDownload(e, api.getFileUrl(f.url), f.name)} 
+                            className="text-brand-blue hover:underline text-xs flex items-center gap-1"
+                          >
+                            <Download size={12} />Download
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  );
-                  return (
-                    <div key={f.id}>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{f.label}</h3>
-                      <p className="text-sm text-gray-700">{val}</p>
+                  </div>
+                )}
+
+                {/* Voice Notes */}
+                {voiceNotes.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Voice Notes</h3>
+                    <div className="space-y-2">
+                      {voiceNotes.map((v, i) => (
+                        <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-purple-50/50 border border-purple-100">
+                          <Mic size={16} className="text-purple-600 shrink-0" />
+                          <audio controls src={api.getFileUrl(v.url)} className="h-8 flex-1" />
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+                )}
 
-            {/* Supporting link */}
-            {idea.supportingLink && (
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Supporting Link</h3>
-                <a href={idea.supportingLink} target="_blank" rel="noreferrer"
-                  className="text-brand-blue text-sm flex items-center gap-1 hover:underline">
-                  <Paperclip size={12} />View Attachment
-                </a>
-              </div>
-            )}
-
-            {/* File Attachments */}
-            {fileAttachments.length > 0 && (
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Attached Files</h3>
-                <div className="space-y-2">
-                  {fileAttachments.map((f, i) => (
-                    <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
-                      <FileText size={16} className="text-brand-blue shrink-0" />
-                      <span className="text-sm text-gray-700 flex-1 truncate">{f.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setViewingFile(f)}
-                        className="text-brand-blue hover:underline text-xs flex items-center gap-1"
+                {/* Superadmin Assign panel */}
+                {viewType === 'superadmin' && orgAdmins?.length > 0 && (
+                  <div className="p-4 rounded-xl bg-gray-50 border">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Assign Reviewer</h3>
+                    <div className="flex gap-2">
+                      <select
+                        className="flex-1 border border-gray-300 rounded-lg text-sm p-2 focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
+                        value={selectedAdmins?.[idea.id] || ''}
+                        onChange={e => onAdminSelect?.(idea.id, e.target.value)}
                       >
-                        <Eye size={12} />View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDownload(e, api.getFileUrl(f.url), f.name)} 
-                        className="text-brand-blue hover:underline text-xs flex items-center gap-1"
-                      >
-                        <Download size={12} />Download
-                      </button>
+                        <option value="">Select Org Admin...</option>
+                        {orgAdmins.map(a => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}{a.organization ? ` (${a.organization})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <Button size="sm" className="shrink-0" onClick={() => { onAction?.(idea.id); onClose(); }}>
+                        <UserCheck size={14} className="mr-1" />Assign
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Voice Notes */}
-            {voiceNotes.length > 0 && (
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Voice Notes</h3>
-                <div className="space-y-2">
-                  {voiceNotes.map((v, i) => (
-                    <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-purple-50/50 border border-purple-100">
-                      <Mic size={16} className="text-purple-600 shrink-0" />
-                      <audio controls src={api.getFileUrl(v.url)} className="h-8 flex-1" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Superadmin Assign panel */}
-            {viewType === 'superadmin' && orgAdmins?.length > 0 && (
-              <div className="p-4 rounded-xl bg-gray-50 border">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Assign Reviewer</h3>
-                <div className="flex gap-2">
-                  <select
-                    className="flex-1 border border-gray-300 rounded-lg text-sm p-2 focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
-                    value={selectedAdmins?.[idea.id] || ''}
-                    onChange={e => onAdminSelect?.(idea.id, e.target.value)}
-                  >
-                    <option value="">Select Org Admin...</option>
-                    {orgAdmins.map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}{a.organization ? ` (${a.organization})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <Button size="sm" className="shrink-0" onClick={() => { onAction?.(idea.id); onClose(); }}>
-                    <UserCheck size={14} className="mr-1" />Assign
-                  </Button>
-                </div>
-              </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -625,7 +634,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
 }
 
 // ─── Single Idea Card ──────────────────────────────────────────────────────
-function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAdmins, onAdminSelect, onDirectAction, templates }) {
+function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAdmins, onAdminSelect, onDirectAction, templates, isEmployee }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [upvoteCount, setUpvoteCount] = useState(0);
   const [hasUpvoted, setHasUpvoted] = useState(false);
@@ -679,7 +688,10 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
               <span className="text-xs text-gray-400 hidden sm:block truncate">• {idea.authorOrganization}</span>
             )}
           </div>
-          <Badge variant={statusVariant(idea.status)} className="shrink-0 text-xs">{idea.status}</Badge>
+          {/* Hide Status badge for employees in community view */}
+          {!(isEmployee && viewType === 'community') && (
+            <Badge variant={statusVariant(idea.status)} className="shrink-0 text-xs">{idea.status}</Badge>
+          )}
         </div>
 
         {/* Card Body */}
@@ -812,6 +824,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
           onAdminSelect={onAdminSelect}
           onDirectAction={onDirectAction}
           templates={templates}
+          isEmployee={isEmployee}
         />
       )}
     </>
@@ -828,6 +841,7 @@ export default function IdeaCardGrid({
   onAdminSelect,
   onDirectAction,
   showSearch = true,
+  isEmployee = false,
 }) {
   const { user: currentUser } = useAuth();
   const [templates, setTemplates] = useState([]);
@@ -928,8 +942,8 @@ export default function IdeaCardGrid({
             )}
           </div>
 
-          {/* Status filter chips */}
-          {allStatuses.length > 2 && (
+          {/* Status filter chips — hidden for employees in Community Hub */}
+          {allStatuses.length > 2 && !(isEmployee && viewType === 'community') && (
             <div className="flex items-center gap-2 flex-wrap">
               <SlidersHorizontal size={13} className="text-gray-400 shrink-0" />
               {allStatuses.map(s => (
@@ -986,6 +1000,7 @@ export default function IdeaCardGrid({
               onAdminSelect={onAdminSelect}
               onDirectAction={onDirectAction}
               templates={templates}
+              isEmployee={isEmployee}
             />
           ))}
         </div>

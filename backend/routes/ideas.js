@@ -108,12 +108,18 @@ router.get('/central/assigned', async (req, res) => {
   }
 });
 
-// GET approved ideas for Central Team — Tab 3: Approved by Me (with project IDs)
+// GET approved ideas for Central Team — Tab 3: Approved by Me (ONLY ideas approved by Central Team)
 router.get('/central/approved', async (req, res) => {
   try {
     const ideas = await prisma.idea.findMany({
-      where: { status: 'Approved' },
-      include: { author: { select: { name: true, organization: true } } },
+      where: {
+        status: 'Approved',
+        approvedByRole: 'central'   // STRICT: only Central Team approvals
+      },
+      include: {
+        author: { select: { name: true, organization: true } },
+        approvedBy: { select: { id: true, name: true, role: true } }
+      },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -130,6 +136,8 @@ router.get('/central/approved', async (req, res) => {
       ...idea,
       authorName: idea.author.name,
       authorOrganization: idea.author.organization,
+      approvedByName: idea.approvedBy?.name || null,
+      approvedByRoleLabel: 'Central Team',
       project: projectMap[idea.id] || null
     }));
     res.json(formatted);
@@ -138,6 +146,43 @@ router.get('/central/approved', async (req, res) => {
   }
 });
 
+// GET ideas approved by Org Admin — Tab 4: Approved by Admin
+router.get('/central/approved-by-admin', async (req, res) => {
+  try {
+    const ideas = await prisma.idea.findMany({
+      where: {
+        status: 'Approved',
+        approvedByRole: 'admin'     // STRICT: only Org Admin approvals
+      },
+      include: {
+        author: { select: { name: true, organization: true } },
+        approvedBy: { select: { id: true, name: true, role: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Attach project info
+    const ideaIds = ideas.map(i => i.id);
+    const projects = await prisma.project.findMany({
+      where: { ideaId: { in: ideaIds } },
+      select: { ideaId: true, projectId: true, status: true }
+    });
+    const projectMap = {};
+    projects.forEach(p => { projectMap[p.ideaId] = p; });
+
+    const formatted = ideas.map(idea => ({
+      ...idea,
+      authorName: idea.author.name,
+      authorOrganization: idea.author.organization,
+      approvedByName: idea.approvedBy?.name || 'Unknown Admin',
+      approvedByRoleLabel: 'Org Admin',
+      project: projectMap[idea.id] || null
+    }));
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // GET assigned ideas (For Org Admin)
 router.get('/assigned/:userId', async (req, res) => {
@@ -301,11 +346,12 @@ router.put('/:id/assign', async (req, res) => {
   }
 });
 
-// PUT update status (Org Admin approve/reject)
+// PUT update status (Org Admin approve/reject, or Central Team direct approve)
+// Caller must pass: approvedById (Int) and approvedByRole ('admin' | 'central')
 router.put('/:id/status', async (req, res) => {
   const ideaId = parseInt(req.params.id);
-  const { status, rejectionReason } = req.body; // 'Approved' or 'Rejected'
-  
+  const { status, rejectionReason, approvedById, approvedByRole } = req.body;
+
   if (!['Approved', 'Rejected'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
@@ -319,7 +365,12 @@ router.put('/:id/status', async (req, res) => {
       where: { id: ideaId },
       data: {
         status,
-        ...(status === 'Rejected' ? { rejectionReason: rejectionReason.trim() } : {})
+        ...(status === 'Rejected' ? { rejectionReason: rejectionReason.trim() } : {}),
+        // Store approval attribution — only set on Approved, clear on Rejected
+        ...(status === 'Approved' && approvedById ? {
+          approvedByUserId: parseInt(approvedById),
+          approvedByRole: approvedByRole || 'admin'  // default to 'admin' for safety
+        } : {})
       },
       include: { author: { select: { name: true, organization: true } } }
     });

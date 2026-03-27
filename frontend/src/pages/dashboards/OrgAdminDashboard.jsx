@@ -32,7 +32,14 @@ export default function OrgAdminDashboard() {
 
   const handleStatusUpdate = async (ideaId, newStatus, rejectionReason) => {
     try {
-      await api.updateIdeaStatus(ideaId, newStatus, rejectionReason);
+      // Pass attribution: Org Admin approvals are tagged approvedByRole='admin'
+      await api.updateIdeaStatus(
+        ideaId,
+        newStatus,
+        rejectionReason,
+        newStatus === 'Approved' ? user?.id : undefined,
+        newStatus === 'Approved' ? 'admin' : undefined
+      );
       fetchAssigned();
 
       const isApproved = newStatus === 'Approved';

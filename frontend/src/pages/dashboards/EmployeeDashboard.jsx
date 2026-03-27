@@ -157,7 +157,7 @@ function AIAutofillBar({ fields, onAutofill, onClose }) {
           </div>
           <div>
             <span className="text-sm font-bold text-blue-900">Fill with AI</span>
-            <p className="text-[11px] text-blue-500 leading-none mt-0.5">Describe your idea and Gemini will fill the form</p>
+            <p className="text-[11px] text-blue-500 leading-none mt-0.5">Describe your idea and AI will fill the form</p>
           </div>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg text-blue-300 hover:text-blue-600 hover:bg-blue-100 transition-colors">
@@ -237,7 +237,7 @@ function AILoader() {
         </div>
         <div className="text-center">
           <p className="text-sm font-semibold text-gray-800">AI is filling your form...</p>
-          <p className="text-xs text-gray-400 mt-0.5">Gemini is analysing your idea</p>
+          <p className="text-xs text-gray-400 mt-0.5">AI is analysing your idea</p>
         </div>
       </div>
     </div>
@@ -258,7 +258,8 @@ export default function EmployeeDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAIFilling, setIsAIFilling] = useState(false);
   const [formData, setFormData] = useState({});
-  const [uploadedFiles, setUploadedFiles] = useState([]);
+  // uploadedFiles: { [fieldId]: [{ name, url, type, ... }] }
+  const [uploadedFiles, setUploadedFiles] = useState({});
   const [voiceNote, setVoiceNote] = useState(null);
 
   // AI Bar State
@@ -310,7 +311,7 @@ export default function EmployeeDashboard() {
       if (f.type !== 'file' && f.type !== 'voice') initial[f.id] = '';
     });
     setFormData(initial);
-    setUploadedFiles([]);
+    setUploadedFiles({});
     setVoiceNote(null);
     setShowAIBar(false);
     setStep(2);
@@ -320,7 +321,7 @@ export default function EmployeeDashboard() {
     setStep(1);
     setSelectedTemplate(null);
     setFormData({});
-    setUploadedFiles([]);
+    setUploadedFiles({});
     setVoiceNote(null);
     setShowAIBar(false);
   };
@@ -351,28 +352,44 @@ export default function EmployeeDashboard() {
       if (filledCount > 0) {
         notify({ type: 'success', title: 'Form filled!', message: `AI filled ${filledCount} field${filledCount > 1 ? 's' : ''}. Review and edit as needed.`, event: '' });
       } else {
-        notify({ type: 'warning', title: 'No fields filled', message: 'Gemini could not extract enough info. Try describing your idea in more detail.', event: '' });
+        notify({ type: 'warning', title: 'No fields filled', message: 'AI could not extract enough info. Try describing your idea in more detail.', event: '' });
       }
     } catch (e) {
       console.error(e);
-      notify({ type: 'error', title: 'AI fill failed', message: 'Could not connect to Gemini. Please fill the form manually.', event: '' });
+      notify({ type: 'error', title: 'AI fill failed', message: 'Could not connect to AI. Please fill the form manually.', event: '' });
     }
     setIsAIFilling(false);
   };
 
+  // Supports multiple files per field — each file is uploaded separately and appended
   const handleFileUpload = async (fieldId, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-      const data = await api.uploadFile(fd);
-      setUploadedFiles(prev => [...prev, data]);
-      setFormData(prev => ({ ...prev, [fieldId]: data.url }));
-    } catch (err) {
-      console.error('Upload Error:', err);
-      alert('File upload failed: ' + err.message);
+    const selectedFiles = Array.from(e.target.files);
+    if (!selectedFiles.length) return;
+
+    for (const file of selectedFiles) {
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const data = await api.uploadFile(fd);
+        // Store file under fieldId key for clean per-field tracking
+        setUploadedFiles(prev => ({
+          ...prev,
+          [fieldId]: [...(prev[fieldId] || []), { ...data, name: file.name }]
+        }));
+      } catch (err) {
+        console.error('Upload Error:', err);
+        alert(`File upload failed: ${file.name} — ${err.message}`);
+      }
     }
+    // Reset the input so the same file can be re-added if removed
+    e.target.value = '';
+  };
+
+  const handleRemoveFile = (fieldId, idx) => {
+    setUploadedFiles(prev => {
+      const updated = [...(prev[fieldId] || [])].filter((_, i) => i !== idx);
+      return { ...prev, [fieldId]: updated };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -407,7 +424,8 @@ export default function EmployeeDashboard() {
     });
 
     payload.extraFields = extraFields;
-    const allFiles = [...uploadedFiles];
+    // Collect ALL files from all fields + voice note
+    const allFiles = Object.values(uploadedFiles).flat();
     if (voiceNote) allFiles.push(voiceNote);
     payload.files = allFiles;
 
@@ -416,7 +434,7 @@ export default function EmployeeDashboard() {
       notify({ type: 'success', title: 'Idea submitted!', message: 'Your idea has been sent for review.', event: 'idea_submitted' });
       setFormData({});
       setSelectedTemplate(null);
-      setUploadedFiles([]);
+      setUploadedFiles({});
       setVoiceNote(null);
       setStep(1);
       navigate('/dashboard/my-ideas');
@@ -461,22 +479,49 @@ export default function EmployeeDashboard() {
           <input type="date" required={field.required} value={value || ''} onChange={e => handleChange(field.id, e.target.value)}
             className={inputClass} />
         );
-      case 'file':
+      case 'file': {
+        const fieldFiles = uploadedFiles[field.id] || [];
         return (
           <div className="space-y-2">
-            <div className="flex border border-gray-300 rounded-md overflow-hidden bg-gray-50">
-              <input type="file" onChange={e => handleFileUpload(field.id, e)}
+            {/* File input — multiple allowed */}
+            <label className="flex items-center gap-2 cursor-pointer w-full border border-gray-300 rounded-md bg-gray-50 overflow-hidden hover:border-brand-blue transition-colors">
+              <span className="shrink-0 py-2 px-4 bg-brand-blue text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+                {fieldFiles.length === 0 ? 'Choose Files' : 'Add More'}
+              </span>
+              <span className="text-sm text-gray-400 px-2 truncate">
+                {fieldFiles.length === 0 ? 'No files selected' : `${fieldFiles.length} file${fieldFiles.length > 1 ? 's' : ''} selected`}
+              </span>
+              <input
+                type="file"
+                multiple
+                onChange={e => handleFileUpload(field.id, e)}
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.svg,.txt"
-                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-brand-blue file:text-white hover:file:bg-blue-700 transition" />
-            </div>
-            {value && (
-              <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-md px-3 py-1.5">
-                <Paperclip size={13} />
-                <span className="truncate">File uploaded successfully</span>
-              </div>
+                className="hidden"
+              />
+            </label>
+
+            {/* File list */}
+            {fieldFiles.length > 0 && (
+              <ul className="space-y-1.5">
+                {fieldFiles.map((f, idx) => (
+                  <li key={idx} className="flex items-center gap-2 text-sm text-green-800 bg-green-50 border border-green-100 rounded-md px-3 py-1.5">
+                    <Paperclip size={12} className="shrink-0 text-green-500" />
+                    <span className="flex-1 truncate">{f.name || f.url}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFile(field.id, idx)}
+                      className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                      title="Remove file"
+                    >
+                      <X size={13} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         );
+      }
       case 'voice':
         return (
           <VoiceRecorder
@@ -567,7 +612,7 @@ export default function EmployeeDashboard() {
                 <Sparkles size={16} className="text-blue-500" />
                 Fill with AI
               </Button>
-              <span className="text-xs text-gray-400">Describe your idea and Gemini will fill the form automatically</span>
+              <span className="text-xs text-gray-400">Describe your idea and AI will fill the form automatically</span>
             </div>
           )}
 

@@ -86,6 +86,29 @@ async function runSeed() {
       }
     }
     console.log('Template seed check complete.');
+
+    // 4. Sync template categories — ensures template_categories table is never empty
+    // Collects categories from: seed data definitions + all existing templates in DB
+    // Skips 'GLOBAL' (used by MASTER_TEMPLATE only, not a user-facing category)
+    const allExistingTemplates = await prisma.ideaTemplate.findMany({
+      where: { id: { not: 'MASTER_TEMPLATE' } },
+      select: { category: true }
+    });
+    const categorySet = new Set([
+      ...IDEA_TEMPLATES.filter(t => t.id !== 'MASTER_TEMPLATE').map(t => t.category),
+      ...allExistingTemplates.map(t => t.category)
+    ].filter(c => c && c.toUpperCase() !== 'GLOBAL'));
+
+    for (const name of categorySet) {
+      const normalized = name.trim().toUpperCase();
+      const existing = await prisma.templateCategory.findUnique({ where: { name: normalized } });
+      if (!existing) {
+        await prisma.templateCategory.create({ data: { name: normalized } });
+        console.log(`Seeded category: ${normalized}`);
+      }
+    }
+    console.log('Category sync complete.');
+
   } catch (error) {
     console.error('Seed execution failed:', error);
   }

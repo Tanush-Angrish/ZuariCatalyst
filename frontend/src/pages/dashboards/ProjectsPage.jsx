@@ -163,7 +163,7 @@ export default function ProjectsPage() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight mb-2">Projects</h1>
           <p className="text-blue-100 max-w-2xl text-sm">
-            Track approved ideas from initiation to completion. Manage action steps, collaborate via chat, and use Gemini AI for intelligent planning.
+            Track approved ideas from initiation to completion. Manage action steps, collaborate via chat, and use AI for intelligent planning.
           </p>
           <div className="flex items-center gap-4 mt-4 text-white/60 text-xs">
             <span><strong className="text-white">{projects.length}</strong> total projects</span>

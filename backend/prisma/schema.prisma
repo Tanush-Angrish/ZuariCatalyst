@@ -20,11 +20,12 @@ model User {
   organization  String?  
   
   // Relations
-  authoredIdeas Idea[]         @relation("IdeaAuthor")
-  assignedIdeas Idea[]         @relation("IdeaAssignee")
-  notifications Notification[] @relation("UserNotifications")
-  points        UserPoint?     @relation("UserPoints")
-  upvotes       Upvote[]
+  authoredIdeas  Idea[]         @relation("IdeaAuthor")
+  assignedIdeas  Idea[]         @relation("IdeaAssignee")
+  approvedIdeas  Idea[]         @relation("IdeaApprovedBy")
+  notifications  Notification[] @relation("UserNotifications")
+  points         UserPoint?     @relation("UserPoints")
+  upvotes        Upvote[]
 
   @@map("users")
 }
@@ -39,10 +40,12 @@ model Idea {
   extraFields    String   @default("{}") // Storing JSON as string to match old sqlite approach initially
   files          String   @default("[]") // JSON array of { name, url, type } objects
   status         String   @default("Pending Review")
-  rejectionReason String?
-  aiSummary      String?
-  aiTags         String   @default("[]") // JSON array of tags
-  createdAt      DateTime @default(now())
+  rejectionReason    String?
+  aiSummary          String?
+  aiTags             String   @default("[]") // JSON array of tags
+  createdAt          DateTime @default(now())
+  approvedByUserId   Int?     // ID of the user who approved (Central or Org Admin)
+  approvedByRole     String?  // 'central' | 'admin' — role that approved the idea
 
   authorId       Int
   assignedToId   Int?
@@ -50,8 +53,10 @@ model Idea {
   // Relations
   author         User     @relation("IdeaAuthor", fields: [authorId], references: [id])
   assignedTo     User?    @relation("IdeaAssignee", fields: [assignedToId], references: [id])
+  approvedBy     User?    @relation("IdeaApprovedBy", fields: [approvedByUserId], references: [id])
 
   @@map("ideas")
+  projects   Project?
 }
 
 model IdeaTemplate {
@@ -108,6 +113,7 @@ model Project {
 
   steps             ProjectStep[]
   messages          ProjectMessage[]
+  idea              Idea?            @relation(fields: [ideaId], references: [id])
 
   @@map("projects")
 }

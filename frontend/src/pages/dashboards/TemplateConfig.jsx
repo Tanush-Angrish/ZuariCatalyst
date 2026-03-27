@@ -429,24 +429,40 @@ function ManageCategoriesModal({ categories, onClose, onChanged }) {
 
 // ─── Category Dropdown with inline "Manage" trigger ──────────────────────────
 function CategorySelect({ value, onChange, categories, onManage }) {
+  // An orphan category means the template was saved with a category that has since been deleted.
+  // It still exists on the template record but is no longer in the dropdown list.
+  const isOrphan = value && !categories.find(c => c.name === value);
+
   return (
-    <div className="flex gap-1.5">
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className={inputClass + ' flex-1'}
-      >
-        <option value="">Select category…</option>
-        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-      </select>
-      <button
-        type="button"
-        onClick={onManage}
-        title="Manage categories"
-        className="px-2.5 border border-gray-300 rounded-md text-gray-500 hover:text-brand-blue hover:border-brand-blue hover:bg-blue-50 transition-colors"
-      >
-        <FolderOpen size={15} />
-      </button>
+    <div className="flex flex-col gap-1.5">
+      {isOrphan && (
+        <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
+          <AlertCircle size={12} className="shrink-0" />
+          <span>
+            Category <strong>"{value}"</strong> was deleted. Please choose a replacement before saving.
+          </span>
+        </div>
+      )}
+      <div className="flex gap-1.5">
+        <select
+          value={isOrphan ? '' : value}
+          onChange={e => onChange(e.target.value)}
+          className={inputClass + ' flex-1' + (isOrphan ? ' border-amber-300 bg-amber-50/40' : '')}
+        >
+          <option value="" disabled>
+            {isOrphan ? `"${value}" (deleted — select new)` : 'Select category…'}
+          </option>
+          {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+        </select>
+        <button
+          type="button"
+          onClick={onManage}
+          title="Manage categories"
+          className="px-2.5 border border-gray-300 rounded-md text-gray-500 hover:text-brand-blue hover:border-brand-blue hover:bg-blue-50 transition-colors"
+        >
+          <FolderOpen size={15} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -997,7 +1013,7 @@ export default function TemplateConfig() {
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-6 gap-4">
               <p className="text-[11px] text-gray-400 font-medium">
-                Powered by Gemini AI • <span className="text-gray-500">Fields are fully editable later</span>
+                Powered by AI • <span className="text-gray-500">Fields are fully editable later</span>
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button variant="outline" className="rounded-xl px-5" onClick={() => { setAiModalOpen(false); setAiError(''); }}>
