@@ -529,7 +529,7 @@ router.put('/:id/assign', async (req, res) => {
 
     // DB Notifications
     notifyUser(updatedIdea.authorId, 'idea', `Your idea '${updatedIdea.title}' has been assigned to an Org Admin for review.`, ideaId);
-    notifyUser(parseInt(assignedToId), 'idea', `You have been assigned to review idea: ${updatedIdea.title}. Reason: ${reason.trim()}`, ideaId);
+    notifyUser(parseInt(assignedToId), 'idea', `You have been assigned to review idea: ${updatedIdea.title}.`, ideaId);
     notifyCentralTeam('idea', `Idea '${updatedIdea.title}' assigned to ${orgAdmin?.name}`, ideaId);
 
     // Email Org Admin in background
@@ -595,7 +595,7 @@ router.put('/:id/status', async (req, res) => {
       where: { id: ideaId },
       data: {
         status,
-        rejectionReason: rejectionReason.trim(),
+        rejectionReason: (rejectionReason || '').trim(),
         ...(status === 'Approved' && approvedById ? {
           approvedByUserId: parseInt(approvedById),
           approvedByRole: approvedByRole || 'admin'
@@ -648,7 +648,7 @@ router.put('/:id/status', async (req, res) => {
         }
       }
     } else if (status === 'Rejected') {
-      const reason = rejectionReason.trim();
+      const reason = (rejectionReason || '').trim();
       // DB Notifications
       notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' has been REJECTED. Reason: ${reason}`, ideaId);
       notifyCentralTeam('idea', `Idea '${idea.title}' was rejected. Reason: ${reason}`, ideaId);
