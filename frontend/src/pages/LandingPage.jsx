@@ -95,24 +95,24 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white" style={{fontFamily: 'var(--fb)'}}>
+    <div className="min-h-screen bg-white" style={{ fontFamily: 'var(--fb)' }}>
       {/* NAVBAR */}
       <header className="fixed top-0 w-full z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 transition-all">
         <div className="flex items-center justify-between py-4 md:py-5 px-4 lg:px-12 max-w-[1440px] mx-auto z-10 relative">
-          
+
           {/* Left Side: Zuari Logo + vertical divider + Catalyst Logo */}
           <div className="flex items-center gap-3 md:gap-6">
-            <img 
-              src="https://www.zuariindustries.in/assets/web/img/logo/zuari_logo.png" 
-              alt="Zuari Industries" 
+            <img
+              src="https://www.zuariindustries.in/assets/web/img/logo/zuari_logo.png"
+              alt="Zuari Industries"
               className="h-6 md:h-10 object-contain shrink-0"
             />
-            
+
             <div className="h-6 md:h-10 w-[1px] md:w-[1.5px] bg-[#E5E7EB] rounded-full shrink-0"></div> {/* Divider */}
-            
+
             <div className="flex items-center gap-2 md:gap-2.5">
               <div className="flex flex-col justify-center">
-                <span className="text-[20px] md:text-[28px] font-extrabold text-[#1d3368] tracking-tight leading-none" style={{fontFamily: 'var(--fd)'}}>
+                <span className="text-[20px] md:text-[28px] font-extrabold text-[#1d3368] tracking-tight leading-none" style={{ fontFamily: 'var(--fd)' }}>
                   Catalyst
                 </span>
                 <span className="hidden sm:block text-[9px] font-extrabold text-[#4B5563] tracking-[0.15em] uppercase mt-1.5">
@@ -132,23 +132,23 @@ export default function LandingPage() {
 
             {/* Far Right: Sign In + Adventz Logo */}
             <div className="flex gap-4 md:gap-6 items-center shrink-0">
-              <button 
+              <button
                 onClick={() => setIsModalOpen(true)}
                 className="bg-[#1d3368] hover:bg-[#162750] text-white rounded-[12px] md:rounded-full px-4 md:px-8 py-2 md:py-2.5 text-[12px] md:text-[14.5px] font-bold transition-all shadow-md hover:shadow-lg leading-tight md:leading-normal shrink-0"
               >
-                Log<br className="md:hidden"/><span className="hidden md:inline"> </span>in
+                Log<br className="md:hidden" /><span className="hidden md:inline"> </span>in
               </button>
-              
+
               <div className="h-10 w-[1.5px] bg-[#E5E7EB] rounded-full hidden lg:block"></div> {/* Divider */}
 
-              <img 
-                src="https://www.zuariindustries.in/assets/web/img/logo/adventz.png" 
-                alt="Adventz" 
+              <img
+                src="https://www.zuariindustries.in/assets/web/img/logo/adventz.png"
+                alt="Adventz"
                 className="h-12 object-contain hidden lg:block text-xs"
               />
             </div>
           </div>
-          
+
         </div>
       </header>
 
@@ -156,18 +156,18 @@ export default function LandingPage() {
         {/* HERO SECTION */}
         <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pt-6 md:pt-10 pb-16 md:pb-24 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-[80px]">
           <div className="md:w-[55%] sr w-full">
-            <div className="sec-eyebrow" style={{display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--purple-l)', color: 'var(--purple)'}}>
+            <div className="sec-eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--purple-l)', color: 'var(--purple)' }}>
               <span className="w-[5px] h-[5px] rounded-full bg-current opacity-80 animate-pulse" style={{ animationDuration: '2s' }}></span>
               Ignite. Innovate. Implement.
             </div>
-            <h1 className="text-[54px] sm:text-[64px] leading-[1.05] font-extrabold tracking-tight text-[#0A0A0A] mb-6 md:mb-6 mt-4" style={{fontFamily: 'var(--fd)'}}>
-              Turn every<br className="md:hidden"/> employee<br className="md:hidden"/> idea into<br className="md:hidden"/> <span style={{color: 'var(--purple)'}}>real impact</span>
+            <h1 className="text-[54px] sm:text-[64px] leading-[1.05] font-extrabold tracking-tight text-[#0A0A0A] mb-6 md:mb-6 mt-4" style={{ fontFamily: 'var(--fd)' }}>
+              Turn every<br className="md:hidden" /> employee<br className="md:hidden" /> idea into<br className="md:hidden" /> <span style={{ color: 'var(--purple)' }}>real impact</span>
             </h1>
-            <p className="text-[16.5px] md:text-[18px] text-[#4B5563] max-w-lg mb-8 md:mb-10" style={{lineHeight: '1.6'}}>
+            <p className="text-[16.5px] md:text-[18px] text-[#4B5563] max-w-lg mb-8 md:mb-10" style={{ lineHeight: '1.6' }}>
               Catalyst gives every employee a structured voice — and gives your organisation a complete system to capture, review, and convert great ideas into executed projects.
             </p>
           </div>
-          <div className="lg:w-[45%] w-full flex justify-end sr" style={{animationDelay: '100ms'}}>
+          <div className="lg:w-[45%] w-full flex justify-end sr" style={{ animationDelay: '100ms' }}>
             <HeroRightMockup />
           </div>
         </section>
@@ -176,19 +176,19 @@ export default function LandingPage() {
         <section className="max-w-6xl mx-auto px-6 lg:px-12 py-16 sr border-t border-gray-100">
           <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-gray-100/60 text-center gap-y-12">
             <div>
-              <div className="text-[42px] font-extrabold text-brand-black mb-2" style={{fontFamily: 'var(--fd)'}}>62<span style={{color: 'var(--purple)'}}>+</span></div>
+              <div className="text-[42px] font-extrabold text-brand-black mb-2" style={{ fontFamily: 'var(--fd)' }}>62<span style={{ color: 'var(--purple)' }}>+</span></div>
               <div className="text-[13px] text-gray-500 mx-auto max-w-[160px] font-medium leading-[1.6]">features across all three roles — employee, CM, and central admin</div>
             </div>
             <div>
-              <div className="text-[42px] font-extrabold text-brand-black mb-2" style={{fontFamily: 'var(--fd)'}}>3<span style={{color: 'var(--teal)'}}>x</span></div>
+              <div className="text-[42px] font-extrabold text-brand-black mb-2" style={{ fontFamily: 'var(--fd)' }}>3<span style={{ color: 'var(--teal)' }}>x</span></div>
               <div className="text-[13px] text-gray-500 mx-auto max-w-[160px] font-medium leading-[1.6]">faster idea-to-project conversion with AI assistance</div>
             </div>
             <div>
-              <div className="text-[42px] font-extrabold text-brand-black mb-2" style={{fontFamily: 'var(--fd)'}}>7<span style={{color: 'var(--amber)'}}>d</span></div>
+              <div className="text-[42px] font-extrabold text-brand-black mb-2" style={{ fontFamily: 'var(--fd)' }}>7<span style={{ color: 'var(--amber)' }}>d</span></div>
               <div className="text-[13px] text-gray-500 mx-auto max-w-[160px] font-medium leading-[1.6]">SLA guarantee — every idea reviewed, no idea left behind</div>
             </div>
             <div>
-              <div className="text-[42px] font-extrabold text-brand-black mb-2" style={{fontFamily: 'var(--fd)'}}>100<span style={{color: 'var(--purple)'}}>%</span></div>
+              <div className="text-[42px] font-extrabold text-brand-black mb-2" style={{ fontFamily: 'var(--fd)' }}>100<span style={{ color: 'var(--purple)' }}>%</span></div>
               <div className="text-[13px] text-gray-500 mx-auto max-w-[160px] font-medium leading-[1.6]">audit trail on every status change, comment, and decision</div>
             </div>
           </div>
@@ -196,52 +196,52 @@ export default function LandingPage() {
 
         {/* EVERY ACTION EARNS POINTS (TIMELINE) */}
         <section className="bg-[#fafafa] py-20 lg:py-24 px-6 lg:px-12 text-center sr">
-          <h2 className="text-[36px] font-extrabold text-brand-black mb-4 tracking-tight" style={{fontFamily: 'var(--fd)'}}>Every action earns points</h2>
+          <h2 className="text-[36px] font-extrabold text-brand-black mb-4 tracking-tight" style={{ fontFamily: 'var(--fd)' }}>Every action earns points</h2>
           <p className="text-[16px] text-gray-500 mx-auto max-w-xl mb-24 leading-relaxed">
             As employees get their idea approved and turn them into real projects - they climb up leaderboard.
           </p>
-          
+
           <div className="max-w-4xl mx-auto relative px-4">
             <div className="absolute top-[12px] h-[2px] bg-gray-200 hidden md:block" style={{ left: '12.5%', width: '75%', zIndex: 0 }}>
               <div className="timeline-traveler hidden md:block"></div>
             </div>
-            
+
             <div className="flex flex-col md:flex-row justify-between relative z-10 gap-16 md:gap-10">
-              
+
               <div className="flex flex-col items-center flex-1">
                 <div className="shrink-0 w-7 h-7 bg-brand-blue border-[6px] border-white rounded-full mb-3 shadow-[0_0_0_1px_rgba(0,53,128,0.15)] relative">
                   <div className="timeline-pulse pulse-1 hidden md:block"></div>
                 </div>
-                <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{fontFamily: 'var(--fd)'}}>10 pts</div>
-                <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Submit<br className="md:hidden"/> an idea</div>
+                <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{ fontFamily: 'var(--fd)' }}>10 pts</div>
+                <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Submit<br className="md:hidden" /> an idea</div>
               </div>
-              
+
 
 
               <div className="flex flex-col items-center flex-1">
                 <div className="shrink-0 w-7 h-7 bg-brand-blue border-[6px] border-white rounded-full mb-3 shadow-[0_0_0_1px_rgba(0,53,128,0.15)] relative">
                   <div className="timeline-pulse pulse-2 hidden md:block"></div>
                 </div>
-                <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{fontFamily: 'var(--fd)'}}>5 pts</div>
-                <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Per upvote<br className="md:hidden"/> received</div>
+                <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{ fontFamily: 'var(--fd)' }}>15 pts</div>
+                <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Under<br className="md:hidden" /> review</div>
               </div>
-              
+
               <div className="flex flex-col items-center flex-1">
                 <div className="shrink-0 w-7 h-7 bg-brand-blue border-[6px] border-white rounded-full mb-3 shadow-[0_0_0_1px_rgba(0,53,128,0.15)] relative">
                   <div className="timeline-pulse pulse-3 hidden md:block"></div>
                 </div>
-                <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{fontFamily: 'var(--fd)'}}>50 pts</div>
-                <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Converted to<br className="md:hidden"/> project</div>
+                <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{ fontFamily: 'var(--fd)' }}>5 pts</div>
+                <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Per upvote<br className="md:hidden" /> received</div>
               </div>
-              
+
               <div className="flex flex-col items-center flex-1 relative">
                 <div className="shrink-0 w-7 h-7 bg-brand-blue border-[6px] border-white rounded-full mb-3 shadow-[0_0_0_1px_rgba(0,53,128,0.3)] ring-4 ring-brand-blue/10 relative">
                   <div className="timeline-pulse pulse-4-big hidden md:block"></div>
                 </div>
-                <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{fontFamily: 'var(--fd)'}}>100 pts</div>
-                <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Project<br className="md:hidden"/> completed</div>
+                <div className="text-[17px] md:text-[14px] font-extrabold text-brand-black mb-1" style={{ fontFamily: 'var(--fd)' }}>150 pts</div>
+                <div className="text-[14px] md:text-[12px] text-gray-500 font-medium leading-[1.4]">Converted to<br className="md:hidden" /> project</div>
               </div>
-              
+
             </div>
           </div>
         </section>
@@ -254,9 +254,9 @@ export default function LandingPage() {
         <section id="for-your-team" className="pt-12 pb-24 lg:pt-16 lg:pb-32 px-6 lg:px-12 bg-[#ffffff] sr">
           <div className="max-w-[1100px] mx-auto mb-16 text-center flex flex-col items-center">
             <div className="sec-eyebrow" style={{ display: 'inline-flex', marginBottom: '20px', background: 'var(--teal-l)', color: 'var(--teal)', fontSize: '11px', fontWeight: '800', letterSpacing: '0.05em' }}>FOR YOUR TEAM</div>
-            <h2 className="text-[46px] font-extrabold text-[#0A0A0A] tracking-tight mb-5 leading-[1.1]" style={{fontFamily: 'var(--fd)'}}>Three roles. One system.</h2>
+            <h2 className="text-[46px] font-extrabold text-[#0A0A0A] tracking-tight mb-5 leading-[1.1]" style={{ fontFamily: 'var(--fd)' }}>Three roles. One system.</h2>
             <p className="text-[17px] text-[#4b5563] leading-relaxed max-w-2xl text-center">
-              Every person in your organisation has a distinct experience<br className="hidden sm:block"/>— designed around how they actually work.
+              Every person in your organisation has a distinct experience<br className="hidden sm:block" />— designed around how they actually work.
             </p>
           </div>
 
@@ -266,7 +266,7 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-[14px] bg-[#F3F4F6] text-[22px] flex items-center justify-center mb-8 border border-gray-100">
                 🙋
               </div>
-              <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{fontFamily: 'var(--fd)'}}>Employee</h3>
+              <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{ fontFamily: 'var(--fd)' }}>Employee</h3>
               <p className="text-[14.5px] text-[#4b5563] mb-8 leading-relaxed">Submit ideas, track progress, earn points, and see your thinking become real.</p>
               <ul className="space-y-4 text-[13.5px] text-[#4b5563] font-medium leading-[1.4]">
                 <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Submit via templates or describe to AI</span></li>
@@ -287,7 +287,7 @@ export default function LandingPage() {
                   Most Powerful
                 </div>
               </div>
-              <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{fontFamily: 'var(--fd)'}}>Community Manager</h3>
+              <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{ fontFamily: 'var(--fd)' }}>Community Manager</h3>
               <p className="text-[14.5px] text-[#4b5563] mb-8 leading-relaxed">Own your entity's idea pipeline. Review, decide, convert, and track execution.</p>
               <ul className="space-y-4 text-[13.5px] text-[#4b5563] font-medium leading-[1.4]">
                 <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Auto-assigned all ideas from your entity</span></li>
@@ -303,7 +303,7 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-[14px] bg-[#F3F4F6] text-[22px] flex items-center justify-center mb-8 border border-gray-100">
                 🏛️
               </div>
-              <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{fontFamily: 'var(--fd)'}}>Central Admin</h3>
+              <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{ fontFamily: 'var(--fd)' }}>Central Admin</h3>
               <p className="text-[14.5px] text-[#4b5563] mb-8 leading-relaxed">Govern the entire platform across all entities from one command centre.</p>
               <ul className="space-y-4 text-[13.5px] text-[#4b5563] font-medium leading-[1.4]">
                 <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Cross-entity dashboard — all ideas, all projects</span></li>
@@ -323,8 +323,8 @@ export default function LandingPage() {
               <span className="w-[5px] h-[5px] rounded-full bg-[#10B981] animate-pulse" style={{ animationDuration: '2s' }}></span>
               Ready to start
             </div>
-            <h2 className="text-[44px] md:text-[56px] font-extrabold text-white tracking-tight leading-[1.1] mb-8" style={{fontFamily: 'var(--fd)'}}>
-              Your ideas deserve more<br/>than an email chain
+            <h2 className="text-[44px] md:text-[56px] font-extrabold text-white tracking-tight leading-[1.1] mb-8" style={{ fontFamily: 'var(--fd)' }}>
+              Your ideas deserve more<br />than an email chain
             </h2>
             <p className="text-[18px] text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
               Catalyst gives every employee a structured way to submit, track, and see their ideas become real projects — fully managed, fully visible, end to end.
@@ -337,30 +337,30 @@ export default function LandingPage() {
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-modal-in">
             {/* Backdrop Blur overlay */}
-            <div 
+            <div
               className="absolute inset-0 bg-[#0f0e1a]/60 backdrop-blur-md transition-opacity"
               onClick={() => setIsModalOpen(false)}
             />
-            
+
             {/* Modal Container */}
             <div className="relative z-10 w-full max-w-[440px] overflow-hidden rounded-[24px] bg-white shadow-2xl flex flex-col p-10 border border-gray-100">
-              
-              <button 
+
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
-              
+
               <div className="text-center mb-8 pt-2">
-                <h2 className="text-[32px] font-extrabold tracking-tight text-[#0f0e1a] mb-3" style={{fontFamily: 'var(--fd)'}}>Welcome back</h2>
+                <h2 className="text-[32px] font-extrabold tracking-tight text-[#0f0e1a] mb-3" style={{ fontFamily: 'var(--fd)' }}>Welcome back</h2>
                 <p className="text-[14px] text-gray-500 font-medium">Log in to Catalyst to manage your ideas.</p>
               </div>
-              
+
               <form onSubmit={handleLogin} className="space-y-5">
                 {/* Microsoft Outlook button */}
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={handleOutlookLogin}
                   disabled={loading}
                   className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-[14px] px-4 py-4 text-[14px] font-bold text-[#0f0e1a] hover:bg-gray-50 hover:border-gray-300 transition-all shadow-[0_2px_4px_-2px_rgba(0,0,0,0.05)]"
@@ -407,15 +407,15 @@ export default function LandingPage() {
                   />
                 </div>
 
-                <button 
-                  type="submit" 
-                  disabled={loading} 
+                <button
+                  type="submit"
+                  disabled={loading}
                   className="w-full bg-brand-blue hover:bg-blue-800 text-white rounded-[14px] h-[52px] text-[14px] font-bold flex justify-center items-center px-6 transition-all shadow-[0_8px_16px_-6px_rgba(0,53,128,0.3)] mt-2 disabled:opacity-70 disabled:hover:shadow-none"
                 >
                   {loading ? 'Logging in...' : 'Log in safely'}
                 </button>
               </form>
-              
+
             </div>
           </div>
         )}
@@ -427,7 +427,7 @@ export default function LandingPage() {
       </footer>
 
       {/* SCROLL TO TOP BUTTON */}
-      <button 
+      <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         className={`fixed bottom-8 right-8 p-3 rounded-full bg-[#1E3A8A] text-white shadow-lg transition-all duration-300 z-40 hover:bg-[#152C70] hover:-translate-y-1 ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'}`}
       >

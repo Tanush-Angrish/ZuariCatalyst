@@ -70,10 +70,13 @@ export const api = {
     return request(`/api/ideas${qs ? '?' + qs : ''}`);
   },
   getPendingIdeas: () => request('/api/ideas/pending'),
+  getCentralUnderReview: () => request('/api/ideas/central/under-review'),
   getCentralAssigned: () => request('/api/ideas/central/assigned'),
   getCentralApproved: () => request('/api/ideas/central/approved'),
   getCentralApprovedByAdmin: () => request('/api/ideas/central/approved-by-admin'),
   getAssignedIdeas: (userId) => request(`/api/ideas/assigned/${userId}`),
+  getOrgAdminUnderReview: (userId) => request(`/api/ideas/assigned/${userId}/under-review`),
+  getOrgAdminProcessed: (userId) => request(`/api/ideas/assigned/${userId}/processed`),
   getMyIdeas: (userId) => request(`/api/ideas/my-ideas/${userId}`),
   getOrgIdeas: (orgName) => request(`/api/ideas/team/${encodeURIComponent(orgName)}`),
   getOrgAdmins: () => request('/api/ideas/orgadmins'),
@@ -97,6 +100,9 @@ export const api = {
   assignIdea: (id, assignedToId) => request(`/api/ideas/${id}/assign`, {
     method: 'PUT',
     body: JSON.stringify({ assignedToId }),
+  }),
+  underReviewIdea: (id) => request(`/api/ideas/${id}/under-review`, {
+    method: 'PUT',
   }),
   autofillIdea: (description, fields) => request('/api/ideas/autofill', {
     method: 'POST',

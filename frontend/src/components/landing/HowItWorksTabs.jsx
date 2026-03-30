@@ -221,7 +221,7 @@ export default function HowItWorksTabs() {
                 <div className="htab-text">
                   <div className="htab-eyebrow">Points &amp; leaderboard</div>
                   <h3 className="htab-title">Make innovation a habit, not a one-off</h3>
-                  <p className="htab-desc">Every action earns points — submitting (10), getting approved (25), converting to a project (50), receiving upvotes (5), completing a project (100). A live leaderboard shows the top 5 innovators, keeping the culture of ideas alive every single day.</p>
+                  <p className="htab-desc">Every action earns points — submitting (10), going under review (15), converting to a project (150), receiving upvotes (5). A live leaderboard shows the top 5 innovators, keeping the culture of ideas alive every single day.</p>
                 </div>
                 <div className="htab-mockup" style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', top: '10px', right: '-32px', textAlign: 'center' }}>
@@ -263,8 +263,8 @@ export default function HowItWorksTabs() {
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', marginTop: '10px' }}>
                         <div style={{ background: 'var(--bg)', border: '1px solid rgba(15,14,26,.08)', borderRadius: '7px', padding: '7px', textAlign: 'center' }}><div style={{ fontFamily: 'var(--fd)', fontWeight: 700, fontSize: '14px', color: 'var(--purple)' }}>10</div><div style={{ fontSize: '9px', color: 'var(--muted)', fontFamily: 'var(--fb)' }}>Submitted</div></div>
-                        <div style={{ background: 'var(--bg)', border: '1px solid rgba(15,14,26,.08)', borderRadius: '7px', padding: '7px', textAlign: 'center' }}><div style={{ fontFamily: 'var(--fd)', fontWeight: 700, fontSize: '14px', color: 'var(--teal)' }}>50</div><div style={{ fontSize: '9px', color: 'var(--muted)', fontFamily: 'var(--fb)' }}>Converted</div></div>
-                        <div style={{ background: 'var(--bg)', border: '1px solid rgba(15,14,26,.08)', borderRadius: '7px', padding: '7px', textAlign: 'center' }}><div style={{ fontFamily: 'var(--fd)', fontWeight: 700, fontSize: '14px', color: 'var(--accent)' }}>100</div><div style={{ fontSize: '9px', color: 'var(--muted)', fontFamily: 'var(--fb)' }}>Project done</div></div>
+                        <div style={{ background: 'var(--bg)', border: '1px solid rgba(15,14,26,.08)', borderRadius: '7px', padding: '7px', textAlign: 'center' }}><div style={{ fontFamily: 'var(--fd)', fontWeight: 700, fontSize: '14px', color: 'var(--teal)' }}>15</div><div style={{ fontSize: '9px', color: 'var(--muted)', fontFamily: 'var(--fb)' }}>Under Review</div></div>
+                        <div style={{ background: 'var(--bg)', border: '1px solid rgba(15,14,26,.08)', borderRadius: '7px', padding: '7px', textAlign: 'center' }}><div style={{ fontFamily: 'var(--fd)', fontWeight: 700, fontSize: '14px', color: 'var(--accent)' }}>150</div><div style={{ fontSize: '9px', color: 'var(--muted)', fontFamily: 'var(--fb)' }}>Project</div></div>
                       </div>
                     </div>
                   </div>

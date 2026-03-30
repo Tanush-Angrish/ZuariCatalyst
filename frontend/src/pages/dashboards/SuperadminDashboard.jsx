@@ -9,7 +9,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { api } from '../../services/api';
 import {
   Inbox, UserCheck, CheckCircle2, Building, ShieldCheck,
-  RotateCcw, ExternalLink, Loader2, Hash, Search, X, User
+  RotateCcw, ExternalLink, Loader2, Hash, Search, X, User, Clock, AlertTriangle
 } from 'lucide-react';
 
 // ─── Tab definitions ────────────────────────────────────────────────────────
@@ -23,6 +23,16 @@ const TABS = [
     bg: 'bg-amber-50',
     border: 'border-amber-200',
     activeBg: 'bg-amber-600',
+  },
+  {
+    id: 'underReview',
+    label: 'Under Review Queue',
+    icon: Clock,
+    description: 'Ideas currently being reviewed by the Central Team',
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-50',
+    border: 'border-indigo-200',
+    activeBg: 'bg-indigo-600',
   },
   {
     id: 'assigned',
@@ -44,16 +54,7 @@ const TABS = [
     border: 'border-green-200',
     activeBg: 'bg-green-600',
   },
-  {
-    id: 'approvedByAdmin',
-    label: 'Approved by Admin',
-    icon: ShieldCheck,
-    description: 'Ideas approved by Org Admins after your delegation',
-    color: 'text-violet-600',
-    bg: 'bg-violet-50',
-    border: 'border-violet-200',
-    activeBg: 'bg-violet-600',
-  },
+
 ];
 
 // ─── Assigned Ideas Row Table ────────────────────────────────────────────────
@@ -97,7 +98,27 @@ function AssignedIdeaRow({ idea, orgAdmins, onReassign }) {
           </div>
 
           <div className="flex flex-col items-end gap-2 shrink-0">
-            <Badge variant="warning" className="text-xs">{idea.status}</Badge>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              <Badge variant="warning" className="text-xs bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+                <UserCheck size={10} /> Assigned
+              </Badge>
+              {idea.status === 'Under Review' && (
+                <Badge variant="warning" className="text-xs bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1">
+                  <Clock size={10} /> Under Review
+                </Badge>
+              )}
+              {idea.status === 'Rejected' && (
+                <Badge variant="danger" className="text-xs flex items-center gap-1">
+                  <AlertTriangle size={10} /> Rejected
+                </Badge>
+              )}
+              {idea.status === 'Approved' && (
+                <Badge variant="success" className="text-xs flex items-center gap-1">
+                  <CheckCircle2 size={10} /> Approved
+                </Badge>
+              )}
+            </div>
+            
             <div className="text-xs text-right text-gray-600">
               <span className="font-medium">Assigned to:</span>{' '}
               <span className="font-bold text-brand-black">{idea.assignedToName}</span>
@@ -188,62 +209,6 @@ function ApprovedIdeaRow({ idea, onViewProject }) {
   );
 }
 
-// ─── Approved By Admin Row ────────────────────────────────────────────────────
-function ApprovedByAdminRow({ idea, onViewProject }) {
-  return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-0.5">
-              {idea.project && (
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-violet-700 bg-violet-100 border border-violet-200 rounded px-1.5 py-0.5">
-                  <Hash size={9} />{idea.project.projectId}
-                </span>
-              )}
-              <p className="font-semibold text-brand-black text-sm truncate">{idea.title}</p>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-500">
-              {idea.authorOrganization && (
-                <span className="flex items-center gap-1"><Building size={11} />{idea.authorOrganization}</span>
-              )}
-              <span>Submitted by <strong>{idea.authorName}</strong></span>
-              <span>• {new Date(idea.createdAt).toLocaleDateString()}</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <Badge variant="success" className="text-xs">Approved</Badge>
-            {/* Show who (admin) approved */}
-            <span className="text-[10px] font-semibold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-              <ShieldCheck size={9} />Org Admin
-            </span>
-            {idea.project && (
-              <Badge variant="outline" className="text-xs capitalize">{idea.project.status}</Badge>
-            )}
-          </div>
-        </div>
-
-        {/* Approver attribution row */}
-        {idea.approvedByName && (
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
-            <User size={11} className="text-violet-400" />
-            <span>Approved by <strong className="text-violet-700">{idea.approvedByName}</strong></span>
-          </div>
-        )}
-
-        {idea.project && (
-          <div className="mt-3 border-t pt-3 flex justify-end">
-            <Button size="sm" variant="outline" onClick={() => onViewProject?.(idea.project.projectId)}
-              className="text-xs gap-1.5 text-violet-700 border-violet-200 hover:bg-violet-50">
-              <ExternalLink size={12} />View Project
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 export default function SuperadminDashboard() {
@@ -253,34 +218,34 @@ export default function SuperadminDashboard() {
 
   const [activeTab, setActiveTab] = useState('review');
   const [pendingIdeas, setPendingIdeas] = useState([]);
+  const [underReviewIdeas, setUnderReviewIdeas] = useState([]);
   const [assignedIdeas, setAssignedIdeas] = useState([]);
   const [approvedIdeas, setApprovedIdeas] = useState([]);
-  const [approvedByAdminIdeas, setApprovedByAdminIdeas] = useState([]);
   const [orgAdmins, setOrgAdmins] = useState([]);
   const [selectedAdmins, setSelectedAdmins] = useState({});
-  const [loading, setLoading] = useState({ review: true, assigned: true, approved: true, approvedByAdmin: true });
+  const [loading, setLoading] = useState({ review: true, underReview: true, assigned: true, approved: true });
   const [tabSearch, setTabSearch] = useState('');
 
   const fetchAll = useCallback(async () => {
-    setLoading({ review: true, assigned: true, approved: true, approvedByAdmin: true });
+    setLoading({ review: true, underReview: true, assigned: true, approved: true });
 
     const safeGet = (promise, label) =>
       promise.catch(e => { console.error(`[Dashboard] ${label} failed:`, e); return []; });
 
-    const [pending, assigned, approved, approvedByAdmin, admins] = await Promise.all([
+    const [pending, underReview, assigned, approved, admins] = await Promise.all([
       safeGet(api.getPendingIdeas(), 'getPendingIdeas'),
+      safeGet(api.getCentralUnderReview(), 'getCentralUnderReview'),
       safeGet(api.getCentralAssigned(), 'getCentralAssigned'),
       safeGet(api.getCentralApproved(), 'getCentralApproved'),
-      safeGet(api.getCentralApprovedByAdmin(), 'getCentralApprovedByAdmin'),
       safeGet(api.getOrgAdmins(), 'getOrgAdmins'),
     ]);
 
     setPendingIdeas(Array.isArray(pending) ? pending : []);
+    setUnderReviewIdeas(Array.isArray(underReview) ? underReview : []);
     setAssignedIdeas(Array.isArray(assigned) ? assigned : []);
     setApprovedIdeas(Array.isArray(approved) ? approved : []);
-    setApprovedByAdminIdeas(Array.isArray(approvedByAdmin) ? approvedByAdmin : []);
     setOrgAdmins(Array.isArray(admins) ? admins : []);
-    setLoading({ review: false, assigned: false, approved: false, approvedByAdmin: false });
+    setLoading({ review: false, underReview: false, assigned: false, approved: false });
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -312,15 +277,14 @@ export default function SuperadminDashboard() {
 
   const filteredAssigned = filterBySearch(assignedIdeas);
   const filteredApproved = filterBySearch(approvedIdeas);
-  const filteredApprovedByAdmin = filterBySearch(approvedByAdminIdeas);
 
   // Central Team approvals: pass approvedByRole='central' + user.id
-  const handleDirectAction = async (ideaId, status, rejectionReason) => {
+  const handleDirectAction = async (ideaId, status, reason) => {
     try {
       await api.updateIdeaStatus(
         ideaId,
         status,
-        rejectionReason,
+        reason,
         status === 'Approved' ? user?.id : undefined,
         status === 'Approved' ? 'central' : undefined
       );
@@ -333,19 +297,22 @@ export default function SuperadminDashboard() {
       });
       fetchAll();
     } catch (e) {
-      alert('Error updating idea status');
+      notify({ type: 'error', title: 'Action failed', message: e.message || 'Error updating idea status', event: '' });
     }
   };
 
+  // Called after any ActionModal action to refresh data
+  const handleCardAction = () => fetchAll();
+
   const counts = {
     review: pendingIdeas.length,
+    underReview: underReviewIdeas.length,
     assigned: assignedIdeas.length,
     approved: approvedIdeas.length,
-    approvedByAdmin: approvedByAdminIdeas.length,
   };
 
-  const ListSearchBar = () => (activeTab !== 'review') ? (
-    <div className="relative">
+  const ListSearchBar = () => (activeTab === 'assigned' || activeTab === 'approved') ? (
+    <div className="relative mb-4">
       <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
       <input
         type="text"
@@ -422,16 +389,43 @@ export default function SuperadminDashboard() {
       {activeTab === 'review' && (
         loading.review ? (
           <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
-            <Loader2 size={20} className="animate-spin" /> Loading ideas…
+            <Loader2 size={20} className="animate-spin" /> Loading pending ideas…
+          </div>
+        ) : pendingIdeas.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-gray-500 bg-white">
+            <Inbox className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+            <h3 className="text-lg font-medium text-brand-black">No pending ideas</h3>
+            <p className="text-sm mt-1">New ideas submitted by employees will appear here.</p>
           </div>
         ) : (
           <IdeaCardGrid
             ideas={pendingIdeas}
             viewType="superadmin"
-            onAction={handleAssign}
+            onAction={handleCardAction}
             orgAdmins={orgAdmins}
-            selectedAdmins={selectedAdmins}
-            onAdminSelect={(ideaId, adminId) => setSelectedAdmins(prev => ({ ...prev, [ideaId]: adminId }))}
+            onDirectAction={handleDirectAction}
+          />
+        )
+      )}
+
+      {/* ── TAB: Under Review Queue ───────────────────────────────────────────── */}
+      {activeTab === 'underReview' && (
+        loading.underReview ? (
+          <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
+            <Loader2 size={20} className="animate-spin" /> Loading your review queue…
+          </div>
+        ) : underReviewIdeas.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-gray-500 bg-white">
+            <Clock className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+            <h3 className="text-lg font-medium text-brand-black">Queue is empty</h3>
+            <p className="text-sm mt-1">Ideas you put "Under Review" will appear here for final approval/rejection.</p>
+          </div>
+        ) : (
+          <IdeaCardGrid
+            ideas={underReviewIdeas}
+            viewType="superadmin"
+            onAction={handleCardAction}
+            orgAdmins={orgAdmins}
             onDirectAction={handleDirectAction}
           />
         )
@@ -489,31 +483,6 @@ export default function SuperadminDashboard() {
         )
       )}
 
-      {/* ── TAB 4: Approved by Org Admin ─────────────────────────────────────── */}
-      {activeTab === 'approvedByAdmin' && (
-        loading.approvedByAdmin ? (
-          <div className="flex items-center justify-center py-16 text-gray-400 gap-2">
-            <Loader2 size={20} className="animate-spin" /> Loading admin-approved ideas…
-          </div>
-        ) : approvedByAdminIdeas.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-gray-500 bg-white">
-            <ShieldCheck className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-brand-black">No ideas approved by Org Admin yet</h3>
-            <p className="text-sm mt-1">Ideas approved by Org Admins (after being assigned by you) will appear here.</p>
-          </div>
-        ) : filteredApprovedByAdmin.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 p-10 text-center text-gray-400 bg-white">
-            <Search className="mx-auto h-8 w-8 text-gray-200 mb-2" />
-            <p className="text-sm font-semibold">No results match your search.</p>
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {filteredApprovedByAdmin.map(idea => (
-              <ApprovedByAdminRow key={idea.id} idea={idea} onViewProject={() => navigate('/dashboard/projects')} />
-            ))}
-          </div>
-        )
-      )}
     </div>
   );
 }

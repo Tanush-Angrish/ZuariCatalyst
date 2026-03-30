@@ -9,72 +9,153 @@ import {
   Building, Tag, CheckCircle2, XCircle,
   Calendar, Paperclip, Link as LinkIcon, UserCheck,
   Download, Eye, Mic, Lightbulb, ThumbsUp, Search, SlidersHorizontal,
-  AlertTriangle, RefreshCw, Send
+  AlertTriangle, RefreshCw, Send, Clock, ChevronRight, Users
 } from 'lucide-react';
 import { api } from '../services/api';
 
-// ─── Reject Reason Modal ───────────────────────────────────────────────────
-function RejectReasonModal({ ideaTitle, onConfirm, onCancel }) {
-  const [reason, setReason] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = () => {
-    if (!reason.trim()) { setError('Please provide a reason for rejection.'); return; }
-    onConfirm(reason.trim());
+// ─── Unified Action Modal ─────────────────────────────────────────────────
+// Handles: Under Review, Reject, Assign (all require a reason)
+function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onConfirm, onCancel }) {
+  // Determine available actions based on viewType and current ideaStatus
+  const getActions = () => {
+    if (ideaStatus === 'Under Review') {
+      // Under review: can Approve or Reject (with reason)
+      const acts = [
+        { id: 'Approved', label: 'Approve Idea', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', desc: 'Approve and convert to a project.' },
+        { id: 'Rejected', label: 'Reject Idea', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', desc: 'Reject this idea with a reason.' },
+      ];
+      return acts;
+    }
+    const acts = [
+      { id: 'Under Review', label: 'Put Under Review', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', desc: 'Move to active review. Required before approving.' },
+      { id: 'Rejected', label: 'Reject Idea', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', desc: 'Reject this idea with a reason.' },
+    ];
+    if (viewType === 'superadmin') {
+      acts.push({ id: 'Assigned', label: 'Assign to Org Admin', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', desc: 'Delegate review to an Org Admin.' });
+    }
+    return acts;
   };
+
+  const actions = getActions();
+  const [selectedAction, setSelectedAction] = useState(null);
+  const [reason, setReason] = useState('');
+  const [selectedAdmin, setSelectedAdmin] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleConfirm = async () => {
+    if (!selectedAction) { setError('Please select an action.'); return; }
+    if (selectedAction === 'Rejected' && !reason.trim()) { setError('A reason is required when rejecting an idea.'); return; }
+    if (selectedAction === 'Assigned' && !selectedAdmin) { setError('Please select an Org Admin to assign to.'); return; }
+
+    setLoading(true);
+    try {
+      await onConfirm({ action: selectedAction, reason: reason.trim(), adminId: selectedAdmin || null });
+    } catch (e) {
+      setError(e.message || 'Action failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const selectedDef = actions.find(a => a.id === selectedAction);
 
   return ReactDOM.createPortal(
     <div
-      className="fixed inset-0 z-[99999] flex items-start justify-center pt-20 p-4"
+      className="fixed inset-0 z-[99999] flex items-start justify-center pt-16 p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
         {/* Header */}
         <div className="flex items-center gap-3 px-6 pt-6 pb-4 border-b">
-          <div className="p-2 rounded-xl bg-red-50 text-red-500">
-            <XCircle size={20} />
+          <div className="p-2 rounded-xl bg-gray-100 text-gray-600">
+            <ChevronRight size={20} />
           </div>
-          <div>
-            <h2 className="text-base font-bold text-gray-900">Reject Idea</h2>
-            <p className="text-xs text-gray-500 mt-0.5 truncate max-w-sm">{ideaTitle}</p>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-bold text-gray-900">Take Action</h2>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">{ideaTitle}</p>
           </div>
-          <button onClick={onCancel} className="ml-auto p-1.5 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
+          <button onClick={onCancel} className="p-1.5 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-5">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Reason for Rejection <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            autoFocus
-            value={reason}
-            onChange={e => { setReason(e.target.value); setError(''); }}
-            rows={4}
-            placeholder="Explain why this idea is being rejected. This feedback will be shared with the employee to help them improve and resubmit…"
-            className="w-full rounded-xl border border-gray-300 p-3 text-sm focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100 resize-none transition-all"
-          />
-          {error && (
-            <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
-              <AlertTriangle size={12} />{error}
-            </p>
-          )}
-          <p className="mt-2 text-[11px] text-gray-400">
-            This reason will be shown to the employee in the app and in the email notification.
-          </p>
+        {/* Action Selector */}
+        <div className="px-6 pt-5 space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Choose Action</p>
+          {actions.map(act => {
+            const Icon = act.icon;
+            const isSelected = selectedAction === act.id;
+            return (
+              <button
+                key={act.id}
+                type="button"
+                onClick={() => { setSelectedAction(act.id); setError(''); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all ${
+                  isSelected ? `${act.bg} ${act.border} ring-2 ring-offset-1 ring-current ${act.color}` : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <Icon size={17} className={isSelected ? act.color : 'text-gray-400'} />
+                <div>
+                  <p className={`text-sm font-semibold ${isSelected ? act.color : 'text-gray-700'}`}>{act.label}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{act.desc}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
 
+        {/* Org Admin Selector (only for Assign) */}
+        {selectedAction === 'Assigned' && (
+          <div className="px-6 pt-4">
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Assign To <span className="text-red-500">*</span></label>
+            <select
+              className="w-full text-sm border border-gray-300 rounded-xl p-2.5 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20"
+              value={selectedAdmin}
+              onChange={e => setSelectedAdmin(e.target.value)}
+            >
+              <option value="">Select Org Admin…</option>
+              {(orgAdmins || []).map(a => (
+                <option key={a.id} value={a.id}>{a.name}{a.organization ? ` (${a.organization})` : ''}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Reason Input — only required for Rejection */}
+        {selectedAction === 'Rejected' && (
+          <div className="px-6 pt-4">
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+              Reason for Rejection <span className="text-red-500">*</span>
+              <span className="ml-1 font-normal text-gray-400">(required)</span>
+            </label>
+            <textarea
+              autoFocus
+              value={reason}
+              onChange={e => { setReason(e.target.value); setError(''); }}
+              rows={3}
+              placeholder="Explain why this idea is being rejected. This will be shared with the employee…"
+              className="w-full rounded-xl border border-red-200 focus:border-red-400 focus:ring-red-100 p-3 text-sm resize-none transition-all focus:outline-none focus:ring-2"
+            />
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="mx-6 mt-3 flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-xs">
+            <AlertTriangle size={13} />{error}
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 pb-6">
-          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <div className="flex justify-end gap-3 px-6 py-5">
+          <Button variant="outline" onClick={onCancel} disabled={loading}>Cancel</Button>
           <Button
-            onClick={handleSubmit}
-            className="bg-red-600 hover:bg-red-700 text-white gap-1.5"
+            onClick={handleConfirm}
+            disabled={!selectedAction || loading}
+            className={selectedDef?.id === 'Rejected' ? 'bg-red-600 hover:bg-red-700 text-white' : selectedDef?.id === 'Approved' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
           >
-            <XCircle size={15} />Confirm Reject
+            {loading ? 'Processing…' : (selectedDef ? `Confirm: ${selectedDef.label}` : 'Select an Action')}
           </Button>
         </div>
       </div>
@@ -82,7 +163,6 @@ function RejectReasonModal({ ideaTitle, onConfirm, onCancel }) {
     document.body
   );
 }
-
 
 // ─── Helper: extract field value from idea ─────────────────────────────────
 function getFieldValue(fieldId, idea) {
@@ -108,7 +188,8 @@ function statusVariant(status) {
   switch (status) {
     case 'Approved': return 'success';
     case 'Rejected': return 'destructive';
-    case 'Assigned to Org Admin': return 'warning';
+    case 'Under Review': return 'warning';
+    case 'Assigned to Org Admin': return 'secondary';
     default: return 'secondary';
   }
 }
@@ -143,28 +224,13 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
   const [viewingFile, setViewingFile] = useState(null);
   const [fileContent, setFileContent] = useState(null);
   const [loadingFile, setLoadingFile] = useState(false);
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [pendingRejectTarget, setPendingRejectTarget] = useState(null); // { id, via: 'orgAdmin'|'superadmin' }
+  const [actionModalOpen, setActionModalOpen] = useState(false);
   const templateDef = (templates || []).find(t => t.id === idea.extra?._templateId);
   const fields = templateDef?.fields ?? [];
 
   const isEmployeeView = viewType === 'employee' || viewType === 'myIdeas';
   const isOwnIdea = currentUser && idea.authorId === currentUser.id;
   const showRejectionBanner = idea.status === 'Rejected' && (isEmployeeView || isOwnIdea);
-
-  const handleRejectClick = (ideaId, via) => {
-    setPendingRejectTarget({ id: ideaId, via });
-    setRejectModalOpen(true);
-  };
-
-  const handleRejectConfirm = (reason) => {
-    setRejectModalOpen(false);
-    if (!pendingRejectTarget) return;
-    const { id, via } = pendingRejectTarget;
-    if (via === 'orgAdmin') onAction?.(id, 'Rejected', reason);
-    else onDirectAction?.(id, 'Rejected', reason);
-    onClose();
-  };
 
   // Parse files from idea
   const ideaFiles = useMemo(() => {
@@ -490,56 +556,46 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
                   </div>
                 )}
 
-                {/* Superadmin Assign panel */}
-                {viewType === 'superadmin' && orgAdmins?.length > 0 && (
-                  <div className="p-4 rounded-xl bg-gray-50 border">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Assign Reviewer</h3>
-                    <div className="flex gap-2">
-                      <select
-                        className="flex-1 border border-gray-300 rounded-lg text-sm p-2 focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
-                        value={selectedAdmins?.[idea.id] || ''}
-                        onChange={e => onAdminSelect?.(idea.id, e.target.value)}
-                      >
-                        <option value="">Select Org Admin...</option>
-                        {orgAdmins.map(a => (
-                          <option key={a.id} value={a.id}>
-                            {a.name}{a.organization ? ` (${a.organization})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <Button size="sm" className="shrink-0" onClick={() => { onAction?.(idea.id); onClose(); }}>
-                        <UserCheck size={14} className="mr-1" />Assign
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>
 
           {/* Footer action buttons */}
-          {(viewType === 'orgAdmin' || viewType === 'superadmin') && (
+          {(viewType === 'orgAdmin' || viewType === 'superadmin') && idea.status !== 'Approved' && idea.status !== 'Rejected' && (
             <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
               <Button
                 size="sm"
-                variant="outline"
-                className="text-red-600 border-red-200 hover:bg-red-50 font-semibold gap-1.5"
-                onClick={() => handleRejectClick(idea.id, viewType === 'orgAdmin' ? 'orgAdmin' : 'superadmin')}
+                className="font-semibold gap-2 px-6 py-2.5 h-auto text-sm shadow-md bg-brand-blue hover:bg-blue-700 text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+                onClick={() => setActionModalOpen(true)}
               >
-                <XCircle size={15} />Reject
-              </Button>
-              <Button
-                size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-1.5"
-                onClick={() => {
-                  if (viewType === 'orgAdmin') onAction?.(idea.id, 'Approved');
-                  else onDirectAction?.(idea.id, 'Approved');
-                  onClose();
-                }}
-              >
-                <CheckCircle2 size={15} />Approve
+                Take Action <ChevronDown size={16} />
               </Button>
             </div>
+          )}
+
+          {actionModalOpen && (
+            <ActionModal
+              ideaId={idea.id}
+              ideaTitle={idea.title}
+              ideaStatus={idea.status}
+              viewType={viewType}
+              orgAdmins={orgAdmins}
+              onConfirm={async ({ action, reason, adminId }) => {
+                if (action === 'Under Review') {
+                  await api.underReviewIdea(idea.id);
+                } else if (action === 'Assigned') {
+                  await api.assignIdea(idea.id, parseInt(adminId));
+                } else if (action === 'Approved') {
+                  await onDirectAction?.(idea.id, 'Approved', null);
+                } else if (action === 'Rejected') {
+                  await onDirectAction?.(idea.id, 'Rejected', reason);
+                }
+                setActionModalOpen(false);
+                onAction?.(idea.id, action, reason, adminId);
+                onClose(); // Close detail modal after action
+              }}
+              onCancel={() => setActionModalOpen(false)}
+            />
           )}
         </div>
 
@@ -619,13 +675,6 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
           </div>
         )}
       </div>
-      {rejectModalOpen && (
-        <RejectReasonModal
-          ideaTitle={idea.title}
-          onConfirm={handleRejectConfirm}
-          onCancel={() => { setRejectModalOpen(false); setPendingRejectTarget(null); }}
-        />
-      )}
     </div>
   );
 
@@ -640,8 +689,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
   const [upvoteCount, setUpvoteCount] = useState(0);
   const [hasUpvoted, setHasUpvoted] = useState(false);
   const [upvoteLoading, setUpvoteLoading] = useState(false);
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [pendingRejectVia, setPendingRejectVia] = useState(null);
+  const [actionModalOpen, setActionModalOpen] = useState(false);
 
   // Fetch upvote count on mount
   useEffect(() => {
@@ -721,7 +769,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
               {currentUser && idea.authorId !== currentUser.id && idea.status !== 'Rejected' && (
                 <button
                   type="button"
-                  disabled={upvoteLoading}
+                  disabled={upvoteLoading || hasUpvoted}
                   onClick={e => {
                     e.stopPropagation();
                     e.preventDefault();
@@ -732,7 +780,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
                       .finally(() => setUpvoteLoading(false));
                   }}
                   onPointerDown={e => e.stopPropagation()}
-                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${hasUpvoted ? 'bg-brand-blue text-white border-brand-blue shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:border-brand-blue hover:text-brand-blue shadow-sm'}`}
+                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${hasUpvoted ? 'bg-brand-blue text-white border-brand-blue shadow-sm cursor-not-allowed' : 'bg-white text-gray-600 border-gray-200 hover:border-brand-blue hover:text-brand-blue shadow-sm'}`}
                 >
                   <ThumbsUp size={14} className={hasUpvoted ? 'fill-white' : ''} />
                   {upvoteCount > 0 && <span className="font-semibold">{upvoteCount}</span>}
@@ -747,21 +795,6 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
             </div>
 
             <div className="flex items-center gap-3">
-              {/* OrgAdmin buttons — single row */}
-              {viewType === 'orgAdmin' && (
-                <div className="flex gap-2" onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
-                  <Button size="sm" variant="outline"
-                    className="text-red-600 border-red-200 hover:bg-red-50 text-xs py-1.5 h-auto font-semibold gap-1 px-3"
-                    onClick={e => { e.stopPropagation(); setPendingRejectVia('orgAdmin'); setRejectModalOpen(true); }}>
-                    <XCircle size={14} />Reject
-                  </Button>
-                  <Button size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white text-xs py-1.5 h-auto font-semibold gap-1 px-3"
-                    onClick={e => { e.stopPropagation(); onAction?.(idea.id, 'Approved'); }}>
-                    <CheckCircle2 size={14} />Approve
-                  </Button>
-                </div>
-              )}
               {/* Employee Draft Action */}
               {viewType === 'myIdeas' && idea.status === 'Draft' && (
                 <div onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
@@ -784,62 +817,54 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
                   </Button>
                 </div>
               )}
+
+              {/* Central Team / Org Admin Action Button */}
+              {(viewType === 'superadmin' || viewType === 'orgAdmin') && idea.status !== 'Approved' && idea.status !== 'Rejected' && (
+                <div onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
+                  <Button
+                    size="sm"
+                    className="text-xs py-1.5 h-auto font-semibold shadow-sm gap-1.5 px-3"
+                    onClick={e => { e.stopPropagation(); setActionModalOpen(true); }}
+                  >
+                    Take Action <ChevronDown size={13} />
+                  </Button>
+                </div>
+              )}
+
               <div className="text-[11px] text-gray-500 font-medium whitespace-nowrap">
                 {idea.status === 'Draft' ? 'Saved' : 'Submitted'} on {new Date(idea.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
               </div>
             </div>
           </div>
-
-            {/* Superadmin — two-row layout for assign + approve/reject */}
-            {viewType === 'superadmin' && (
-              <div className="mt-2 space-y-2" onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
-                <div className="flex gap-2">
-                  <select
-                    className="flex-1 border border-gray-300 rounded-md text-xs p-1.5 focus:border-brand-blue"
-                    value={selectedAdmins?.[idea.id] || ''}
-                    onChange={e => onAdminSelect?.(idea.id, e.target.value)}
-                  >
-                    <option value="">Assign to...</option>
-                    {orgAdmins?.map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}{a.organization ? ` (${a.organization})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <Button size="sm" className="text-xs py-1 h-auto shrink-0" onClick={e => { e.stopPropagation(); onAction?.(idea.id); }}>
-                    Assign
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline"
-                    className="flex-1 text-green-600 border-green-200 hover:bg-green-50 text-xs py-1 h-auto font-semibold gap-1"
-                    onClick={e => { e.stopPropagation(); onDirectAction?.(idea.id, 'Approved'); }}>
-                    <CheckCircle2 size={13} />Approve
-                  </Button>
-                  <Button size="sm" variant="outline"
-                    className="flex-1 text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto font-semibold gap-1"
-                    onClick={e => { e.stopPropagation(); setPendingRejectVia('superadmin'); setRejectModalOpen(true); }}>
-                    <XCircle size={13} />Reject
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+        </div>
       </div>
 
-      {rejectModalOpen && (
-        <RejectReasonModal
+      {/* Unified Action Modal */}
+      {actionModalOpen && (
+        <ActionModal
+          ideaId={idea.id}
           ideaTitle={idea.title}
-          onConfirm={(reason) => {
-            setRejectModalOpen(false);
-            if (pendingRejectVia === 'orgAdmin') onAction?.(idea.id, 'Rejected', reason);
-            else onDirectAction?.(idea.id, 'Rejected', reason);
+          ideaStatus={idea.status}
+          viewType={viewType}
+          orgAdmins={orgAdmins}
+          onConfirm={async ({ action, reason, adminId }) => {
+            if (action === 'Under Review') {
+              await api.underReviewIdea(idea.id);
+            } else if (action === 'Assigned') {
+              await api.assignIdea(idea.id, parseInt(adminId));
+            } else if (action === 'Approved') {
+              await onDirectAction?.(idea.id, 'Approved', null);
+            } else if (action === 'Rejected') {
+              await onDirectAction?.(idea.id, 'Rejected', reason);
+            }
+            setActionModalOpen(false);
+            onAction?.(idea.id, action, reason, adminId);
           }}
-          onCancel={() => { setRejectModalOpen(false); setPendingRejectVia(null); }}
+          onCancel={() => setActionModalOpen(false)}
         />
       )}
 
-      {/* Detail Modal — via portal, always centered */}
+      {/* Detail Modal */}
       {modalOpen && (
         <IdeaDetailModal
           idea={idea}

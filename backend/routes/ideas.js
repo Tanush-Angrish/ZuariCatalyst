@@ -88,7 +88,9 @@ router.get('/pending', async (req, res) => {
 router.get('/central/assigned', async (req, res) => {
   try {
     const ideas = await prisma.idea.findMany({
-      where: { status: 'Assigned to Org Admin' },
+      where: { 
+        assignedToId: { not: null }
+      },
       include: {
         author: { select: { name: true, organization: true } },
         assignedTo: { select: { id: true, name: true, organization: true } }
@@ -102,6 +104,21 @@ router.get('/central/assigned', async (req, res) => {
       assignedToName: idea.assignedTo?.name || 'Unknown',
       assignedToOrg: idea.assignedTo?.organization || '—'
     }));
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET Central Team's Under Review queue (not delegated)
+router.get('/central/under-review', async (req, res) => {
+  try {
+    const ideas = await prisma.idea.findMany({
+      where: { status: 'Under Review', assignedToId: null },
+      include: { author: { select: { name: true, organization: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name, authorOrganization: idea.author.organization }));
     res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -199,6 +216,63 @@ router.get('/assigned/:userId', async (req, res) => {
       ...idea, 
       authorName: idea.author.name, 
       authorOrganization: idea.author.organization 
+    }));
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET assigned ideas that are Under Review (For Org Admin)
+router.get('/assigned/:userId/under-review', async (req, res) => {
+  try {
+    const ideas = await prisma.idea.findMany({
+      where: { 
+        assignedToId: parseInt(req.params.userId),
+        status: 'Under Review' 
+      },
+      include: { author: { select: { name: true, organization: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    const formatted = ideas.map(idea => ({ 
+      ...idea, 
+      authorName: idea.author.name, 
+      authorOrganization: idea.author.organization 
+    }));
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET assigned ideas that have been processed (Approved/Rejected) (For Org Admin)
+router.get('/assigned/:userId/processed', async (req, res) => {
+  try {
+    const ideas = await prisma.idea.findMany({
+      where: { 
+        assignedToId: parseInt(req.params.userId),
+        status: { in: ['Approved', 'Rejected'] } 
+      },
+      include: { author: { select: { name: true, organization: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Attach project info for Approved ideas
+    const ideaIds = ideas.filter(i => i.status === 'Approved').map(i => i.id);
+    let projectMap = {};
+    if (ideaIds.length > 0) {
+      const projects = await prisma.project.findMany({
+        where: { ideaId: { in: ideaIds } },
+        select: { ideaId: true, projectId: true, status: true }
+      });
+      projects.forEach(p => { projectMap[p.ideaId] = p; });
+    }
+
+    const formatted = ideas.map(idea => ({ 
+      ...idea, 
+      authorName: idea.author.name, 
+      authorOrganization: idea.author.organization,
+      project: projectMap[idea.id] || null
     }));
     res.json(formatted);
   } catch (error) {
@@ -455,10 +529,10 @@ router.put('/:id/assign', async (req, res) => {
 
     // DB Notifications
     notifyUser(updatedIdea.authorId, 'idea', `Your idea '${updatedIdea.title}' has been assigned to an Org Admin for review.`, ideaId);
-    notifyUser(parseInt(assignedToId), 'idea', `You have been assigned to review idea: ${updatedIdea.title}`, ideaId);
+    notifyUser(parseInt(assignedToId), 'idea', `You have been assigned to review idea: ${updatedIdea.title}. Reason: ${reason.trim()}`, ideaId);
     notifyCentralTeam('idea', `Idea '${updatedIdea.title}' assigned to ${orgAdmin?.name}`, ideaId);
 
-    // Email Org Admin in background (Central Team removed as per new rule)
+    // Email Org Admin in background
     if (orgAdmin && orgAdmin.email) {
       sendIdeaAssignedEmail({
         toEmails: [orgAdmin.email],
@@ -474,8 +548,28 @@ router.put('/:id/assign', async (req, res) => {
   }
 });
 
-// PUT update status (Org Admin approve/reject, or Central Team direct approve)
-// Caller must pass: approvedById (Int) and approvedByRole ('admin' | 'central')
+// PUT put idea Under Review (Central Team or Org Admin)
+router.put('/:id/under-review', async (req, res) => {
+  const ideaId = parseInt(req.params.id);
+
+  try {
+    const idea = await prisma.idea.update({
+      where: { id: ideaId },
+      data: { status: 'Under Review' },
+      include: { author: { select: { name: true, organization: true } } }
+    });
+    res.json({ message: 'Idea is now Under Review' });
+
+    notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' is now Under Review.`, ideaId);
+    notifyCentralTeam('idea', `Idea '${idea.title}' moved to Under Review.`, ideaId);
+    awardPoints(idea.authorId, 'idea_under_review', 15, ideaId);
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'Idea not found' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT update status — ONLY valid from 'Under Review' state
 router.put('/:id/status', async (req, res) => {
   const ideaId = parseInt(req.params.id);
   const { status, rejectionReason, approvedById, approvedByRole } = req.body;
@@ -484,20 +578,27 @@ router.put('/:id/status', async (req, res) => {
     return res.status(400).json({ error: 'Invalid status' });
   }
 
+  // Only Rejection requires a reason
   if (status === 'Rejected' && (!rejectionReason || !rejectionReason.trim())) {
-    return res.status(400).json({ error: 'Rejection reason is required' });
+    return res.status(400).json({ error: 'A reason is required when rejecting an idea.' });
   }
 
   try {
+    // Enforce: can only approve/reject if idea is currently Under Review
+    const current = await prisma.idea.findUnique({ where: { id: ideaId }, select: { status: true } });
+    if (!current) return res.status(404).json({ error: 'Idea not found' });
+    if (current.status !== 'Under Review') {
+      return res.status(400).json({ error: 'An idea must be Under Review before it can be Approved or Rejected.' });
+    }
+
     const idea = await prisma.idea.update({
       where: { id: ideaId },
       data: {
         status,
-        ...(status === 'Rejected' ? { rejectionReason: rejectionReason.trim() } : {}),
-        // Store approval attribution — only set on Approved, clear on Rejected
+        rejectionReason: rejectionReason.trim(),
         ...(status === 'Approved' && approvedById ? {
           approvedByUserId: parseInt(approvedById),
-          approvedByRole: approvedByRole || 'admin'  // default to 'admin' for safety
+          approvedByRole: approvedByRole || 'admin'
         } : {})
       },
       include: { author: { select: { name: true, organization: true } } }
@@ -524,8 +625,8 @@ router.put('/:id/status', async (req, res) => {
         });
         console.log(`[Projects] Auto-created project ${projectId} for idea ${ideaId}`);
 
-        // Award +50 points for idea→project conversion
-        awardPoints(idea.authorId, 'idea_approved', 50, ideaId);
+        // Award +150 points for idea→project conversion
+        awardPoints(idea.authorId, 'idea_approved', 150, ideaId);
 
         // DB Notifications
         notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' was APPROVED. A project (${projectId}) has been created.`, ideaId);
@@ -631,14 +732,7 @@ router.post('/:id/upvote', async (req, res) => {
     });
 
     if (existing) {
-      // ── REMOVE UPVOTE ─────────────────────────────────────────────────
-      // Revoke points FIRST using the upvote.id while it still exists
-      await awardPoints(idea.authorId, 'upvote_received', -5, existing.id);
-      // Then delete the upvote row
-      await prisma.upvote.delete({ where: { id: existing.id } });
-
-      const count = await prisma.upvote.count({ where: { ideaId } });
-      return res.json({ upvoted: false, count });
+      return res.status(400).json({ error: 'You have already upvoted this idea. Upvotes are permanent.' });
     } else {
       // ── ADD UPVOTE ────────────────────────────────────────────────────
       const newUpvote = await prisma.upvote.create({ data: { ideaId, userId: uid } });

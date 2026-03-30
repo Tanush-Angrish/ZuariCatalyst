@@ -143,7 +143,7 @@ export default function FeaturesTabs() {
                 <div className="htab-text">
                   <div className="htab-eyebrow">Engagement</div>
                   <h3 className="htab-title">Make innovation a daily habit</h3>
-                  <p className="htab-desc">Every action on Catalyst earns points — submitting (10), getting approved (25), converting to a project (50), upvotes received (5), project completed (100). A live leaderboard shows the top innovators, keeping the culture alive every day.</p>
+                  <p className="htab-desc">Every action on Catalyst earns points — submitting (10), going under review (15), converting to a project (150), upvotes received (5). A live leaderboard shows the top innovators, keeping the culture alive every day.</p>
                 </div>
                 <div className="htab-mockup">
                   <div className="htab-shell">
