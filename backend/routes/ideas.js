@@ -229,14 +229,62 @@ router.get('/team/:organization', async (req, res) => {
   }
 });
 
+// GET submission limits for current month (Employee)
+router.get('/limits/:userId', async (req, res) => {
+  try {
+    const authorId = parseInt(req.params.userId);
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const submittedCount = await prisma.idea.count({
+      where: {
+        authorId,
+        createdAt: { gte: startOfMonth },
+        status: { not: 'Draft' }
+      }
+    });
+
+    const draftCount = await prisma.idea.count({
+      where: {
+        authorId,
+        status: 'Draft'
+      }
+    });
+
+    res.json({ submittedCount, draftCount });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST submit new idea (Employee)
 router.post('/', async (req, res) => {
-  const { title, description, department, expectedImpact, supportingLink, authorId, extraFields, files } = req.body;
+  const { title, description, department, expectedImpact, supportingLink, authorId, extraFields, files, isDraft } = req.body;
   if (!title || !description || !department || !expectedImpact || !authorId) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
+    const aid = parseInt(authorId);
+
+    // Enforce limits
+    if (isDraft) {
+      const draftCount = await prisma.idea.count({
+        where: { authorId: aid, status: 'Draft' }
+      });
+      if (draftCount >= 3) {
+        return res.status(400).json({ error: 'Draft limit reached. You can only have up to 3 drafts at a time.' });
+      }
+    } else {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const submittedCount = await prisma.idea.count({
+        where: { authorId: aid, createdAt: { gte: startOfMonth }, status: { not: 'Draft' } }
+      });
+      if (submittedCount >= 5) {
+        return res.status(400).json({ error: 'Monthly limit reached. You can only submit 5 ideas per month.' });
+      }
+    }
     const idea = await prisma.idea.create({
       data: {
         title,
@@ -246,10 +294,14 @@ router.post('/', async (req, res) => {
         supportingLink,
         extraFields: JSON.stringify(extraFields || {}),
         files: JSON.stringify(files || []),
-        authorId: parseInt(authorId),
-        status: 'Pending Review'
+        authorId: aid,
+        status: isDraft ? 'Draft' : 'Pending Review'
       }
     });
+
+    if (isDraft) {
+      return res.json({ id: idea.id, status: idea.status, isDraft: true });
+    }
 
     // AI Processing - Background (don't block the response)
     console.log(`[AI-Queue] Triggering AI processing for idea ID: ${idea.id}`);
@@ -272,7 +324,7 @@ router.post('/', async (req, res) => {
       .catch(err => console.error(`[AI-Queue] Error in background AI processing for ID: ${idea.id}:`, err));
 
     // Award +10 points for idea submission
-    awardPoints(parseInt(authorId), 'idea_submitted', 10, idea.id);
+    awardPoints(aid, 'idea_submitted', 10, idea.id);
 
     res.json({ id: idea.id, status: idea.status });
 
@@ -294,6 +346,83 @@ router.post('/', async (req, res) => {
       }).catch(console.error);
     }
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT submit a draft idea
+router.put('/:id/submit-draft', async (req, res) => {
+  const ideaId = parseInt(req.params.id);
+  
+  try {
+    const idea = await prisma.idea.findUnique({ where: { id: ideaId }, include: { author: { select: { name: true, organization: true } } } });
+    if (!idea || idea.status !== 'Draft') {
+      return res.status(400).json({ error: 'This idea is not a draft or does not exist.' });
+    }
+
+    // Enforce limits
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const submittedCount = await prisma.idea.count({
+      where: { authorId: idea.authorId, createdAt: { gte: startOfMonth }, status: { not: 'Draft' } }
+    });
+    
+    if (submittedCount >= 5) {
+      return res.status(400).json({ error: 'Monthly limit reached. You can only submit 5 ideas per month.' });
+    }
+
+    // Submit it
+    const updated = await prisma.idea.update({
+      where: { id: ideaId },
+      data: { status: 'Pending Review' }
+    });
+
+    // Extract proposed solution for AI
+    let proposedSolution = '';
+    try {
+      const extra = JSON.parse(idea.extraFields || '{}');
+      proposedSolution = extra.proposedSolution || '';
+    } catch(e) {}
+
+    // AI Processing - Background
+    console.log(`[AI-Queue] Triggering AI processing for idea ID: ${updated.id}`);
+    generateIdeaInsights({ title: updated.title, description: updated.description, proposedSolution })
+      .then(async (insights) => {
+        if (insights) {
+          console.log(`[AI-Queue] Updating idea ID: ${updated.id} with insights`);
+          await prisma.idea.update({
+            where: { id: updated.id },
+            data: {
+              aiSummary: insights.summary,
+              aiTags: JSON.stringify(insights.tags)
+            }
+          });
+          console.log(`[AI-Queue] Idea ID: ${updated.id} successfully updated with AI insights`);
+        }
+      })
+      .catch(err => console.error(`[AI-Queue] Error in background AI processing for ID: ${updated.id}:`, err));
+
+    // Award +10 points for idea submission
+    awardPoints(idea.authorId, 'idea_submitted', 10, idea.id);
+
+    res.json({ message: 'Draft submitted successfully', status: 'Pending Review' });
+
+    // DB Notifications & Email
+    const author = idea.author;
+    notifyOrgAdmins(author?.organization, 'idea', `New idea submitted by ${author?.name}: ${updated.title}`, updated.id);
+    notifyCentralTeam('idea', `New idea submitted by ${author?.name}: ${updated.title}`, updated.id);
+    
+    const centralEmails = await getCentralTeamEmails();
+    if (centralEmails.length > 0 && author) {
+      sendIdeaSubmittedEmail({
+        toEmails: centralEmails,
+        ideaTitle: updated.title,
+        submittedBy: author.name,
+        organization: author.organization || 'Unknown'
+      }).catch(console.error);
+    }
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'Idea not found' });
     res.status(500).json({ error: error.message });
   }
 });

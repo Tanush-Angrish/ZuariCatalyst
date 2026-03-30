@@ -78,9 +78,13 @@ export const api = {
   getOrgIdeas: (orgName) => request(`/api/ideas/team/${encodeURIComponent(orgName)}`),
   getOrgAdmins: () => request('/api/ideas/orgadmins'),
   getInnovationProjects: () => request('/api/ideas/projects'), // For community feed
+  getIdeaLimits: (userId) => request(`/api/ideas/limits/${userId}`),
   submitIdea: (payload) => request('/api/ideas', {
     method: 'POST',
     body: JSON.stringify(payload),
+  }),
+  submitDraftIdea: (id) => request(`/api/ideas/${id}/submit-draft`, {
+    method: 'PUT',
   }),
   updateIdeaStatus: (id, status, rejectionReason, approvedById, approvedByRole) => request(`/api/ideas/${id}/status`, {
     method: 'PUT',

@@ -9,7 +9,7 @@ import {
   Building, Tag, CheckCircle2, XCircle,
   Calendar, Paperclip, Link as LinkIcon, UserCheck,
   Download, Eye, Mic, Lightbulb, ThumbsUp, Search, SlidersHorizontal,
-  AlertTriangle, RefreshCw
+  AlertTriangle, RefreshCw, Send
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -691,7 +691,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
           </div>
           {/* Hide Status badge for employees in community view */}
           {!(isEmployee && viewType === 'community') && (
-            <Badge variant={statusVariant(idea.status)} className="shrink-0 text-xs">{idea.status}</Badge>
+            <Badge variant={statusVariant(idea.status)} className={`shrink-0 text-xs ${idea.status === 'Draft' ? 'bg-amber-100 text-amber-800' : ''}`}>{idea.status}</Badge>
           )}
         </div>
 
@@ -762,8 +762,30 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
                   </Button>
                 </div>
               )}
+              {/* Employee Draft Action */}
+              {viewType === 'myIdeas' && idea.status === 'Draft' && (
+                <div onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
+                  <Button 
+                    size="sm" 
+                    className="text-xs py-1.5 h-auto font-semibold shadow-sm bg-brand-blue hover:bg-blue-700 text-white gap-1.5 px-3"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (window.confirm("Are you sure you want to submit this draft for review?")) {
+                        try {
+                          await api.submitDraftIdea(idea.id);
+                          window.location.reload();
+                        } catch(err) {
+                          alert(err.message);
+                        }
+                      }
+                    }}
+                  >
+                    <Send size={13} /> Submit Now
+                  </Button>
+                </div>
+              )}
               <div className="text-[11px] text-gray-500 font-medium whitespace-nowrap">
-                Submitted on {new Date(idea.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                {idea.status === 'Draft' ? 'Saved' : 'Submitted'} on {new Date(idea.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
               </div>
             </div>
           </div>

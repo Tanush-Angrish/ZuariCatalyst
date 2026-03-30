@@ -270,6 +270,15 @@ export default function EmployeeDashboard() {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [categories, setCategories] = useState([]);
 
+  // Limits State
+  const [limits, setLimits] = useState({ submittedCount: 0, draftCount: 0 });
+
+  React.useEffect(() => {
+    if (user?.id) {
+       api.getIdeaLimits(user.id).then(setLimits).catch(console.error);
+    }
+  }, [user]);
+
   React.useEffect(() => {
     const fetchData = async () => {
       try {
@@ -392,8 +401,8 @@ export default function EmployeeDashboard() {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, isDraft = false) => {
+    if (e) e.preventDefault();
     if (!selectedTemplate) return;
     setIsSubmitting(true);
 
@@ -404,7 +413,8 @@ export default function EmployeeDashboard() {
       authorId: user.id,
       description: '',
       expectedImpact: '',
-      supportingLink: formData.referenceLink || ''
+      supportingLink: formData.referenceLink || '',
+      isDraft
     };
 
     if (formData.problemDescription && formData.proposedSolution) {
@@ -431,7 +441,11 @@ export default function EmployeeDashboard() {
 
     try {
       await api.submitIdea(payload);
-      notify({ type: 'success', title: 'Idea submitted!', message: 'Your idea has been sent for review.', event: 'idea_submitted' });
+      if (isDraft) {
+        notify({ type: 'success', title: 'Draft Saved', message: 'Your idea has been saved as a draft.', event: '' });
+      } else {
+        notify({ type: 'success', title: 'Idea submitted!', message: 'Your idea has been sent for review.', event: 'idea_submitted' });
+      }
       setFormData({});
       setSelectedTemplate(null);
       setUploadedFiles({});
@@ -440,11 +454,13 @@ export default function EmployeeDashboard() {
       navigate('/dashboard/my-ideas');
     } catch (e) {
       console.error(e);
-      notify({ type: 'error', title: 'Submission failed', message: e.message, event: '' });
+      notify({ type: 'error', title: isDraft ? 'Draft save failed' : 'Submission failed', message: e.message, event: '' });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleSaveDraft = (e) => handleSubmit(e, true);
 
 
   const inputClass = 'w-full rounded-md border border-gray-300 p-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue transition-colors';
@@ -540,9 +556,27 @@ export default function EmployeeDashboard() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-brand-black">Submit New Idea</h1>
-        <p className="text-gray-500">Share your innovative ideas to improve the organization.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-brand-black">Submit New Idea</h1>
+          <p className="text-gray-500 mt-1">Share your innovative ideas to improve the organization.</p>
+        </div>
+        
+        {/* Limits Display */}
+        <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm shrink-0 divide-x divide-gray-100 overflow-hidden">
+          <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
+             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Monthly Subm.</span>
+             <span className={`text-[17px] font-extrabold ${limits.submittedCount >= 5 ? 'text-red-500' : 'text-brand-blue'}`}>
+               {limits.submittedCount} <span className="text-gray-400 text-sm font-medium">/ 5</span>
+             </span>
+          </div>
+          <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
+             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Saved Drafts</span>
+             <span className={`text-[17px] font-extrabold ${limits.draftCount >= 3 ? 'text-amber-500' : 'text-brand-blue'}`}>
+               {limits.draftCount} <span className="text-gray-400 text-sm font-medium">/ 3</span>
+             </span>
+          </div>
+        </div>
       </div>
 
       {/* STEP 1: SELECT TEMPLATE */}
@@ -667,12 +701,39 @@ export default function EmployeeDashboard() {
 
                 <hr className="border-gray-200" />
 
-                <div className="flex justify-between items-center px-2">
-                  <p className="text-xs text-gray-400">Required fields are marked with <span className="text-red-500 text-sm">*</span></p>
-                  <Button type="submit" disabled={isSubmitting || isAIFilling} size="lg" className="w-full md:w-64 shadow-md hover:shadow-lg transition-all">
-                    <Send className="mr-2 h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Submit Idea for Review'}
-                  </Button>
+                <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 gap-4 mt-6">
+                  <p className="text-xs text-gray-500 font-medium">Required fields are marked with <span className="text-red-500">*</span></p>
+                  
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={handleSaveDraft}
+                      disabled={isSubmitting || isAIFilling || limits.draftCount >= 3} 
+                      className="w-full sm:w-auto font-semibold shadow-sm hover:shadow"
+                      title={limits.draftCount >= 3 ? "You can only have up to 3 drafts at a time" : ""}
+                    >
+                      Save as Draft
+                    </Button>
+
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmitting || isAIFilling || limits.submittedCount >= 5} 
+                      className="w-full sm:w-auto font-semibold shadow-md hover:shadow-lg transition-all"
+                      title={limits.submittedCount >= 5 ? "You can only submit 5 ideas per month" : ""}
+                    >
+                      <Send className="mr-2 h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Submit Idea for Review'}
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Block Messages below form */}
+                {(limits.submittedCount >= 5 || limits.draftCount >= 3) && (
+                  <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600 flex flex-col gap-2">
+                    {limits.submittedCount >= 5 && <p className="flex items-center gap-2"><X size={16} /> <strong>Submission Limit Reached:</strong> You can only submit 5 ideas per month.</p>}
+                    {limits.draftCount >= 3 && <p className="flex items-center gap-2"><X size={16} /> <strong>Draft Limit Reached:</strong> You can only have up to 3 active drafts. Please submit an existing draft to free up space.</p>}
+                  </div>
+                )}
               </form>
             </CardContent>
           </Card>
