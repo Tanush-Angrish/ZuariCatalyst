@@ -255,6 +255,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
 
   const isOwn = currentUser && idea.authorId === currentUser.id;
   const displayName = isOwn ? 'Me' : (idea.authorName || 'Unknown');
+  const displayOrg = idea.authorOrganization || (isOwn ? currentUser?.organization : null);
 
   const modal = (
     <div
@@ -275,9 +276,9 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
                 {!(isEmployee && viewType === 'community') && (
                   <Badge variant={statusVariant(idea.status)}>{idea.status}</Badge>
                 )}
-                {idea.authorOrganization && !(isEmployee && viewType === 'community') && (
+                {displayOrg && !(isEmployee && viewType === 'community') && (
                   <span className="text-xs text-gray-400 flex items-center gap-1">
-                    <Building size={10} />{idea.authorOrganization}
+                    <Building size={10} />{displayOrg}
                   </span>
                 )}
                 {idea.department && !(isEmployee && viewType === 'community') && (
@@ -332,14 +333,14 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
 
           {/* AI Insights Section */}
             {idea.aiSummary && (
-              <div className="p-4 rounded-xl bg-gradient-to-br from-brand-blue/5 to-purple-50 border border-brand-blue/10">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1 rounded bg-brand-blue/10 text-brand-blue">
-                    <Lightbulb size={14} />
+              <div className="p-5 rounded-2xl bg-[#F4F6FB] border border-[#E1E5F2]">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-1.5 rounded-lg bg-white border border-[#E1E5F2] text-amber-500 shadow-sm">
+                    <Lightbulb size={16} />
                   </div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-brand-blue">AI Summary</h3>
+                  <h3 className="text-[13px] font-extrabold uppercase tracking-widest text-brand-blue">AI Summary</h3>
                 </div>
-                <p className="text-sm font-medium text-brand-black leading-relaxed italic">
+                <p className="text-base font-medium text-gray-800 leading-relaxed italic">
                   "{idea.aiSummary}"
                 </p>
 
@@ -372,7 +373,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
               <div>
                 <p className="text-sm font-semibold text-brand-black">{displayName}</p>
                 {!(isEmployee && viewType === 'community') && (
-                  <p className="text-xs text-gray-400">{idea.authorOrganization || 'No organization'}</p>
+                  <p className="text-xs text-gray-400">{displayOrg || 'No organization'}</p>
                 )}
               </div>
               <div className="ml-auto text-xs text-gray-400 flex items-center gap-1">
@@ -695,29 +696,29 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
         </div>
 
         {/* Card Body */}
-        <div className="px-4 pb-3 flex-1 space-y-3">
+        <div className="px-5 pb-4 flex-1 space-y-4">
           {/* AI Summary (Top of card content) */}
           {idea.aiSummary && (
-            <div className="p-2.5 rounded-lg bg-brand-blue/5 border border-brand-blue/10">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-brand-blue mb-1 flex items-center gap-1">
-                <Lightbulb size={10} /> AI Summary
+            <div className="p-4 rounded-xl bg-[#F4F6FB] border border-[#E1E5F2] hover:shadow-sm transition-shadow">
+              <p className="text-[11px] font-extrabold uppercase tracking-widest text-brand-blue mb-1.5 flex items-center gap-1.5">
+                <Lightbulb size={13} className="text-amber-500" /> AI Summary
               </p>
-              <p className="text-xs font-semibold text-brand-black leading-snug line-clamp-2 italic">
+              <p className="text-[14.5px] font-medium text-gray-800 leading-relaxed italic line-clamp-4">
                 "{idea.aiSummary}"
               </p>
             </div>
           )}
-          <h3 className="font-bold text-brand-black text-base leading-snug group-hover:text-brand-blue transition-colors line-clamp-2">
+          <h3 className="font-extrabold text-gray-900 text-lg leading-[1.3] group-hover:text-brand-blue transition-colors line-clamp-3">
             {idea.title}
           </h3>
         </div>
 
         {/* Card Footer */}
-        <div className="px-4 py-3 border-t border-gray-100 mt-auto">
-          <div className="flex items-center justify-between gap-2">
+        <div className="px-5 py-4 border-t border-gray-100 mt-auto bg-gray-50/30 rounded-b-xl">
+          <div className="flex flex-wrap justify-between items-center gap-3">
             <div className="flex items-center gap-3">
-              {/* Upvote button */}
-              {currentUser && idea.authorId !== currentUser.id && (
+              {/* Upvote button (Hidden if rejected) */}
+              {currentUser && idea.authorId !== currentUser.id && idea.status !== 'Rejected' && (
                 <button
                   type="button"
                   disabled={upvoteLoading}
@@ -731,36 +732,41 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
                       .finally(() => setUpvoteLoading(false));
                   }}
                   onPointerDown={e => e.stopPropagation()}
-                  className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border transition-all ${hasUpvoted ? 'bg-brand-blue text-white border-brand-blue shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-brand-blue hover:text-brand-blue shadow-sm'}`}
+                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${hasUpvoted ? 'bg-brand-blue text-white border-brand-blue shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:border-brand-blue hover:text-brand-blue shadow-sm'}`}
                 >
                   <ThumbsUp size={14} className={hasUpvoted ? 'fill-white' : ''} />
                   {upvoteCount > 0 && <span className="font-semibold">{upvoteCount}</span>}
                 </button>
               )}
-              {/* Show count only for own ideas or logged out */}
-              {(!currentUser || idea.authorId === currentUser.id) && upvoteCount > 0 && (
-                <span className="flex items-center gap-1.5 text-xs text-gray-400 font-medium px-2 py-1">
-                  <ThumbsUp size={14} />{upvoteCount}
+              {/* Show static count for own ideas, logged-out users, or rejected ideas */}
+              {(!currentUser || idea.authorId === currentUser.id || idea.status === 'Rejected') && upvoteCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-brand-black font-semibold px-2 py-1">
+                  <ThumbsUp size={14} className="text-brand-blue" />{upvoteCount}
                 </span>
               )}
             </div>
 
+            <div className="flex items-center gap-3">
               {/* OrgAdmin buttons — single row */}
               {viewType === 'orgAdmin' && (
                 <div className="flex gap-2" onClick={e => e.preventDefault()} onPointerDown={e => e.stopPropagation()}>
                   <Button size="sm" variant="outline"
-                    className="text-red-600 border-red-200 hover:bg-red-50 text-xs py-1 h-auto font-semibold gap-1"
+                    className="text-red-600 border-red-200 hover:bg-red-50 text-xs py-1.5 h-auto font-semibold gap-1 px-3"
                     onClick={e => { e.stopPropagation(); setPendingRejectVia('orgAdmin'); setRejectModalOpen(true); }}>
-                    <XCircle size={13} />Reject
+                    <XCircle size={14} />Reject
                   </Button>
                   <Button size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white text-xs py-1 h-auto font-semibold gap-1"
+                    className="bg-green-600 hover:bg-green-700 text-white text-xs py-1.5 h-auto font-semibold gap-1 px-3"
                     onClick={e => { e.stopPropagation(); onAction?.(idea.id, 'Approved'); }}>
-                    <CheckCircle2 size={13} />Approve
+                    <CheckCircle2 size={14} />Approve
                   </Button>
                 </div>
               )}
+              <div className="text-[11px] text-gray-500 font-medium whitespace-nowrap">
+                Submitted on {new Date(idea.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+              </div>
             </div>
+          </div>
 
             {/* Superadmin — two-row layout for assign + approve/reject */}
             {viewType === 'superadmin' && (

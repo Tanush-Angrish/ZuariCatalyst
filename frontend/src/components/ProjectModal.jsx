@@ -619,12 +619,14 @@ export default function ProjectModal({ project: initialProject, onClose, current
           {activeTab === 'overview' && (
             <div className="space-y-5">
               {project.aiSummary && (
-                <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles size={14} className="text-blue-600" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-blue-600">AI Summary</span>
+                <div className="p-5 rounded-2xl bg-[#F4F6FB] border border-[#E1E5F2]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-1.5 rounded-lg bg-white border border-[#E1E5F2] text-amber-500 shadow-sm">
+                      <Sparkles size={16} />
+                    </div>
+                    <span className="text-[13px] font-extrabold uppercase tracking-widest text-blue-600">AI Summary</span>
                   </div>
-                  <p className="text-sm text-gray-700 leading-relaxed italic">"{project.aiSummary}"</p>
+                  <p className="text-base font-medium text-gray-800 leading-relaxed italic">"{project.aiSummary}"</p>
                 </div>
               )}
 
@@ -964,7 +966,7 @@ export default function ProjectModal({ project: initialProject, onClose, current
               {steps.length === 0 && !geminiSteps && (
                 <div className="text-center py-10 text-gray-400">
                   <CheckCircle2 className="mx-auto mb-3 text-gray-200" size={40} />
-                  <p className="text-sm">No steps yet.{isPrivileged && !isFinalized && ' Add steps manually or use Gemini to plan.'}</p>
+                  <p className="text-sm">No steps yet.{isPrivileged && !isFinalized && ' Add steps manually or use AI to plan.'}</p>
                 </div>
               )}
 

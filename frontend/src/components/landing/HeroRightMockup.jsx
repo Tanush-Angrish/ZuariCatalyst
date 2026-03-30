@@ -70,7 +70,7 @@ export default function HeroRightMockup() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 9px', background: 'var(--purple-l)', border: '1px solid rgba(91,76,245,.2)', borderRadius: '7px' }}>
                   <div style={{ width: '16px', height: '16px', borderRadius: '4px', background: 'linear-gradient(135deg,#4285F4,#EA4335,#FBBC05,#34A853)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 800, color: '#fff', flexShrink: 0 }}>G</div>
-                  <span style={{ fontSize: '10px', color: 'var(--purple)', fontFamily: 'var(--fb)' }}>Or describe to Gemini — it fills this for you</span>
+                  <span style={{ fontSize: '10px', color: 'var(--purple)', fontFamily: 'var(--fb)' }}>Or describe to AI — it fills this for you</span>
                 </div>
               </div>
             )}

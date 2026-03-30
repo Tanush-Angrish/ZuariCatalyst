@@ -85,7 +85,7 @@ export default function Sidebar({ isMobile }) {
             Smart Insights
           </p>
           <p className="text-[11px] text-gray-500 font-medium leading-tight">
-            Powered by Gemini AI for faster decision making.
+            Powered by AI for faster decision making.
           </p>
         </div>
       </div>

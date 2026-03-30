@@ -181,7 +181,7 @@ export default function LandingPage() {
             </div>
             <div>
               <div className="text-[42px] font-extrabold text-brand-black mb-2" style={{fontFamily: 'var(--fd)'}}>3<span style={{color: 'var(--teal)'}}>x</span></div>
-              <div className="text-[13px] text-gray-500 mx-auto max-w-[160px] font-medium leading-[1.6]">faster idea-to-project conversion with Gemini AI assistance</div>
+              <div className="text-[13px] text-gray-500 mx-auto max-w-[160px] font-medium leading-[1.6]">faster idea-to-project conversion with AI assistance</div>
             </div>
             <div>
               <div className="text-[42px] font-extrabold text-brand-black mb-2" style={{fontFamily: 'var(--fd)'}}>7<span style={{color: 'var(--amber)'}}>d</span></div>
@@ -269,7 +269,7 @@ export default function LandingPage() {
               <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{fontFamily: 'var(--fd)'}}>Employee</h3>
               <p className="text-[14.5px] text-[#4b5563] mb-8 leading-relaxed">Submit ideas, track progress, earn points, and see your thinking become real.</p>
               <ul className="space-y-4 text-[13.5px] text-[#4b5563] font-medium leading-[1.4]">
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Submit via templates or describe to Gemini</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Submit via templates or describe to AI</span></li>
                 <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Track every idea through its full lifecycle</span></li>
                 <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Upvote colleagues' ideas in the Ideas Hub</span></li>
                 <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Earn points and climb the leaderboard</span></li>

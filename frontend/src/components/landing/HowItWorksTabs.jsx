@@ -32,11 +32,11 @@ export default function HowItWorksTabs() {
                 <div className="htab-text">
                   <div className="htab-eyebrow" style={{ color: 'var(--accent)', fontWeight: 800 }}>EMPLOYEE</div>
                   <h3 className="htab-title">Every great idea starts with one click</h3>
-                  <p className="htab-desc">Employees choose from categorised templates — Process, Product, Cost Saving, Culture, and more. Or they just describe their idea to Gemini in text or voice, and AI fills the form automatically.</p>
+                  <p className="htab-desc">Employees choose from categorised templates — Process, Product, Cost Saving, Culture, and more. Or they just describe their idea to AI in text or voice, and AI fills the form automatically.</p>
                 </div>
                 <div className="htab-mockup" style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', top: '10px', left: '-20px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.07em', lineHeight: 1.3, fontFamily: 'var(--fb)' }}>Gemini<br/>fills form</div>
+                    <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.07em', lineHeight: 1.3, fontFamily: 'var(--fb)' }}>AI<br/>fills form</div>
                     <div style={{ fontSize: '20px', color: 'var(--accent)', marginTop: '2px' }}>&#8600;</div>
                   </div>
                   <div className="htab-shell">
@@ -54,7 +54,7 @@ export default function HowItWorksTabs() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 10px', background: 'var(--purple-l)', border: '1px solid rgba(91,76,245,.2)', borderRadius: '7px' }}>
                         <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: 'linear-gradient(135deg,#4285F4,#EA4335,#FBBC05,#34A853)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 800, color: '#fff', flexShrink: 0 }}>G</div>
-                        <span style={{ fontSize: '10px', color: 'var(--purple)', fontFamily: 'var(--fb)' }}>Describe to Gemini — it fills this for you</span>
+                        <span style={{ fontSize: '10px', color: 'var(--purple)', fontFamily: 'var(--fb)' }}>Describe to AI — it fills this for you</span>
                       </div>
                     </div>
                   </div>
@@ -128,7 +128,7 @@ export default function HowItWorksTabs() {
                 <div className="htab-text">
                   <div className="htab-eyebrow">Convert to project</div>
                   <h3 className="htab-title">Approved ideas become projects in one click</h3>
-                  <p className="htab-desc">Org Admins convert approved ideas to projects — a project ID is auto-generated. Add action steps manually or let Gemini generate them. Each step has a status, optional deadline, and in-thread @mention chat for real collaboration.</p>
+                  <p className="htab-desc">Org Admins convert approved ideas to projects — a project ID is auto-generated. Add action steps manually or let AI generate them. Each step has a status, optional deadline, and in-thread @mention chat for real collaboration.</p>
                 </div>
                 <div className="htab-mockup" style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', top: '10px', right: '-32px', textAlign: 'center' }}>
@@ -171,7 +171,7 @@ export default function HowItWorksTabs() {
                 <div className="htab-text">
                   <div className="htab-eyebrow">Ideas Hub</div>
                   <h3 className="htab-title">See what your colleagues are thinking</h3>
-                  <p className="htab-desc">All submitted, approved, and converted ideas are visible as cards in the Ideas Hub — each with a Gemini-generated one-line summary. Employees upvote the ideas they believe in, giving admins a clear signal on what the organisation actually wants built.</p>
+                  <p className="htab-desc">All submitted, approved, and converted ideas are visible as cards in the Ideas Hub — each with an AI-generated one-line summary. Employees upvote the ideas they believe in, giving admins a clear signal on what the organisation actually wants built.</p>
                 </div>
                 <div className="htab-mockup" style={{ position: 'relative' }}>
                   <div style={{ position: 'absolute', bottom: '20px', left: '-28px', textAlign: 'center' }}>

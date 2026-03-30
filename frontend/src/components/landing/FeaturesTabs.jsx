@@ -16,7 +16,7 @@ export default function FeaturesTabs() {
 
         <div className="feat-pills sr" id="featPills">
           <div className={`feat-pill ${activeFeat === 0 ? 'active' : ''}`} onClick={() => setActiveFeat(0)}>Categorised templates</div>
-          <div className={`feat-pill ${activeFeat === 1 ? 'active' : ''}`} onClick={() => setActiveFeat(1)}>Gemini AI</div>
+          <div className={`feat-pill ${activeFeat === 1 ? 'active' : ''}`} onClick={() => setActiveFeat(1)}>AI</div>
           <div className={`feat-pill ${activeFeat === 2 ? 'active' : ''}`} onClick={() => setActiveFeat(2)}>SLA review</div>
           <div className={`feat-pill ${activeFeat === 3 ? 'active' : ''}`} onClick={() => setActiveFeat(3)}>Idea to project</div>
           <div className={`feat-pill ${activeFeat === 4 ? 'active' : ''}`} onClick={() => setActiveFeat(4)}>Points &amp; leaderboard</div>
@@ -63,16 +63,16 @@ export default function FeaturesTabs() {
               <div className="htab-card" style={{ background: 'linear-gradient(145deg,#F0EEFF,#F8F5FF)' }}>
                 <div className="htab-text">
                   <div className="htab-eyebrow">AI Powered</div>
-                  <h3 className="htab-title">Describe it. Gemini does the rest.</h3>
-                  <p className="htab-desc">Employees describe their idea in their own words — text or voice. Gemini reads it, writes a one-line summary, extracts keyword tags, picks the right template, and fills the form. It also checks if a similar idea already exists before submission.</p>
+                  <h3 className="htab-title">Describe it. AI does the rest.</h3>
+                  <p className="htab-desc">Employees describe their idea in their own words — text or voice. AI reads it, writes a one-line summary, extracts keyword tags, picks the right template, and fills the form. It also checks if a similar idea already exists before submission.</p>
                 </div>
                 <div className="htab-mockup" style={{ position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: '10px', left: '-20px', textAlign: 'center' }}><div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.07em', lineHeight: 1.3, fontFamily: 'var(--fb)' }}>Gemini<br/>fills form</div><div style={{ fontSize: '18px', color: 'var(--accent)' }}>&#8600;</div></div>
+                  <div style={{ position: 'absolute', top: '10px', left: '-20px', textAlign: 'center' }}><div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '.07em', lineHeight: 1.3, fontFamily: 'var(--fb)' }}>AI<br/>fills form</div><div style={{ fontSize: '18px', color: 'var(--accent)' }}>&#8600;</div></div>
                   <div className="htab-shell">
                     <div className="htab-topbar"><div className="htd" style={{ background: '#FF5F57' }}></div><div className="htd" style={{ background: '#FEBC2E' }}></div><div className="htd" style={{ background: '#28C840' }}></div><div className="htab-url">catalyst.zuarione.com/submit</div></div>
                     <div className="htab-body">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', background: 'var(--purple-l)', border: '1.5px solid rgba(91,76,245,.2)', borderRadius: '9px', marginBottom: '12px' }}><div style={{ width: '20px', height: '20px', borderRadius: '6px', background: 'linear-gradient(135deg,#4285F4,#EA4335,#FBBC05,#34A853)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 800, color: '#fff', flexShrink: 0 }}>G</div><span style={{ fontSize: '11px', color: 'var(--purple)', fontFamily: 'var(--fb)', fontStyle: 'italic' }}>"We should consolidate our SaaS tools..."</span></div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--teal)', marginBottom: '10px', fontFamily: 'var(--fb)', fontWeight: 600 }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--teal)' }}></div>Gemini is filling your form...</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--teal)', marginBottom: '10px', fontFamily: 'var(--fb)', fontWeight: 600 }}><div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--teal)' }}></div>AI is filling your form...</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
                         <div style={{ background: 'var(--bg)', border: '1px solid rgba(15,14,26,.09)', borderRadius: '7px', padding: '8px 10px' }}><div style={{ fontSize: '9px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '3px', fontFamily: 'var(--fb)' }}>Idea title</div><div style={{ fontSize: '11px', color: 'var(--ink2)', fontFamily: 'var(--fb)' }}>Consolidate overlapping SaaS subscriptions</div></div>
                         <div style={{ background: 'var(--bg)', border: '1px solid rgba(15,14,26,.09)', borderRadius: '7px', padding: '8px 10px' }}><div style={{ fontSize: '9px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '3px', fontFamily: 'var(--fb)' }}>Tags</div><div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}><span style={{ padding: '2px 7px', background: 'var(--teal-l)', border: '1px solid rgba(14,158,120,.2)', borderRadius: '999px', fontSize: '9px', color: 'var(--teal)', fontFamily: 'var(--fb)' }}>cost reduction</span><span style={{ padding: '2px 7px', background: 'var(--teal-l)', border: '1px solid rgba(14,158,120,.2)', borderRadius: '999px', fontSize: '9px', color: 'var(--teal)', fontFamily: 'var(--fb)' }}>SaaS</span><span style={{ padding: '2px 7px', background: 'var(--teal-l)', border: '1px solid rgba(14,158,120,.2)', borderRadius: '999px', fontSize: '9px', color: 'var(--teal)', fontFamily: 'var(--fb)' }}>procurement</span></div></div>
@@ -117,7 +117,7 @@ export default function FeaturesTabs() {
                 <div className="htab-text">
                   <div className="htab-eyebrow">Admin</div>
                   <h3 className="htab-title">From idea to action plan in one click</h3>
-                  <p className="htab-desc">Approved ideas convert to projects instantly — a project ID is generated. Admins can add steps manually or ask Gemini to generate an action plan. Each step has a status, optional deadline, and a threaded chat with @mention notifications.</p>
+                  <p className="htab-desc">Approved ideas convert to projects instantly — a project ID is generated. Admins can add steps manually or ask AI to generate an action plan. Each step has a status, optional deadline, and a threaded chat with @mention notifications.</p>
                 </div>
                 <div className="htab-mockup">
                   <div className="htab-shell">
