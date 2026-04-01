@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
 
 const ALLOWED_DOMAIN = '@adventz.com';
-const TOKEN_MAX_AGE_MS = 8 * 60 * 60 * 1000; // 8 hours
+const TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // Azure AD JWKS Client
 const client = jwksClient({
@@ -13,7 +13,7 @@ const client = jwksClient({
 });
 
 function getKey(header, callback) {
-  client.getSigningKey(header.kid, function(err, key) {
+  client.getSigningKey(header.kid, function (err, key) {
     if (err) return callback(err);
     callback(null, key.getPublicKey());
   });
@@ -28,7 +28,7 @@ function issueToken(res, user) {
   const token = jwt.sign(
     { id: user.id, email: user.email, name: user.name, role: user.role, organization: user.organization },
     process.env.JWT_SECRET,
-    { expiresIn: '8h' }
+    { expiresIn: '7d' }
   );
 
   res.cookie('auth_token', token, {

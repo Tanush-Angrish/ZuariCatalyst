@@ -13,7 +13,7 @@ import FeaturesTabs from '../components/landing/FeaturesTabs';
 const ALLOWED_DOMAIN = '@adventz.com';
 
 export default function LandingPage() {
-  const { login, msLogin } = useAuth();
+  const { user, login, msLogin, loading: authLoading } = useAuth();
   const { instance } = useMsal();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -22,6 +22,13 @@ export default function LandingPage() {
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // If already logged in, skip the landing page and go straight to the dashboard
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     const handleScrollTopToggle = () => setShowScrollTop(window.scrollY > 400);
@@ -52,6 +59,19 @@ export default function LandingPage() {
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
+
+  // Show a smooth loading screen while checking for an active session.
+  // This prevents the landing page from flashing for a split second.
+  if (authLoading) {
+    return (
+      <div className="bg-[#070B14] min-h-screen border-t border-brand-blue/30 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-4 border-brand-blue/20 border-t-brand-blue animate-spin" />
+          <p className="text-sm text-gray-400 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault();
