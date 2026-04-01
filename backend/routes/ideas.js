@@ -36,6 +36,7 @@ async function getCentralTeamEmails() {
 router.get('/', async (req, res) => {
   try {
     const ideas = await prisma.idea.findMany({
+      where: { status: { not: 'Draft' } },
       include: { author: { select: { name: true } } },
       orderBy: { createdAt: 'desc' }
     });
@@ -64,8 +65,16 @@ router.get('/projects', async (req, res) => {
 // GET ideas for specific employee
 router.get('/my-ideas/:userId', async (req, res) => {
   try {
+    const targetUserId = parseInt(req.params.userId);
+    const whereClause = { authorId: targetUserId };
+    
+    // Only the creator can see their own Drafts
+    if (req.user.id !== targetUserId) {
+      whereClause.status = { not: 'Draft' };
+    }
+
     const ideas = await prisma.idea.findMany({
-      where: { authorId: parseInt(req.params.userId) },
+      where: whereClause,
       orderBy: { createdAt: 'desc' }
     });
     res.json(ideas);
@@ -94,7 +103,8 @@ router.get('/central/assigned', async (req, res) => {
   try {
     const ideas = await prisma.idea.findMany({
       where: { 
-        assignedToId: { not: null }
+        assignedToId: { not: null },
+        status: { not: 'Draft' }
       },
       include: {
         author: { select: { name: true, organization: true } },
@@ -292,7 +302,8 @@ router.get('/team/:organization', async (req, res) => {
       where: { 
         author: {
           organization: req.params.organization
-        }
+        },
+        status: { not: 'Draft' }
       },
       include: { author: { select: { name: true, organization: true } } },
       orderBy: { createdAt: 'desc' }
@@ -589,11 +600,18 @@ router.put('/:id/status', async (req, res) => {
   }
 
   try {
-    // Enforce: can only approve/reject if idea is currently Under Review
+    // Enforce logic: can only approve if idea is currently Under Review
     const current = await prisma.idea.findUnique({ where: { id: ideaId }, select: { status: true } });
     if (!current) return res.status(404).json({ error: 'Idea not found' });
-    if (current.status !== 'Under Review') {
-      return res.status(400).json({ error: 'An idea must be Under Review before it can be Approved or Rejected.' });
+    
+    // Approval needs Under Review
+    if (status === 'Approved' && current.status !== 'Under Review') {
+      return res.status(400).json({ error: 'An idea must be Under Review before it can be Approved.' });
+    }
+    
+    // Do not allow re-approving or re-rejecting if it already is
+    if (status === 'Rejected' && ['Approved', 'Rejected'].includes(current.status)) {
+      return res.status(400).json({ error: 'Idea is already Approved or Rejected.' });
     }
 
     const idea = await prisma.idea.update({

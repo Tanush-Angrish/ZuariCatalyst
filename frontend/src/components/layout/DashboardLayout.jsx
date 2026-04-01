@@ -35,18 +35,19 @@ export default function DashboardLayout() {
       )}
 
       {/* Mobile Navigation Drawer */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b">
-          <span className="text-xl font-bold text-brand-blue">Menu</span>
+      <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-white flex flex-col transform transition-all duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none pointer-events-none'}`}>
+        <div className="h-16 flex items-center justify-between px-4 border-b shrink-0">
+          <span className="text-xl font-bold text-[#1d3368] pl-2">Navigation</span>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsMobileMenuOpen(false)}
+            className="hover:bg-gray-100/50"
           >
             <X className="h-6 w-6 text-gray-500" />
           </Button>
         </div>
-        <div className="p-4">
+        <div className="flex-1 overflow-y-auto">
           <Sidebar isMobile />
         </div>
       </div>

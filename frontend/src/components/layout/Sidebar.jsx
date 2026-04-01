@@ -51,8 +51,8 @@ export default function Sidebar({ isMobile }) {
     <aside
       className={cn(
         "bg-white relative transition-all duration-300 ease-in-out flex flex-col",
-        isMobile ? "w-full min-h-full border-r-0" : "border-r h-full hidden md:flex",
-        !isMobile && isCollapsed ? "w-[72px] items-center px-2 py-4" : "w-72 p-4"
+        isMobile ? "w-full min-h-full border-r-0 p-4" : "border-r h-full hidden md:flex",
+        !isMobile ? (isCollapsed ? "w-[72px] items-center px-2 py-4" : "w-72 p-4") : ""
       )}
       onMouseEnter={() => !isMobile && setIsHovered(true)}
       onMouseLeave={() => !isMobile && setIsHovered(false)}

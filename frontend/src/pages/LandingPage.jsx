@@ -154,7 +154,7 @@ export default function LandingPage() {
             <div className="flex gap-4 md:gap-6 items-center shrink-0">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="bg-[#1d3368] hover:bg-[#162750] text-white rounded-[12px] md:rounded-full px-4 md:px-8 py-2 md:py-2.5 text-[12px] md:text-[14.5px] font-bold transition-all shadow-md hover:shadow-lg leading-tight md:leading-normal shrink-0"
+                className="hidden md:block bg-[#1d3368] hover:bg-[#162750] text-white rounded-[12px] md:rounded-full px-4 md:px-8 py-2 md:py-2.5 text-[12px] md:text-[14.5px] font-bold transition-all shadow-md hover:shadow-lg leading-tight md:leading-normal shrink-0"
               >
                 Log<br className="md:hidden" /><span className="hidden md:inline"> </span>in
               </button>
@@ -164,7 +164,7 @@ export default function LandingPage() {
               <img
                 src="https://www.zuariindustries.in/assets/web/img/logo/adventz.png"
                 alt="Adventz"
-                className="h-12 object-contain hidden lg:block text-xs"
+                className="h-7 md:h-12 object-contain text-xs"
               />
             </div>
           </div>
@@ -175,17 +175,24 @@ export default function LandingPage() {
       <main className="pt-28">
         {/* HERO SECTION */}
         <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pt-6 md:pt-10 pb-16 md:pb-24 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-[80px]">
-          <div className="md:w-[55%] sr w-full">
+          <div className="md:w-[55%] sr w-full flex flex-col items-center md:items-start text-center md:text-left">
             <div className="sec-eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--purple-l)', color: 'var(--purple)' }}>
               <span className="w-[5px] h-[5px] rounded-full bg-current opacity-80 animate-pulse" style={{ animationDuration: '2s' }}></span>
               Ignite. Innovate. Implement.
             </div>
-            <h1 className="text-[54px] sm:text-[64px] leading-[1.05] font-extrabold tracking-tight text-[#0A0A0A] mb-6 md:mb-6 mt-4" style={{ fontFamily: 'var(--fd)' }}>
-              Turn every<br className="md:hidden" /> employee<br className="md:hidden" /> idea into<br className="md:hidden" /> <span style={{ color: 'var(--purple)' }}>real impact</span>
+            <h1 className="text-[50px] sm:text-[64px] leading-[1.1] font-extrabold tracking-tight text-[#0A0A0A] mb-5 md:mb-6 mt-6 md:mt-4" style={{ fontFamily: 'var(--fd)' }}>
+              Turn every employee idea into <span style={{ color: 'var(--purple)' }}>real impact</span>
             </h1>
             <p className="text-[16.5px] md:text-[18px] text-[#4B5563] max-w-lg mb-8 md:mb-10" style={{ lineHeight: '1.6' }}>
               Catalyst gives every employee a structured voice — and gives your organisation a complete system to capture, review, and convert great ideas into executed projects.
             </p>
+            {/* Mobile-only prominently sized Login CTA */}
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="md:hidden w-full bg-[#1d3368] hover:bg-[#162750] text-white rounded-2xl py-3.5 text-[16px] font-bold shadow-[0_8px_16px_-6px_rgba(0,53,128,0.3)] transition-all active:scale-[0.98]"
+            >
+              Log in to Catalyst
+            </button>
           </div>
           <div className="lg:w-[45%] w-full flex justify-end sr" style={{ animationDelay: '100ms' }}>
             <HeroRightMockup />

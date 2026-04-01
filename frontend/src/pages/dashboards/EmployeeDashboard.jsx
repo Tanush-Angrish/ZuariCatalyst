@@ -677,8 +677,11 @@ export default function EmployeeDashboard() {
 
                   {selectedTemplate.fields.map(field => (
                     <div key={field.id} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
-                      <label className="mb-1.5 block text-sm font-semibold text-gray-700 flex items-center gap-1">
-                        {field.label} {field.required && <span className="text-red-500">*</span>}
+                      <label className="mb-1.5 flex flex-wrap items-center gap-1 text-sm font-semibold text-gray-700">
+                        {field.label}
+                        {field.id === 'attachment' && <span className="text-xs text-gray-500 font-normal">/ आप फोटो खींच कर भी अपलोड कर सकते हो</span>}
+                        {(field.id === 'referenceLink' || field.id === 'supportingLink') && <span className="text-xs text-gray-500 font-normal">/ आप OneDrive का लिंक भी अपलोड कर सकते हो</span>}
+                        {field.required && <span className="text-red-500">*</span>}
                       </label>
                       {renderField(field)}
                     </div>
@@ -686,8 +689,8 @@ export default function EmployeeDashboard() {
 
                   {/* Voice Note — always shown at bottom */}
                   <div className="md:col-span-2">
-                    <label className="mb-1.5 block text-sm font-semibold text-gray-700 flex items-center gap-1">
-                      <Mic size={14} className="text-gray-400" /> Voice Note (Optional)
+                    <label className="mb-1.5 flex flex-wrap items-center gap-1 text-sm font-semibold text-gray-700">
+                      <Mic size={14} className="text-gray-400" /> Voice Note (Optional) <span className="text-xs text-gray-500 font-normal">/ आप अपनी आवाज रिकॉर्ड करके भी भेज सकते हो</span>
                     </label>
                     <VoiceRecorder
                       onRecorded={(data) => setVoiceNote(data)}
