@@ -3,7 +3,7 @@ const router = express.Router();
 const prisma = require('../db/prisma');
 const { generateProjectPlan } = require('../services/geminiService');
 const { awardPoints } = require('../services/pointService');
-const { sendMentionEmail } = require('../services/emailService');
+const { sendProjectStatusChangeEmail, sendChatMentionEmail } = require('../services/emailService');
 const {
   notifyCentralTeam,
   notifyOrgAdmins,
@@ -127,6 +127,18 @@ router.put('/:id/status', async (req, res) => {
     notifyUser(project.createdById, 'project', `Project '${project.title}' status changed to ${status}.`, project.id);
     notifyOrgAdmins(project.orgId, 'project', `Project '${project.title}' status changed to ${status}.`, project.id);
     notifyCentralTeam('project', `Project '${project.title}' status changed to ${status}.`, project.id);
+
+    // Strict Rule: Employee Email ONLY for Project Status Changes
+    const author = await prisma.user.findUnique({ where: { id: project.createdById }, select: { name: true, email: true } });
+    if (author && author.email) {
+      sendProjectStatusChangeEmail({
+        toEmail: author.email,
+        projectTitle: project.title,
+        authorName: author.name,
+        newStatus: status,
+        projectId: project.projectId
+      }).catch(console.error);
+    }
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Project not found' });
     res.status(500).json({ error: error.message });
@@ -405,8 +417,8 @@ router.post('/:id/messages', async (req, res) => {
         notifyUser(u.id, 'mention', `${senderName} mentioned you in '${project.title}'`, project.id);
 
         // ONLY email the target, NOT the Central Team (per user feedback)
-        sendMentionEmail({
-          toEmails: [u.email], // Only the mentioned user
+        sendChatMentionEmail({
+          toEmail: u.email,
           mentionedName: u.name,
           senderName,
           projectTitle: project.title,

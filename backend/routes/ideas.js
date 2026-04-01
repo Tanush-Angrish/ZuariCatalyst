@@ -10,9 +10,7 @@ router.use(authMiddleware);
 
 const {
   sendIdeaSubmittedEmail,
-  sendIdeaAssignedEmail,
-  sendIdeaApprovedEmail,
-  sendIdeaRejectedEmail
+  sendIdeaStatusChangeEmail
 } = require('../services/emailService');
 const {
   notifyCentralTeam,
@@ -425,15 +423,21 @@ router.post('/', async (req, res) => {
     notifyOrgAdmins(author?.organization, 'idea', `New idea submitted by ${author?.name}: ${title}`, idea.id);
     notifyCentralTeam('idea', `New idea submitted by ${author?.name}: ${title}`, idea.id);
     
-    // Email Central Team
-    const centralEmails = await getCentralTeamEmails();
-    if (centralEmails.length > 0 && author) {
-      sendIdeaSubmittedEmail({
-        toEmails: centralEmails,
-        ideaTitle: title,
-        submittedBy: author.name,
-        organization: author.organization || 'Unknown'
-      }).catch(console.error);
+    // Email Central Team + Org Admins (strict rules)
+    if (author) {
+      const centralEmails = await getCentralTeamEmails();
+      const orgAdmins = await prisma.user.findMany({ where: { role: 'Org Admin', organization: author.organization }, select: { email: true } });
+      const orgEmails = orgAdmins.map(a => a.email).filter(Boolean);
+      const toEmails = [...new Set([...centralEmails, ...orgEmails])];
+
+      if (toEmails.length > 0) {
+        sendIdeaSubmittedEmail({
+          toEmails,
+          ideaTitle: title,
+          submittedBy: author.name,
+          organization: author.organization || 'Unknown'
+        }).catch(console.error);
+      }
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -502,14 +506,20 @@ router.put('/:id/submit-draft', async (req, res) => {
     notifyOrgAdmins(author?.organization, 'idea', `New idea submitted by ${author?.name}: ${updated.title}`, updated.id);
     notifyCentralTeam('idea', `New idea submitted by ${author?.name}: ${updated.title}`, updated.id);
     
-    const centralEmails = await getCentralTeamEmails();
-    if (centralEmails.length > 0 && author) {
-      sendIdeaSubmittedEmail({
-        toEmails: centralEmails,
-        ideaTitle: updated.title,
-        submittedBy: author.name,
-        organization: author.organization || 'Unknown'
-      }).catch(console.error);
+    if (author) {
+      const centralEmails = await getCentralTeamEmails();
+      const orgAdmins = await prisma.user.findMany({ where: { role: 'Org Admin', organization: author.organization }, select: { email: true } });
+      const orgEmails = orgAdmins.map(a => a.email).filter(Boolean);
+      const toEmails = [...new Set([...centralEmails, ...orgEmails])];
+
+      if (toEmails.length > 0) {
+        sendIdeaSubmittedEmail({
+          toEmails,
+          ideaTitle: updated.title,
+          submittedBy: author.name,
+          organization: author.organization || 'Unknown'
+        }).catch(console.error);
+      }
     }
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Idea not found' });
@@ -548,16 +558,7 @@ router.put('/:id/assign', async (req, res) => {
     notifyUser(parseInt(assignedToId), 'idea', `You have been assigned to review idea: ${updatedIdea.title}.`, ideaId);
     notifyCentralTeam('idea', `Idea '${updatedIdea.title}' assigned to ${orgAdmin?.name}`, ideaId);
 
-    // Email Org Admin in background
-    if (orgAdmin && orgAdmin.email) {
-      sendIdeaAssignedEmail({
-        toEmails: [orgAdmin.email],
-        ideaTitle: updatedIdea.title,
-        assignedToName: orgAdmin.name,
-        submittedBy: updatedIdea.author.name,
-        organization: updatedIdea.author.organization || 'Unknown'
-      }).catch(console.error);
-    }
+    // Email Org Admin logic successfully removed (as per strict email constraints)
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Idea not found' });
     res.status(500).json({ error: error.message });
@@ -579,6 +580,17 @@ router.put('/:id/under-review', async (req, res) => {
     notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' is now Under Review.`, ideaId);
     notifyCentralTeam('idea', `Idea '${idea.title}' moved to Under Review.`, ideaId);
     awardPoints(idea.authorId, 'idea_under_review', 15, ideaId);
+
+    // Strict Rule: Employee Email ONLY
+    const authorDoc = await prisma.user.findUnique({ where: { id: idea.authorId }, select: { name: true, email: true } });
+    if (authorDoc && authorDoc.email) {
+      sendIdeaStatusChangeEmail({
+        toEmail: authorDoc.email,
+        ideaTitle: idea.title,
+        authorName: authorDoc.name,
+        newStatus: 'Under Review'
+      }).catch(console.error);
+    }
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Idea not found' });
     res.status(500).json({ error: error.message });
@@ -655,17 +667,14 @@ router.put('/:id/status', async (req, res) => {
         notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' was APPROVED. A project (${projectId}) has been created.`, ideaId);
         notifyCentralTeam('idea', `Idea '${idea.title}' approved. Project ${projectId} created.`, ideaId);
 
-        // Email author + Central Team about approval in background
-        const [author, centralEmails] = await Promise.all([
-          prisma.user.findUnique({ where: { id: idea.authorId }, select: { name: true, email: true } }),
-          getCentralTeamEmails()
-        ]);
-        const approvedRecipients = [...new Set([author?.email, ...centralEmails].filter(Boolean))];
-        if (approvedRecipients.length > 0) {
-          sendIdeaApprovedEmail({
-            toEmails: approvedRecipients,
+        // Email author ONLY (Strict Rules)
+        const authorInfo = await prisma.user.findUnique({ where: { id: idea.authorId }, select: { name: true, email: true } });
+        if (authorInfo && authorInfo.email) {
+          sendIdeaStatusChangeEmail({
+            toEmail: authorInfo.email,
             ideaTitle: idea.title,
-            authorName: author?.name || 'User',
+            authorName: authorInfo.name,
+            newStatus: 'Approved',
             projectId
           }).catch(console.error);
         }
@@ -676,18 +685,15 @@ router.put('/:id/status', async (req, res) => {
       notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' has been REJECTED. Reason: ${reason}`, ideaId);
       notifyCentralTeam('idea', `Idea '${idea.title}' was rejected. Reason: ${reason}`, ideaId);
 
-      // Email author + Central Team about rejection
-      const [author, centralEmails] = await Promise.all([
-        prisma.user.findUnique({ where: { id: idea.authorId }, select: { name: true, email: true } }),
-        getCentralTeamEmails()
-      ]);
-      const rejectedRecipients = [...new Set([author?.email, ...centralEmails].filter(Boolean))];
-      if (rejectedRecipients.length > 0) {
-        sendIdeaRejectedEmail({
-          toEmails: rejectedRecipients,
+      // Email author ONLY (Strict Rules)
+      const authorInfo = await prisma.user.findUnique({ where: { id: idea.authorId }, select: { name: true, email: true } });
+      if (authorInfo && authorInfo.email) {
+        sendIdeaStatusChangeEmail({
+          toEmail: authorInfo.email,
           ideaTitle: idea.title,
-          authorName: author?.name || 'User',
-          rejectionReason: reason
+          authorName: authorInfo.name,
+          newStatus: 'Rejected',
+          reason
         }).catch(console.error);
       }
     }

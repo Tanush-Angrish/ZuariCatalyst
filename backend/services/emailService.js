@@ -56,15 +56,9 @@ async function sendEmail({ to, subject, html, eventType = 'unknown' }) {
     return false;
   }
 
-  // System copy logic — ensure the app email always gets a copy
+  // System copy logic — ensure the app email always gets a blind copy for tracking
   const systemEmail = process.env.EMAIL_USER;
   let recipients = Array.isArray(to) ? to.filter(Boolean) : [to].filter(Boolean);
-  
-  // Add system email if not already present
-  if (systemEmail && !recipients.includes(systemEmail)) {
-    recipients.push(systemEmail);
-  }
-
   const toStr = recipients.join(', ');
 
   if (!toStr) {
@@ -73,12 +67,19 @@ async function sendEmail({ to, subject, html, eventType = 'unknown' }) {
   }
 
   try {
-    const info = await transporter.sendMail({
+    const mailOptions = {
       from: `"Zuari Catalyst" <${systemEmail}>`,
       to: toStr,
       subject,
       html
-    });
+    };
+    
+    // Strict requirement: BCC the app info email invisibly
+    if (systemEmail) {
+      mailOptions.bcc = systemEmail;
+    }
+
+    const info = await transporter.sendMail(mailOptions);
     console.log(`[Email] ✓ Sent (${eventType}) to ${recipients} — MessageId: ${info.messageId}`);
     return true;
   } catch (err) {
@@ -138,17 +139,19 @@ function wrapHtml(body) {
   </html>`;
 }
 
-// ─── Template A: Idea Submitted ────────────────────────────────────────────
+// ─── 1. Template: Idea Submitted ────────────────────────────────────────────
+// Event: New idea is submitted.
+// Recipients: Central Team + Org Admin (of that org)
 async function sendIdeaSubmittedEmail({ toEmails, ideaTitle, submittedBy, organization }) {
   const html = wrapHtml(`
     <p>Hello,</p>
-    <p>A new idea has been submitted and is awaiting review.</p>
+    <p>A new idea has been submitted in Zuari Catalyst and requires attention.</p>
     <div class="detail-box">
       <div class="detail-row"><span class="detail-label">Title</span><span class="detail-value">${ideaTitle}</span></div>
       <div class="detail-row"><span class="detail-label">Submitted By</span><span class="detail-value">${submittedBy}</span></div>
       <div class="detail-row"><span class="detail-label">Organization</span><span class="detail-value">${organization}</span></div>
     </div>
-    <div class="action-box">📋 <strong>Action Required:</strong> Please review the idea and assign it to the appropriate Org Admin.</div>
+    <div class="action-box">📋 <strong>Action Required:</strong> Log in to the platform to review this submission.</div>
   `);
 
   return sendEmail({
@@ -159,94 +162,87 @@ async function sendIdeaSubmittedEmail({ toEmails, ideaTitle, submittedBy, organi
   });
 }
 
-// ─── Template B: Idea Assigned ─────────────────────────────────────────────
-async function sendIdeaAssignedEmail({ toEmails, ideaTitle, assignedToName, submittedBy, organization }) {
+// ─── 2. Template: Idea Status Change ─────────────────────────────────────────
+// Events: Submitted → Under Review | Under Review → Approved | Under Review → Rejected
+// Recipients: Employee
+async function sendIdeaStatusChangeEmail({ toEmail, ideaTitle, authorName, newStatus, reason, projectId }) {
+  let statusColor = '#374151'; // default
+  if (newStatus === 'Approved') statusColor = '#16a34a';
+  if (newStatus === 'Rejected') statusColor = '#dc2626';
+  if (newStatus === 'Under Review') statusColor = '#d97706';
+
+  let nextStep = 'Your idea is currently being evaluated by the committee.';
+  if (newStatus === 'Approved') nextStep = 'Your project is now active! You can track its progress and collaborate with your team.';
+  if (newStatus === 'Rejected') nextStep = 'Review the feedback provided. You can resubmit or propose a different idea in the future.';
+
   const html = wrapHtml(`
-    <p>Hello ${assignedToName},</p>
-    <p>An idea has been assigned to you for review and action.</p>
+    <p>Hello ${authorName},</p>
+    <p>There is an update on your submitted idea.</p>
     <div class="detail-box">
-      <div class="detail-row"><span class="detail-label">Title</span><span class="detail-value">${ideaTitle}</span></div>
-      <div class="detail-row"><span class="detail-label">Submitted By</span><span class="detail-value">${submittedBy}</span></div>
-      <div class="detail-row"><span class="detail-label">Organization</span><span class="detail-value">${organization}</span></div>
+      <div class="detail-row"><span class="detail-label">Idea Title</span><span class="detail-value">${ideaTitle}</span></div>
+      <div class="detail-row"><span class="detail-label">New Status</span><span class="detail-value" style="color:${statusColor}; font-weight:700;">${newStatus}</span></div>
+      ${projectId ? `<div class="detail-row"><span class="detail-label">Project ID</span><span class="detail-value" style="font-family:monospace;color:#003580;">${projectId}</span></div>` : ''}
+      ${reason ? `<div class="detail-row"><span class="detail-label">Reason/Feedback</span><span class="detail-value" style="color:#374151;">${reason}</span></div>` : ''}
     </div>
-    <div class="action-box">📋 <strong>Action Required:</strong> Review the idea and mark it as Approved or Rejected.</div>
+    <div class="action-box">💡 <strong>Next Steps:</strong> ${nextStep}</div>
   `);
 
   return sendEmail({
-    to: toEmails,
-    subject: `[Zuari Catalyst] Idea Assigned to You — ${ideaTitle}`,
+    to: toEmail,
+    subject: `[Zuari Catalyst] Idea Status Update: ${newStatus} — ${ideaTitle}`,
     html,
-    eventType: 'idea_assigned'
+    eventType: 'idea_status_change'
   });
 }
 
-// ─── Template C: Idea Approved / Project Created ───────────────────────────
-async function sendIdeaApprovedEmail({ toEmails, ideaTitle, authorName, projectId }) {
+// ─── 3. Template: Project Status Change ──────────────────────────────────────
+// Events: Any project status change after an idea becomes a project.
+// Recipients: Employee
+async function sendProjectStatusChangeEmail({ toEmail, projectTitle, authorName, newStatus, projectId }) {
   const html = wrapHtml(`
     <p>Hello ${authorName},</p>
-    <p>Great news! Your idea has been reviewed and <strong style="color:#16a34a;">approved</strong>. It has been converted into an active project.</p>
+    <p>Your project status has been updated.</p>
     <div class="detail-box">
-      <div class="detail-row"><span class="detail-label">Idea Title</span><span class="detail-value">${ideaTitle}</span></div>
+      <div class="detail-row"><span class="detail-label">Project Title</span><span class="detail-value">${projectTitle}</span></div>
       <div class="detail-row"><span class="detail-label">Project ID</span><span class="detail-value" style="font-family:monospace;color:#003580;">${projectId}</span></div>
-      <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" style="color:#16a34a;">✓ Approved — Project Created</span></div>
+      <div class="detail-row"><span class="detail-label">New Status</span><span class="detail-value" style="color:#2563eb; font-weight:700;">${newStatus}</span></div>
     </div>
-    <div class="action-box">📊 <strong>Next Step:</strong> Your project is now active. You can track its progress, view action steps, and collaborate with your team in Zuari Catalyst.</div>
+    <div class="action-box">📊 <strong>Action Required:</strong> Log in to Zuari Catalyst to review your project timeline and collaborate on next steps.</div>
   `);
 
   return sendEmail({
-    to: toEmails,
-    subject: `[Zuari Catalyst] Idea Approved — Project ${projectId} Created`,
+    to: toEmail,
+    subject: `[Zuari Catalyst] Project Status Update: ${newStatus} — ${projectTitle}`,
     html,
-    eventType: 'idea_approved'
+    eventType: 'project_status_change'
   });
 }
 
-// ─── Template D: Idea Rejected ─────────────────────────────────────────────
-async function sendIdeaRejectedEmail({ toEmails, ideaTitle, authorName, rejectionReason }) {
-  const html = wrapHtml(`
-    <p>Hello ${authorName},</p>
-    <p>Thank you for submitting your idea. After careful review, it has been marked as <strong style="color:#dc2626;">not approved</strong> at this time.</p>
-    <div class="detail-box">
-      <div class="detail-row"><span class="detail-label">Idea Title</span><span class="detail-value">${ideaTitle}</span></div>
-      <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value" style="color:#dc2626;">✗ Rejected</span></div>
-      ${rejectionReason ? `<div class="detail-row"><span class="detail-label">Reason</span><span class="detail-value" style="color:#374151;">${rejectionReason}</span></div>` : ''}
-    </div>
-    <div class="action-box">🔄 <strong>Coming Soon — Resubmit Feature:</strong> We are working on a new feature that will allow you to update and resubmit your idea for review after making improvements. Stay tuned!</div>
-    <div class="action-box">💡 <strong>Next Step:</strong> Review the feedback above, refine your idea, and look out for the resubmission feature in Zuari Catalyst soon.</div>
-    <p style="margin-top:16px;">You can view your idea and its status at any time in the <a href="https://staging.catalyst.zuarione.com/" style="color:#003580;">Zuari Catalyst portal</a>.</p>
-  `);
-
-  return sendEmail({
-    to: toEmails,
-    subject: `[Zuari Catalyst] Idea Update — ${ideaTitle}`,
-    html,
-    eventType: 'idea_rejected'
-  });
-}
-
-// ─── Template E: @Mention in Project Chat ─────────────────────────────────
-async function sendMentionEmail({ toEmails, mentionedName, senderName, projectTitle, projectId, messageExcerpt }) {
+// ─── 4. Template: Chat @Mention ──────────────────────────────────────────────
+// Events: @mention in chat or replying to a tagged message.
+// Recipients: Tagged User
+async function sendChatMentionEmail({ toEmail, mentionedName, senderName, projectTitle, projectId, messageExcerpt }) {
   const html = wrapHtml(`
     <p>Hello ${mentionedName},</p>
-    <p>You have been mentioned in a project discussion by <strong>${senderName}</strong>.</p>
+    <p>You have been tagged in a discussion by <strong>${senderName}</strong>.</p>
     <div class="detail-box">
       <div class="detail-row"><span class="detail-label">Project</span><span class="detail-value">${projectTitle}</span></div>
       <div class="detail-row"><span class="detail-label">Project ID</span><span class="detail-value" style="font-family:monospace;color:#003580;">${projectId}</span></div>
       <div class="detail-row"><span class="detail-label">Mentioned by</span><span class="detail-value">${senderName}</span></div>
     </div>
     <div class="quote-box"><strong>Message:</strong><br/>${messageExcerpt}</div>
-    <div class="action-box">💬 <strong>Action Required:</strong> Please check the project discussion and respond if needed.</div>
+    <div class="action-box">💬 <strong>Action Required:</strong> Check the project discussion to respond.</div>
   `);
 
   return sendEmail({
-    to: toEmails,
-    subject: `[Zuari Catalyst] You were mentioned in: ${projectTitle}`,
+    to: toEmail,
+    subject: `[Zuari Catalyst] You were tagged by ${senderName} in: ${projectTitle}`,
     html,
-    eventType: 'mention'
+    eventType: 'chat_mention'
   });
 }
 
-// ─── Test email (POST /api/test-email) ─────────────────────────────────────
+// ─── Test email ────────────────────────────────────────────────────────────
 async function sendTestEmail({ toEmail, subject, message }) {
   const html = wrapHtml(`
     <p>Hello,</p>
@@ -268,9 +264,8 @@ async function sendTestEmail({ toEmail, subject, message }) {
 
 module.exports = {
   sendIdeaSubmittedEmail,
-  sendIdeaAssignedEmail,
-  sendIdeaApprovedEmail,
-  sendIdeaRejectedEmail,
-  sendMentionEmail,
+  sendIdeaStatusChangeEmail,
+  sendProjectStatusChangeEmail,
+  sendChatMentionEmail,
   sendTestEmail
 };
