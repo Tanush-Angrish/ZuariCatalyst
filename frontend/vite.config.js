@@ -16,6 +16,17 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,   // Binds to 0.0.0.0 — accessible at http://<your-local-ip>:5173 on the same network
       port: 5173,
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'icons': ['lucide-react']
+          }
+        }
+      },
+      chunkSizeWarningLimit: 1000 // Raise warning limit slightly for large vendor packages
     }
   }
 })

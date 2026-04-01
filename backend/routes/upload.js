@@ -3,6 +3,11 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const authMiddleware = require('../middleware/auth');
+
+// All upload endpoints require authentication
+router.use(authMiddleware);
+
 
 // Ensure upload directories exist
 const fileDir = path.join(__dirname, '..', 'uploads', 'ideas', 'files');
@@ -33,8 +38,10 @@ const uploadFile = multer({
   storage: fileStorage,
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
   fileFilter: (req, file, cb) => {
+    // SVG is intentionally excluded: SVG files can contain embedded <script> tags
+    // which execute in the browser when rendered, enabling stored XSS attacks.
     const allowed = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-      '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.txt'];
+      '.png', '.jpg', '.jpeg', '.gif', '.webp', '.txt'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) {
       cb(null, true);

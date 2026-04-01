@@ -17,7 +17,7 @@
   --ink2: #27272a;
   --muted: #71717a;
   --pale: #a1a1aa;
-  
+
   --purple: #1D4ED8;
   --purple-l: #EFF6FF;
   --teal: #0E9E78;
@@ -35,9 +35,11 @@
 html {
   scroll-behavior: smooth;
   zoom: 85%;
+  height: 100%;
 }
 
 body {
+  height: 100%;
   background-color: var(--bg);
   color: var(--ink);
   font-family: var(--fb);
@@ -45,7 +47,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6, .bricolage-font {
+#root {
+  height: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.bricolage-font {
   font-family: var(--fd);
 }
 
@@ -54,13 +66,16 @@ h1, h2, h3, h4, h5, h6, .bricolage-font {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(15, 14, 26, 0.15);
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(15, 14, 26, 0.25);
 }
@@ -79,18 +94,39 @@ h1, h2, h3, h4, h5, h6, .bricolage-font {
 
 /* Custom Animations */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 53, 128, 0.2); }
-  50% { box-shadow: 0 0 15px 5px rgba(0, 53, 128, 0.1); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 53, 128, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 15px 5px rgba(0, 53, 128, 0.1);
+  }
 }
 
 .animate-fade-in-up {
@@ -106,8 +142,13 @@ h1, h2, h3, h4, h5, h6, .bricolage-font {
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .animate-shimmer {
@@ -115,18 +156,36 @@ h1, h2, h3, h4, h5, h6, .bricolage-font {
 }
 
 @keyframes fadeScaleIn {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
-  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .animate-modal-in {
   animation: fadeScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-400 { animation-delay: 400ms; }
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.delay-400 {
+  animation-delay: 400ms;
+}
 
 .modal-transition-container {
   display: flex;
@@ -140,8 +199,15 @@ h1, h2, h3, h4, h5, h6, .bricolage-font {
 }
 
 @keyframes viewerSlideIn {
-  from { opacity: 0; transform: translateX(100%); }
-  to   { opacity: 1; transform: translateX(0);    }
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .animate-viewer-in {
@@ -154,29 +220,81 @@ h1, h2, h3, h4, h5, h6, .bricolage-font {
   }
 }
 
-.docx-content h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
-.docx-content h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem; }
-.docx-content h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
-.docx-content p { margin-bottom: 1rem; line-height: 1.6; }
-.docx-content ul, .docx-content ol { margin-left: 1.5rem; margin-bottom: 1rem; }
-.docx-content li { margin-bottom: 0.25rem; }
-.docx-content table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
-.docx-content td, .docx-content th { border: 1px solid #ddd; padding: 8px; }
+.docx-content h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.docx-content h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.docx-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.docx-content p {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.docx-content ul,
+.docx-content ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.docx-content li {
+  margin-bottom: 0.25rem;
+}
+
+.docx-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.docx-content td,
+.docx-content th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
 
 @keyframes toastSlideIn {
-  from { opacity: 0; transform: translateY(-16px) scale(0.95); }
-  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes aiBarExpand {
-  from { opacity: 0; transform: scaleY(0.85); }
-  to   { opacity: 1; transform: scaleY(1); }
+  from {
+    opacity: 0;
+    transform: scaleY(0.85);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
 }
+
 .animate-ai-bar {
   transform-origin: top;
   animation: aiBarExpand 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-button, a {
+button,
+a {
   cursor: pointer;
 }

@@ -48,10 +48,10 @@ export default function Sidebar({ isMobile }) {
   const links = getLinks();
 
   return (
-    <aside 
+    <aside
       className={cn(
         "bg-white relative transition-all duration-300 ease-in-out flex flex-col",
-        isMobile ? "w-full min-h-full border-r-0" : "border-r min-h-[calc(100vh-4rem)] hidden md:flex",
+        isMobile ? "w-full min-h-full border-r-0" : "border-r h-full hidden md:flex",
         !isMobile && isCollapsed ? "w-[72px] items-center px-2 py-4" : "w-72 p-4"
       )}
       onMouseEnter={() => !isMobile && setIsHovered(true)}
@@ -74,7 +74,7 @@ export default function Sidebar({ isMobile }) {
         <div className={cn("py-2 text-xs font-semibold uppercase text-gray-400 tracking-wider transition-opacity duration-200", isCollapsed && "opacity-0 hidden")}>
           Menu
         </div>
-        
+
         {links.map((link) => {
           const Icon = link.icon;
           return (

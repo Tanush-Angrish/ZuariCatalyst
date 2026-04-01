@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
+const authMiddleware = require('../middleware/auth');
+
+// All points/leaderboard endpoints require authentication
+router.use(authMiddleware);
+
 
 // GET /api/points/leaderboard — Top 10 users by points
 router.get('/leaderboard', async (req, res) => {

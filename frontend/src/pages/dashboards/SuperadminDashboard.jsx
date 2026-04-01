@@ -118,7 +118,7 @@ function AssignedIdeaRow({ idea, orgAdmins, onReassign }) {
                 </Badge>
               )}
             </div>
-            
+
             <div className="text-xs text-right text-gray-600">
               <span className="font-medium">Assigned to:</span>{' '}
               <span className="font-bold text-brand-black">{idea.assignedToName}</span>
@@ -351,18 +351,16 @@ export default function SuperadminDashboard() {
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); setTabSearch(''); }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
-                isActive
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${isActive
                   ? `${tab.activeBg} text-white border-transparent shadow-md`
                   : `bg-white ${tab.color} ${tab.border} hover:${tab.bg}`
-              }`}
+                }`}
             >
               <Icon size={15} />
               {tab.label}
               {count > 0 && (
-                <span className={`ml-1 min-w-[20px] h-5 px-1.5 rounded-full text-xs flex items-center justify-center font-bold ${
-                  isActive ? 'bg-white/25 text-white' : `${tab.bg} ${tab.color}`
-                }`}>
+                <span className={`ml-1 min-w-[20px] h-5 px-1.5 rounded-full text-xs flex items-center justify-center font-bold ${isActive ? 'bg-white/25 text-white' : `${tab.bg} ${tab.color}`
+                  }`}>
                   {count}
                 </span>
               )}

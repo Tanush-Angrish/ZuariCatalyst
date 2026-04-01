@@ -206,18 +206,16 @@ export default function OrgAdminDashboard() {
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); setTabSearch(''); }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
-                isActive
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${isActive
                   ? `${tab.activeBg} text-white border-transparent shadow-md`
                   : `bg-white ${tab.color} ${tab.border} hover:${tab.bg}`
-              }`}
+                }`}
             >
               <Icon size={15} />
               {tab.label}
               {count > 0 && (
-                <span className={`ml-1 min-w-[20px] h-5 px-1.5 rounded-full text-xs flex items-center justify-center font-bold ${
-                  isActive ? 'bg-white/25 text-white' : `${tab.bg} ${tab.color}`
-                }`}>
+                <span className={`ml-1 min-w-[20px] h-5 px-1.5 rounded-full text-xs flex items-center justify-center font-bold ${isActive ? 'bg-white/25 text-white' : `${tab.bg} ${tab.color}`
+                  }`}>
                   {count}
                 </span>
               )}
@@ -316,7 +314,7 @@ export default function OrgAdminDashboard() {
                   </button>
                 )}
               </div>
-              
+
               {filteredApproved.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-200 p-10 text-center text-gray-400 bg-white">
                   <Search className="mx-auto h-8 w-8 text-gray-200 mb-2" />
@@ -366,7 +364,7 @@ export default function OrgAdminDashboard() {
                   </button>
                 )}
               </div>
-              
+
               {filteredRejected.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-200 p-10 text-center text-gray-400 bg-white">
                   <Search className="mx-auto h-8 w-8 text-gray-200 mb-2" />

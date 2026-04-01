@@ -51,13 +51,15 @@ export default function EmployeeGamificationBar({ userId }) {
           </div>
           
           {/* Progress Bar Container */}
-          <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden relative">
+          <div className="h-3 w-full bg-gray-200 rounded-full overflow-hidden relative shadow-inner border border-gray-200/50">
             <div 
-              className="h-full rounded-full bg-gradient-to-r from-brand-blue to-purple-500 relative transition-all duration-1000 ease-out"
+              className="h-full rounded-full bg-gradient-to-r from-brand-blue to-purple-500 relative transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(168,85,247,0.6)]"
               style={{ width: `${percentage}%` }}
             >
               {/* Smooth flow animation */}
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent)] animate-shimmer" />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.7),transparent)] animate-shimmer" />
+              {/* Animated glow tip */}
+              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/40 blur-[1px] rounded-r-full" />
             </div>
           </div>
         </div>

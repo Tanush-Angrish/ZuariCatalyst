@@ -15,9 +15,9 @@ export default function DashboardLayout() {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 relative">
+    <div className="h-full flex flex-col bg-gray-50 relative">
       <Navbar onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#fdfdfd]">
           <div key={location.pathname} className="w-full max-w-[1600px] animate-fade-in-up">
@@ -28,7 +28,7 @@ export default function DashboardLayout() {
 
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />

@@ -1,22 +1,37 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 
-// Pages
+// Eager imports — loaded immediately (entry point + layout shell)
 import LandingPage from './pages/LandingPage';
 import DashboardLayout from './components/layout/DashboardLayout';
-import EmployeeDashboard from './pages/dashboards/EmployeeDashboard';
-import MyIdeas from './pages/dashboards/MyIdeas';
-import SuperadminDashboard from './pages/dashboards/SuperadminDashboard';
-import OrgAdminDashboard from './pages/dashboards/OrgAdminDashboard';
-import TeamIdeas from './pages/dashboards/TeamIdeas';
-import ProjectsPage from './pages/dashboards/ProjectsPage';
-import UserManagement from './pages/dashboards/UserManagement';
-import TemplateAccess from './pages/dashboards/TemplateAccess';
-import TemplateConfig from './pages/dashboards/TemplateConfig';
-import CommunityHub from './pages/dashboards/CommunityHub';
-import Leaderboard from './pages/dashboards/Leaderboard';
+
+// Lazy imports — each page downloads only when first navigated to
+const EmployeeDashboard   = lazy(() => import('./pages/dashboards/EmployeeDashboard'));
+const MyIdeas             = lazy(() => import('./pages/dashboards/MyIdeas'));
+const SuperadminDashboard = lazy(() => import('./pages/dashboards/SuperadminDashboard'));
+const OrgAdminDashboard   = lazy(() => import('./pages/dashboards/OrgAdminDashboard'));
+const TeamIdeas           = lazy(() => import('./pages/dashboards/TeamIdeas'));
+const ProjectsPage        = lazy(() => import('./pages/dashboards/ProjectsPage'));
+const UserManagement      = lazy(() => import('./pages/dashboards/UserManagement'));
+const TemplateAccess      = lazy(() => import('./pages/dashboards/TemplateAccess'));
+const TemplateConfig      = lazy(() => import('./pages/dashboards/TemplateConfig'));
+const CommunityHub        = lazy(() => import('./pages/dashboards/CommunityHub'));
+const Leaderboard         = lazy(() => import('./pages/dashboards/Leaderboard'));
+
+// Minimal loading fallback — shown while a page chunk is downloading
+function PageLoader() {
+  return (
+    <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 rounded-full border-4 border-brand-blue/20 border-t-brand-blue animate-spin" />
+        <p className="text-sm text-gray-400 font-medium">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 
 // Protect Routes based on roles
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -51,33 +66,35 @@ function App() {
     <AuthProvider>
       <NotificationProvider>
         <Router>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<LandingPage />} />
 
-            {/* General Dashboard routes */}
-            <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-              <Route index element={<DashboardDirector />} />
-              <Route path="my-ideas" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><MyIdeas /></ProtectedRoute>} />
-              <Route path="team-ideas" element={<ProtectedRoute allowedRoles={['Org Admin']}><TeamIdeas /></ProtectedRoute>} />
-              <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><ProjectsPage /></ProtectedRoute>} />
-              <Route path="leaderboard" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><Leaderboard /></ProtectedRoute>} />
-            </Route>
+              {/* General Dashboard routes */}
+              <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                <Route index element={<DashboardDirector />} />
+                <Route path="my-ideas" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><MyIdeas /></ProtectedRoute>} />
+                <Route path="team-ideas" element={<ProtectedRoute allowedRoles={['Org Admin']}><TeamIdeas /></ProtectedRoute>} />
+                <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><ProjectsPage /></ProtectedRoute>} />
+                <Route path="leaderboard" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><Leaderboard /></ProtectedRoute>} />
+              </Route>
 
-            {/* Central Team / Hub routes */}
-            <Route path="/community-hub" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-              <Route index element={<CommunityHub />} />
-            </Route>
+              {/* Central Team / Hub routes */}
+              <Route path="/community-hub" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                <Route index element={<CommunityHub />} />
+              </Route>
 
-            {/* Global Settings */}
-            <Route path="/settings" element={<ProtectedRoute allowedRoles={['Superadmin', 'Central Team']}><DashboardLayout /></ProtectedRoute>}>
-              <Route path="users" element={<UserManagement />} />
-              <Route path="templates" element={<TemplateConfig />} />
-              <Route path="access" element={<TemplateAccess />} />
-            </Route>
+              {/* Global Settings */}
+              <Route path="/settings" element={<ProtectedRoute allowedRoles={['Superadmin', 'Central Team']}><DashboardLayout /></ProtectedRoute>}>
+                <Route path="users" element={<UserManagement />} />
+                <Route path="templates" element={<TemplateConfig />} />
+                <Route path="access" element={<TemplateAccess />} />
+              </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </Router>
       </NotificationProvider>
     </AuthProvider>

@@ -2,6 +2,8 @@ const express = require('express');
 require('dotenv').config();
 const cors = require('cors');
 const path = require('path');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 const authRoutes = require('./routes/auth');
 const ideasRoutes = require('./routes/ideas');
 const usersRoutes = require('./routes/users');
@@ -17,11 +19,48 @@ const runSeed = require('./scripts/seed');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+// Enable gzip compression for API responses and static files
+app.use(compression());
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Setup rate limiting to protect the 1GB RAM server from DoS/spam
+const apiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 300, // Limit each IP to 300 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests from this IP, please try again after 5 minutes.' }
+});
+
+// ─── CORS Configuration ──────────────────────────────────────────────────────
+// Restrict to known origins only. credentials:true is required so the browser
+// sends the httpOnly auth_token cookie on cross-origin requests (dev only —
+// in production, frontend and API share the same domain via Nginx).
+const ALLOWED_ORIGINS = [
+  'https://catalyst.zuarione.com',
+  'https://staging.catalyst.zuarione.com',
+  'http://localhost:5173',
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow same-origin requests (origin is undefined) and any listed origin
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: Origin '${origin}' is not allowed`));
+  },
+  credentials: true, // Required for cookies to be sent cross-origin
+}));
+app.use(express.json({ limit: '2mb' }));
+
+
+// Apply rate limiting exclusively to API routes
+app.use('/api', apiLimiter);
+
+// Serve uploaded files statically with 7-day browser cache
+// Files use unique timestamped names and are never overwritten — safe to cache immutably
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '7d',
+  immutable: true
+}));
 
 // Routes
 app.use('/api/auth', authRoutes);

@@ -10,6 +10,11 @@ const {
   notifyUser,
   notifyUsers
 } = require('../services/notificationService');
+const authMiddleware = require('../middleware/auth');
+
+// All project endpoints require authentication
+router.use(authMiddleware);
+
 
 // Helper: get all Central Team (Superadmin) emails
 async function getCentralTeamEmails() {

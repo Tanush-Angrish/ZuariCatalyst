@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
+const authMiddleware = require('../middleware/auth');
 const { generateIdeaInsights, generateFormAutofill } = require('../services/geminiService');
 const { awardPoints } = require('../services/pointService');
+
+// All idea endpoints require authentication
+router.use(authMiddleware);
+
 const {
   sendIdeaSubmittedEmail,
   sendIdeaAssignedEmail,

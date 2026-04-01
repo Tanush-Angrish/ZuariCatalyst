@@ -13,7 +13,9 @@
 const isViteDev = window.location.port === '5173';
 const BASE_URL = import.meta.env.VITE_API_URL ||
   (isViteDev ? `http://${window.location.hostname}:5000` : '');
-console.log("Loaded API Base URL:", BASE_URL || '(same origin)');
+if (import.meta.env.DEV) {
+  console.log("Loaded API Base URL:", BASE_URL || '(same origin)');
+}
 
 
 async function request(endpoint, options = {}) {
@@ -32,6 +34,7 @@ async function request(endpoint, options = {}) {
   const config = {
     ...options,
     headers,
+    credentials: 'include', // Always send cookies (auth_token httpOnly cookie) with every request
   };
 
   const response = await fetch(url, config);
@@ -43,6 +46,7 @@ async function request(endpoint, options = {}) {
 
   return response.json();
 }
+
 
 export const api = {
   // Helper to resolve relative backend URLs (like /uploads/...) to absolute ones
@@ -62,6 +66,10 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  // Called on every page load to restore session from the httpOnly cookie
+  getMe: () => request('/api/auth/me'),
+  // Clears the server-side cookie — call this on logout
+  logout: () => request('/api/auth/logout', { method: 'POST' }),
 
   // Ideas
   // Ideas

@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
 const { generateTemplateFromPrompt } = require('../services/geminiService');
+const authMiddleware = require('../middleware/auth');
+
+// All template endpoints require authentication
+router.use(authMiddleware);
+
 
 // ─── Helper: Apply field order ──────────────────────────────────────────────
 // Given a combined list of fields and an ordered array of field IDs,

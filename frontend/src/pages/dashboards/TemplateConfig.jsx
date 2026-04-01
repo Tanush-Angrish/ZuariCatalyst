@@ -11,14 +11,14 @@ import {
 import { api } from '../../services/api';
 
 const FIELD_TYPES = [
-  { value: 'text',     label: 'Text' },
+  { value: 'text', label: 'Text' },
   { value: 'textarea', label: 'Textarea' },
-  { value: 'number',   label: 'Number' },
-  { value: 'select',   label: 'Dropdown' },
-  { value: 'file',     label: 'File Upload' },
-  { value: 'voice',    label: 'Voice Note' },
-  { value: 'date',     label: 'Date' },
-  { value: 'url',      label: 'URL' },
+  { value: 'number', label: 'Number' },
+  { value: 'select', label: 'Dropdown' },
+  { value: 'file', label: 'File Upload' },
+  { value: 'voice', label: 'Voice Note' },
+  { value: 'date', label: 'Date' },
+  { value: 'url', label: 'URL' },
 ];
 
 const inputClass =
@@ -995,11 +995,11 @@ export default function TemplateConfig() {
               />
               <div className="absolute bottom-4 right-4 flex items-center gap-2">
                 <button
-                   type="button"
-                   className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-full transition-colors"
-                   title="Voice input coming soon"
+                  type="button"
+                  className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-full transition-colors"
+                  title="Voice input coming soon"
                 >
-                   <Mic size={18} />
+                  <Mic size={18} />
                 </button>
               </div>
             </div>

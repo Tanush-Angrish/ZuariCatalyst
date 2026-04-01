@@ -38,7 +38,7 @@ export default function CommunityHub() {
             Explore all ideas and innovations across the organization.
           </p>
         </div>
-        
+
         {!loading && (
           <div className="bg-brand-blue/5 border border-brand-blue/10 rounded-xl px-5 py-3 text-center sm:text-right shrink-0">
             <p className="text-xs font-bold uppercase tracking-widest text-brand-blue mb-0.5">Total Ideas Submitted</p>

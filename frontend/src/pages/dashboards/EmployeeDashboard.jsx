@@ -188,11 +188,10 @@ function AIAutofillBar({ fields, onAutofill, onClose }) {
                 type="button"
                 onClick={isVoiceRecording ? stopVoiceInput : startVoiceInput}
                 disabled={loading}
-                className={`p-2 rounded-lg transition-colors ${
-                  isVoiceRecording
+                className={`p-2 rounded-lg transition-colors ${isVoiceRecording
                     ? 'bg-red-100 text-red-500 animate-pulse'
                     : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
-                }`}
+                  }`}
                 title={isVoiceRecording ? 'Stop recording' : 'Voice input'}
               >
                 {isVoiceRecording ? <MicOff size={17} /> : <Mic size={17} />}
@@ -203,11 +202,10 @@ function AIAutofillBar({ fields, onAutofill, onClose }) {
               type="button"
               onClick={handleSubmit}
               disabled={!text.trim() || loading}
-              className={`p-2 rounded-lg transition-all ${
-                text.trim() && !loading
+              className={`p-2 rounded-lg transition-all ${text.trim() && !loading
                   ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                   : 'bg-gray-100 text-gray-300 cursor-not-allowed'
-              }`}
+                }`}
               title="Fill form with AI"
             >
               {loading ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
@@ -275,7 +273,7 @@ export default function EmployeeDashboard() {
 
   React.useEffect(() => {
     if (user?.id) {
-       api.getIdeaLimits(user.id).then(setLimits).catch(console.error);
+      api.getIdeaLimits(user.id).then(setLimits).catch(console.error);
     }
   }, [user]);
 
@@ -561,20 +559,20 @@ export default function EmployeeDashboard() {
           <h1 className="text-3xl font-bold tracking-tight text-brand-black">Submit New Idea</h1>
           <p className="text-gray-500 mt-1">Share your innovative ideas to improve the organization.</p>
         </div>
-        
+
         {/* Limits Display */}
         <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm shrink-0 divide-x divide-gray-100 overflow-hidden">
           <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
-             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Monthly Subm.</span>
-             <span className={`text-[17px] font-extrabold ${limits.submittedCount >= 5 ? 'text-red-500' : 'text-brand-blue'}`}>
-               {limits.submittedCount} <span className="text-gray-400 text-sm font-medium">/ 5</span>
-             </span>
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Monthly Subm.</span>
+            <span className={`text-[17px] font-extrabold ${limits.submittedCount >= 5 ? 'text-red-500' : 'text-brand-blue'}`}>
+              {limits.submittedCount} <span className="text-gray-400 text-sm font-medium">/ 5</span>
+            </span>
           </div>
           <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
-             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Saved Drafts</span>
-             <span className={`text-[17px] font-extrabold ${limits.draftCount >= 3 ? 'text-amber-500' : 'text-brand-blue'}`}>
-               {limits.draftCount} <span className="text-gray-400 text-sm font-medium">/ 3</span>
-             </span>
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Saved Drafts</span>
+            <span className={`text-[17px] font-extrabold ${limits.draftCount >= 3 ? 'text-amber-500' : 'text-brand-blue'}`}>
+              {limits.draftCount} <span className="text-gray-400 text-sm font-medium">/ 3</span>
+            </span>
           </div>
         </div>
       </div>
@@ -703,22 +701,22 @@ export default function EmployeeDashboard() {
 
                 <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 gap-4 mt-6">
                   <p className="text-xs text-gray-500 font-medium">Required fields are marked with <span className="text-red-500">*</span></p>
-                  
+
                   <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <Button 
-                      type="button" 
+                    <Button
+                      type="button"
                       variant="outline"
                       onClick={handleSaveDraft}
-                      disabled={isSubmitting || isAIFilling || limits.draftCount >= 3} 
+                      disabled={isSubmitting || isAIFilling || limits.draftCount >= 3}
                       className="w-full sm:w-auto font-semibold shadow-sm hover:shadow"
                       title={limits.draftCount >= 3 ? "You can only have up to 3 drafts at a time" : ""}
                     >
                       Save as Draft
                     </Button>
 
-                    <Button 
-                      type="submit" 
-                      disabled={isSubmitting || isAIFilling || limits.submittedCount >= 5} 
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting || isAIFilling || limits.submittedCount >= 5}
                       className="w-full sm:w-auto font-semibold shadow-md hover:shadow-lg transition-all"
                       title={limits.submittedCount >= 5 ? "You can only submit 5 ideas per month" : ""}
                     >
