@@ -22,6 +22,7 @@ export default function LandingPage() {
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // If already logged in, skip the landing page and go straight to the dashboard
   useEffect(() => {
@@ -424,14 +425,27 @@ export default function LandingPage() {
                     placeholder="name@adventz.com"
                   />
 
-                  <input
-                    required
-                    type="password"
-                    value={password}
-                    onChange={e => { setPassword(e.target.value); setError(''); }}
-                    className="w-full rounded-[14px] border border-gray-200 bg-gray-50/50 px-5 py-4 text-[14px] focus:bg-white focus:border-brand-blue focus:outline-none focus:ring-4 focus:ring-brand-blue/10 transition-all placeholder:text-gray-400 font-medium text-[#0f0e1a]"
-                    placeholder="Enter your password"
-                  />
+                  <div>
+                    <input
+                      required
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => { setPassword(e.target.value); setError(''); }}
+                      className="w-full rounded-[14px] border border-gray-200 bg-gray-50/50 px-5 py-4 text-[14px] focus:bg-white focus:border-brand-blue focus:outline-none focus:ring-4 focus:ring-brand-blue/10 transition-all placeholder:text-gray-400 font-medium text-[#0f0e1a]"
+                      placeholder="Enter your password"
+                    />
+                    <label className="flex items-center gap-2 cursor-pointer mt-3 ml-1 select-none group">
+                      <input
+                        type="checkbox"
+                        checked={showPassword}
+                        onChange={(e) => setShowPassword(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-[#1d3368] focus:ring-[#1d3368] transition-all cursor-pointer"
+                      />
+                      <span className="text-[13px] font-semibold text-gray-500 group-hover:text-gray-800 transition-colors">
+                        Show password
+                      </span>
+                    </label>
+                  </div>
                 </div>
 
                 <button
