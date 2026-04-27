@@ -179,11 +179,14 @@ export default function LandingPage() {
           <div className="md:w-[55%] sr w-full flex flex-col items-center md:items-start text-center md:text-left">
             <div className="sec-eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--purple-l)', color: 'var(--purple)' }}>
               <span className="w-[5px] h-[5px] rounded-full bg-current opacity-80 animate-pulse" style={{ animationDuration: '2s' }}></span>
-              Ignite. Innovate. Implement.
+              Digital Suggestion Box
             </div>
-            <h1 className="text-[50px] sm:text-[64px] leading-[1.1] font-extrabold tracking-tight text-[#0A0A0A] mb-5 md:mb-6 mt-6 md:mt-4" style={{ fontFamily: 'var(--fd)' }}>
+            <h1 className="text-[50px] sm:text-[64px] leading-[1.1] font-extrabold tracking-tight text-[#0A0A0A] mb-3 md:mb-4 mt-6 md:mt-4" style={{ fontFamily: 'var(--fd)' }}>
               Turn every employee idea into <span style={{ color: 'var(--purple)' }}>real impact</span>
             </h1>
+            <h2 className="text-[28px] md:text-[36px] font-medium text-[#4B5563] mb-6 md:mb-8">
+              आपकी राय, अब डिजिटल।
+            </h2>
             <p className="text-[16.5px] md:text-[18px] text-[#4B5563] max-w-lg mb-8 md:mb-10" style={{ lineHeight: '1.6' }}>
               Catalyst gives every employee a structured voice — and gives your organisation a complete system to capture, review, and convert great ideas into executed projects.
             </p>

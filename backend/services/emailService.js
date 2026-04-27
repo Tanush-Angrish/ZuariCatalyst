@@ -130,7 +130,7 @@ function wrapHtml(body) {
         ${body}
         <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
           <p style="margin-bottom: 12px; font-size: 13px; color: #6b7280;">Access the platform securely to view details and take actions.</p>
-          <a href="https://staging.catalyst.zuarione.com/" class="btn-primary">Open Zuari Catalyst</a>
+          <a href="${process.env.APP_URL || 'https://catalyst.zuarione.com'}" class="btn-primary">Open Zuari Catalyst</a>
         </div>
       </div>
       <div class="footer">This is an automated message from Zuari Catalyst. Please do not reply to this email.</div>
