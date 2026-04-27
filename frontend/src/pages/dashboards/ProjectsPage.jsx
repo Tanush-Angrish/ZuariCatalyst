@@ -6,6 +6,7 @@ import {
   FolderKanban, Calendar, Sparkles, Clock, Building,
   CheckCircle2, AlertCircle, Loader2, Search, Filter
 } from 'lucide-react';
+import { api } from '../../services/api';
 
 const STATUS_COLORS = {
   Initiated:   'bg-blue-100 text-blue-700 border-blue-200',
@@ -66,9 +67,13 @@ function ProjectCard({ project, onClick }) {
 
         {/* AI Summary */}
         {project.aiSummary && (
-          <div className="flex items-start gap-1.5 text-xs text-gray-500 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 rounded-lg p-2.5">
-            <Sparkles size={10} className="text-blue-400 mt-0.5 shrink-0" />
-            <span className="italic line-clamp-2">"{project.aiSummary}"</span>
+          <div className="p-3.5 rounded-xl bg-[#F4F6FB] border border-[#E1E5F2] hover:shadow-sm transition-shadow">
+            <p className="text-[11px] font-extrabold uppercase tracking-widest text-blue-600 mb-1.5 flex items-center gap-1.5">
+              <Sparkles size={13} className="text-amber-500" /> AI Summary
+            </p>
+            <p className="text-[14.5px] font-medium text-gray-800 leading-relaxed italic line-clamp-4">
+              "{project.aiSummary}"
+            </p>
           </div>
         )}
 
@@ -107,7 +112,7 @@ function ProjectCard({ project, onClick }) {
   );
 }
 
-// ─── Main ProjectsPage ─────────────────────────────────────────────────────
+
 export default function ProjectsPage() {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
@@ -120,13 +125,11 @@ export default function ProjectsPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({
+      const data = await api.getProjects({
         userId: user.id,
         role: user.role,
         organization: user.organization || ''
       });
-      const res = await fetch(`/api/projects?${params}`);
-      const data = await res.json();
       setProjects(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
@@ -164,7 +167,7 @@ export default function ProjectsPage() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight mb-2">Projects</h1>
           <p className="text-blue-100 max-w-2xl text-sm">
-            Track approved ideas from initiation to completion. Manage action steps, collaborate via chat, and use Gemini AI for intelligent planning.
+            Track approved ideas from initiation to completion. Manage action steps, collaborate via chat, and use AI for intelligent planning.
           </p>
           <div className="flex items-center gap-4 mt-4 text-white/60 text-xs">
             <span><strong className="text-white">{projects.length}</strong> total projects</span>

@@ -20,9 +20,12 @@ model User {
   organization  String?  
   
   // Relations
-  authoredIdeas Idea[]         @relation("IdeaAuthor")
-  assignedIdeas Idea[]         @relation("IdeaAssignee")
-  notifications Notification[] @relation("UserNotifications")
+  authoredIdeas  Idea[]         @relation("IdeaAuthor")
+  assignedIdeas  Idea[]         @relation("IdeaAssignee")
+  approvedIdeas  Idea[]         @relation("IdeaApprovedBy")
+  notifications  Notification[] @relation("UserNotifications")
+  points         UserPoint?     @relation("UserPoints")
+  upvotes        Upvote[]
 
   @@map("users")
 }
@@ -37,9 +40,12 @@ model Idea {
   extraFields    String   @default("{}") // Storing JSON as string to match old sqlite approach initially
   files          String   @default("[]") // JSON array of { name, url, type } objects
   status         String   @default("Pending Review")
-  aiSummary      String?
-  aiTags         String   @default("[]") // JSON array of tags
-  createdAt      DateTime @default(now())
+  rejectionReason    String?
+  aiSummary          String?
+  aiTags             String   @default("[]") // JSON array of tags
+  createdAt          DateTime @default(now())
+  approvedByUserId   Int?     // ID of the user who approved (Central or Org Admin)
+  approvedByRole     String?  // 'central' | 'admin' — role that approved the idea
 
   authorId       Int
   assignedToId   Int?
@@ -47,8 +53,10 @@ model Idea {
   // Relations
   author         User     @relation("IdeaAuthor", fields: [authorId], references: [id])
   assignedTo     User?    @relation("IdeaAssignee", fields: [assignedToId], references: [id])
+  approvedBy     User?    @relation("IdeaApprovedBy", fields: [approvedByUserId], references: [id])
 
   @@map("ideas")
+  projects   Project?
 }
 
 model IdeaTemplate {
@@ -57,6 +65,7 @@ model IdeaTemplate {
   name        String
   description String   @default("")
   fields      String   @default("[]") // JSON array of field definitions
+  fieldOrder  String   @default("[]") // JSON array of field IDs in display order
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -90,19 +99,21 @@ model TemplateAccess {
 // ─── Project Lifecycle Models ────────────────────────────────────────────────
 
 model Project {
-  id          Int       @id @default(autoincrement())
-  projectId   String    @unique // e.g. PROJ-0001
-  ideaId      Int       @unique
-  orgId       String    // organization name
-  createdById Int       // authorId of the original idea
-  title       String
-  aiSummary   String?
-  status      String    @default("Initiated")
-  deadline    DateTime?
-  createdAt   DateTime  @default(now())
+  id                Int       @id @default(autoincrement())
+  projectId         String    @unique // e.g. PROJ-0001
+  ideaId            Int       @unique
+  orgId             String    // organization name
+  createdById       Int       // authorId of the original idea
+  title             String
+  aiSummary         String?
+  status            String    @default("Initiated")
+  deadline          DateTime?
+  isStepsFinalized  Boolean   @default(false)
+  createdAt         DateTime  @default(now())
 
-  steps       ProjectStep[]
-  messages    ProjectMessage[]
+  steps             ProjectStep[]
+  messages          ProjectMessage[]
+  idea              Idea?            @relation(fields: [ideaId], references: [id])
 
   @@map("projects")
 }
@@ -112,9 +123,12 @@ model ProjectStep {
   projectId   Int
   description String
   status      String    @default("Pending") // Pending | In Progress | Completed
-  deadline    DateTime?
+  deadline         DateTime?
+  dependencyStepId Int?
 
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  dependencyStep ProjectStep?  @relation("StepDependencies", fields: [dependencyStepId], references: [id])
+  dependentSteps ProjectStep[] @relation("StepDependencies")
 
   @@map("project_steps")
 }
@@ -148,4 +162,50 @@ model Notification {
 
   @@index([userId])
   @@map("notifications")
+}
+
+// ─── Scoring System ──────────────────────────────────────────────────────────
+
+model UserPoint {
+  id          Int  @id @default(autoincrement())
+  userId      Int  @unique
+  totalPoints Int  @default(0)
+
+  user        User @relation("UserPoints", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_points")
+}
+
+model PointLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  actionType  String   // 'idea_submitted','idea_approved','upvote_received','project_completed'
+  points      Int
+  referenceId Int?     // ideaId or projectId
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@unique([userId, actionType, referenceId])
+  @@map("point_logs")
+}
+
+model Upvote {
+  id     Int @id @default(autoincrement())
+  ideaId Int
+  userId Int
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([ideaId, userId])
+  @@map("upvotes")
+}
+
+// ─── Template Categories ──────────────────────────────────────────────────────
+
+model TemplateCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("template_categories")
 }

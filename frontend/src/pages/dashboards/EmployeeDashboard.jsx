@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import { api } from '../../services/api';
+
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../context/NotificationContext';
@@ -39,9 +41,9 @@ function VoiceRecorder({ onRecorded, existingUrl, onRemove }) {
         try {
           const fd = new FormData();
           fd.append('voice', blob, 'voice-note.webm');
-          const res = await fetch('/api/upload/voice', { method: 'POST', body: fd });
-          const data = await res.json();
+          const data = await api.uploadVoice(fd);
           setAudioUrl(data.url);
+
           onRecorded(data);
         } catch (err) {
           console.error('Voice upload error:', err);
@@ -87,7 +89,7 @@ function VoiceRecorder({ onRecorded, existingUrl, onRemove }) {
         </div>
       ) : (
         <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-2 border">
-          <audio controls src={audioUrl} className="h-8 flex-1" />
+          <audio controls src={api.getFileUrl(audioUrl)} className="h-8 flex-1" />
           <button type="button" onClick={() => { setAudioUrl(null); onRemove?.(); }} className="text-red-400 hover:text-red-600">
             <Trash2 size={14} />
           </button>
@@ -155,7 +157,7 @@ function AIAutofillBar({ fields, onAutofill, onClose }) {
           </div>
           <div>
             <span className="text-sm font-bold text-blue-900">Fill with AI</span>
-            <p className="text-[11px] text-blue-500 leading-none mt-0.5">Describe your idea and Gemini will fill the form</p>
+            <p className="text-[11px] text-blue-500 leading-none mt-0.5">Describe your idea and AI will fill the form</p>
           </div>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg text-blue-300 hover:text-blue-600 hover:bg-blue-100 transition-colors">
@@ -186,11 +188,10 @@ function AIAutofillBar({ fields, onAutofill, onClose }) {
                 type="button"
                 onClick={isVoiceRecording ? stopVoiceInput : startVoiceInput}
                 disabled={loading}
-                className={`p-2 rounded-lg transition-colors ${
-                  isVoiceRecording
+                className={`p-2 rounded-lg transition-colors ${isVoiceRecording
                     ? 'bg-red-100 text-red-500 animate-pulse'
                     : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
-                }`}
+                  }`}
                 title={isVoiceRecording ? 'Stop recording' : 'Voice input'}
               >
                 {isVoiceRecording ? <MicOff size={17} /> : <Mic size={17} />}
@@ -201,11 +202,10 @@ function AIAutofillBar({ fields, onAutofill, onClose }) {
               type="button"
               onClick={handleSubmit}
               disabled={!text.trim() || loading}
-              className={`p-2 rounded-lg transition-all ${
-                text.trim() && !loading
+              className={`p-2 rounded-lg transition-all ${text.trim() && !loading
                   ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                   : 'bg-gray-100 text-gray-300 cursor-not-allowed'
-              }`}
+                }`}
               title="Fill form with AI"
             >
               {loading ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
@@ -235,7 +235,7 @@ function AILoader() {
         </div>
         <div className="text-center">
           <p className="text-sm font-semibold text-gray-800">AI is filling your form...</p>
-          <p className="text-xs text-gray-400 mt-0.5">Gemini is analysing your idea</p>
+          <p className="text-xs text-gray-400 mt-0.5">AI is analysing your idea</p>
         </div>
       </div>
     </div>
@@ -256,7 +256,8 @@ export default function EmployeeDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAIFilling, setIsAIFilling] = useState(false);
   const [formData, setFormData] = useState({});
-  const [uploadedFiles, setUploadedFiles] = useState([]);
+  // uploadedFiles: { [fieldId]: [{ name, url, type, ... }] }
+  const [uploadedFiles, setUploadedFiles] = useState({});
   const [voiceNote, setVoiceNote] = useState(null);
 
   // AI Bar State
@@ -267,17 +268,23 @@ export default function EmployeeDashboard() {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [categories, setCategories] = useState([]);
 
+  // Limits State
+  const [limits, setLimits] = useState({ submittedCount: 0, draftCount: 0 });
+
+  React.useEffect(() => {
+    if (user?.id) {
+      api.getIdeaLimits(user.id).then(setLimits).catch(console.error);
+    }
+  }, [user]);
+
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const tplRes = await fetch('/api/templates');
-        if (!tplRes.ok) throw new Error('Failed to fetch templates');
-        const data = await tplRes.json();
+        const data = await api.getTemplates();
         const allTemplates = data.templates || [];
 
-        const accessRes = await fetch('/api/templates/access');
-        if (!accessRes.ok) throw new Error('Failed to fetch template access');
-        const accessData = await accessRes.json();
+        const accessData = await api.getTemplateAccess();
+
 
         if (!Array.isArray(allTemplates) || !Array.isArray(accessData)) return;
 
@@ -311,7 +318,7 @@ export default function EmployeeDashboard() {
       if (f.type !== 'file' && f.type !== 'voice') initial[f.id] = '';
     });
     setFormData(initial);
-    setUploadedFiles([]);
+    setUploadedFiles({});
     setVoiceNote(null);
     setShowAIBar(false);
     setStep(2);
@@ -321,7 +328,7 @@ export default function EmployeeDashboard() {
     setStep(1);
     setSelectedTemplate(null);
     setFormData({});
-    setUploadedFiles([]);
+    setUploadedFiles({});
     setVoiceNote(null);
     setShowAIBar(false);
   };
@@ -341,13 +348,9 @@ export default function EmployeeDashboard() {
 
     setIsAIFilling(true);
     try {
-      const res = await fetch('/api/ideas/autofill', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description, fields: fieldsPayload })
-      });
-      const data = await res.json();
+      const data = await api.autofillIdea(description, fieldsPayload);
       const filled = data.fields || {};
+
       const filledCount = Object.keys(filled).length;
 
       // Merge AI values into form state, never overwrite existing user edits for filled fields
@@ -356,37 +359,48 @@ export default function EmployeeDashboard() {
       if (filledCount > 0) {
         notify({ type: 'success', title: 'Form filled!', message: `AI filled ${filledCount} field${filledCount > 1 ? 's' : ''}. Review and edit as needed.`, event: '' });
       } else {
-        notify({ type: 'warning', title: 'No fields filled', message: 'Gemini could not extract enough info. Try describing your idea in more detail.', event: '' });
+        notify({ type: 'warning', title: 'No fields filled', message: 'AI could not extract enough info. Try describing your idea in more detail.', event: '' });
       }
     } catch (e) {
       console.error(e);
-      notify({ type: 'error', title: 'AI fill failed', message: 'Could not connect to Gemini. Please fill the form manually.', event: '' });
+      notify({ type: 'error', title: 'AI fill failed', message: 'Could not connect to AI. Please fill the form manually.', event: '' });
     }
     setIsAIFilling(false);
   };
 
+  // Supports multiple files per field — each file is uploaded separately and appended
   const handleFileUpload = async (fieldId, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    try {
-      const res = await fetch('/api/upload/file', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (res.ok) {
-        setUploadedFiles(prev => [...prev, data]);
-        setFormData(prev => ({ ...prev, [fieldId]: data.url }));
-      } else {
-        alert('Upload failed: ' + data.error);
+    const selectedFiles = Array.from(e.target.files);
+    if (!selectedFiles.length) return;
+
+    for (const file of selectedFiles) {
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const data = await api.uploadFile(fd);
+        // Store file under fieldId key for clean per-field tracking
+        setUploadedFiles(prev => ({
+          ...prev,
+          [fieldId]: [...(prev[fieldId] || []), { ...data, name: file.name }]
+        }));
+      } catch (err) {
+        console.error('Upload Error:', err);
+        alert(`File upload failed: ${file.name} — ${err.message}`);
       }
-    } catch (err) {
-      console.error('Upload Error:', err);
-      alert('File upload failed: ' + err.message);
     }
+    // Reset the input so the same file can be re-added if removed
+    e.target.value = '';
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleRemoveFile = (fieldId, idx) => {
+    setUploadedFiles(prev => {
+      const updated = [...(prev[fieldId] || [])].filter((_, i) => i !== idx);
+      return { ...prev, [fieldId]: updated };
+    });
+  };
+
+  const handleSubmit = async (e, isDraft = false) => {
+    if (e) e.preventDefault();
     if (!selectedTemplate) return;
     setIsSubmitting(true);
 
@@ -397,7 +411,8 @@ export default function EmployeeDashboard() {
       authorId: user.id,
       description: '',
       expectedImpact: '',
-      supportingLink: formData.referenceLink || ''
+      supportingLink: formData.referenceLink || '',
+      isDraft
     };
 
     if (formData.problemDescription && formData.proposedSolution) {
@@ -417,36 +432,34 @@ export default function EmployeeDashboard() {
     });
 
     payload.extraFields = extraFields;
-    const allFiles = [...uploadedFiles];
+    // Collect ALL files from all fields + voice note
+    const allFiles = Object.values(uploadedFiles).flat();
     if (voiceNote) allFiles.push(voiceNote);
     payload.files = allFiles;
 
     try {
-      const res = await fetch('/api/ideas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        notify({ type: 'success', title: 'Idea submitted!', message: 'Your idea has been sent for review.', event: 'idea_submitted' });
-        setFormData({});
-        setSelectedTemplate(null);
-        setUploadedFiles([]);
-        setVoiceNote(null);
-        setStep(1);
-        navigate('/dashboard/my-ideas');
+      await api.submitIdea(payload);
+      if (isDraft) {
+        notify({ type: 'success', title: 'Draft Saved', message: 'Your idea has been saved as a draft.', event: '' });
       } else {
-        const errorData = await res.json();
-        notify({ type: 'error', title: 'Submission failed', message: errorData.error, event: '' });
+        notify({ type: 'success', title: 'Idea submitted!', message: 'Your idea has been sent for review.', event: 'idea_submitted' });
       }
+      setFormData({});
+      setSelectedTemplate(null);
+      setUploadedFiles({});
+      setVoiceNote(null);
+      setStep(1);
+      navigate('/dashboard/my-ideas');
     } catch (e) {
       console.error(e);
-      notify({ type: 'error', title: 'Network error', message: 'Could not submit idea. Please try again.', event: '' });
+      notify({ type: 'error', title: isDraft ? 'Draft save failed' : 'Submission failed', message: e.message, event: '' });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleSaveDraft = (e) => handleSubmit(e, true);
+
 
   const inputClass = 'w-full rounded-md border border-gray-300 p-2 text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue transition-colors';
 
@@ -480,27 +493,54 @@ export default function EmployeeDashboard() {
           <input type="date" required={field.required} value={value || ''} onChange={e => handleChange(field.id, e.target.value)}
             className={inputClass} />
         );
-      case 'file':
+      case 'file': {
+        const fieldFiles = uploadedFiles[field.id] || [];
         return (
           <div className="space-y-2">
-            <div className="flex border border-gray-300 rounded-md overflow-hidden bg-gray-50">
-              <input type="file" onChange={e => handleFileUpload(field.id, e)}
+            {/* File input — multiple allowed */}
+            <label className="flex items-center gap-2 cursor-pointer w-full border border-gray-300 rounded-md bg-gray-50 overflow-hidden hover:border-brand-blue transition-colors">
+              <span className="shrink-0 py-2 px-4 bg-brand-blue text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+                {fieldFiles.length === 0 ? 'Choose Files' : 'Add More'}
+              </span>
+              <span className="text-sm text-gray-400 px-2 truncate">
+                {fieldFiles.length === 0 ? 'No files selected' : `${fieldFiles.length} file${fieldFiles.length > 1 ? 's' : ''} selected`}
+              </span>
+              <input
+                type="file"
+                multiple
+                onChange={e => handleFileUpload(field.id, e)}
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.svg,.txt"
-                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-brand-blue file:text-white hover:file:bg-blue-700 transition" />
-            </div>
-            {value && (
-              <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-md px-3 py-1.5">
-                <Paperclip size={13} />
-                <span className="truncate">File uploaded successfully</span>
-              </div>
+                className="hidden"
+              />
+            </label>
+
+            {/* File list */}
+            {fieldFiles.length > 0 && (
+              <ul className="space-y-1.5">
+                {fieldFiles.map((f, idx) => (
+                  <li key={idx} className="flex items-center gap-2 text-sm text-green-800 bg-green-50 border border-green-100 rounded-md px-3 py-1.5">
+                    <Paperclip size={12} className="shrink-0 text-green-500" />
+                    <span className="flex-1 truncate">{f.name || f.url}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFile(field.id, idx)}
+                      className="shrink-0 text-red-400 hover:text-red-600 transition-colors"
+                      title="Remove file"
+                    >
+                      <X size={13} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         );
+      }
       case 'voice':
         return (
           <VoiceRecorder
             onRecorded={(data) => { setVoiceNote(data); setFormData(prev => ({ ...prev, [field.id]: data.url })); }}
-            existingUrl={voiceNote?.url}
+            existingUrl={api.getFileUrl(voiceNote?.url)}
             onRemove={() => { setVoiceNote(null); setFormData(prev => ({ ...prev, [field.id]: '' })); }}
           />
         );
@@ -514,9 +554,27 @@ export default function EmployeeDashboard() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-brand-black">Submit New Idea</h1>
-        <p className="text-gray-500">Share your innovative ideas to improve the organization.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-brand-black">Submit New Idea</h1>
+          <p className="text-gray-500 mt-1">Share your innovative ideas to improve the organization.</p>
+        </div>
+
+        {/* Limits Display */}
+        <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm shrink-0 divide-x divide-gray-100 overflow-hidden">
+          <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Monthly Subm.</span>
+            <span className={`text-[17px] font-extrabold ${limits.submittedCount >= 5 ? 'text-red-500' : 'text-brand-blue'}`}>
+              {limits.submittedCount} <span className="text-gray-400 text-sm font-medium">/ 5</span>
+            </span>
+          </div>
+          <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Saved Drafts</span>
+            <span className={`text-[17px] font-extrabold ${limits.draftCount >= 3 ? 'text-amber-500' : 'text-brand-blue'}`}>
+              {limits.draftCount} <span className="text-gray-400 text-sm font-medium">/ 3</span>
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* STEP 1: SELECT TEMPLATE */}
@@ -586,7 +644,7 @@ export default function EmployeeDashboard() {
                 <Sparkles size={16} className="text-blue-500" />
                 Fill with AI
               </Button>
-              <span className="text-xs text-gray-400">Describe your idea and Gemini will fill the form automatically</span>
+              <span className="text-xs text-gray-400">Describe your idea and AI will fill the form automatically</span>
             </div>
           )}
 
@@ -619,8 +677,11 @@ export default function EmployeeDashboard() {
 
                   {selectedTemplate.fields.map(field => (
                     <div key={field.id} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
-                      <label className="mb-1.5 block text-sm font-semibold text-gray-700 flex items-center gap-1">
-                        {field.label} {field.required && <span className="text-red-500">*</span>}
+                      <label className="mb-1.5 flex flex-wrap items-center gap-1 text-sm font-semibold text-gray-700">
+                        {field.label}
+                        {field.id === 'attachment' && <span className="text-xs text-gray-500 font-normal">/ आप फोटो खींच कर भी अपलोड कर सकते हो</span>}
+                        {(field.id === 'referenceLink' || field.id === 'supportingLink') && <span className="text-xs text-gray-500 font-normal">/ आप OneDrive का लिंक भी अपलोड कर सकते हो</span>}
+                        {field.required && <span className="text-red-500">*</span>}
                       </label>
                       {renderField(field)}
                     </div>
@@ -628,8 +689,8 @@ export default function EmployeeDashboard() {
 
                   {/* Voice Note — always shown at bottom */}
                   <div className="md:col-span-2">
-                    <label className="mb-1.5 block text-sm font-semibold text-gray-700 flex items-center gap-1">
-                      <Mic size={14} className="text-gray-400" /> Voice Note (Optional)
+                    <label className="mb-1.5 flex flex-wrap items-center gap-1 text-sm font-semibold text-gray-700">
+                      <Mic size={14} className="text-gray-400" /> Voice Note (Optional) <span className="text-xs text-gray-500 font-normal">/ आप अपनी आवाज रिकॉर्ड करके भी भेज सकते हो</span>
                     </label>
                     <VoiceRecorder
                       onRecorded={(data) => setVoiceNote(data)}
@@ -641,12 +702,39 @@ export default function EmployeeDashboard() {
 
                 <hr className="border-gray-200" />
 
-                <div className="flex justify-between items-center px-2">
-                  <p className="text-xs text-gray-400">Required fields are marked with <span className="text-red-500 text-sm">*</span></p>
-                  <Button type="submit" disabled={isSubmitting || isAIFilling} size="lg" className="w-full md:w-64 shadow-md hover:shadow-lg transition-all">
-                    <Send className="mr-2 h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Submit Idea for Review'}
-                  </Button>
+                <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 gap-4 mt-6">
+                  <p className="text-xs text-gray-500 font-medium">Required fields are marked with <span className="text-red-500">*</span></p>
+
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleSaveDraft}
+                      disabled={isSubmitting || isAIFilling || limits.draftCount >= 3}
+                      className="w-full sm:w-auto font-semibold shadow-sm hover:shadow"
+                      title={limits.draftCount >= 3 ? "You can only have up to 3 drafts at a time" : ""}
+                    >
+                      Save as Draft
+                    </Button>
+
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting || isAIFilling || limits.submittedCount >= 5}
+                      className="w-full sm:w-auto font-semibold shadow-md hover:shadow-lg transition-all"
+                      title={limits.submittedCount >= 5 ? "You can only submit 5 ideas per month" : ""}
+                    >
+                      <Send className="mr-2 h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Submit Idea for Review'}
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Block Messages below form */}
+                {(limits.submittedCount >= 5 || limits.draftCount >= 3) && (
+                  <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600 flex flex-col gap-2">
+                    {limits.submittedCount >= 5 && <p className="flex items-center gap-2"><X size={16} /> <strong>Submission Limit Reached:</strong> You can only submit 5 ideas per month.</p>}
+                    {limits.draftCount >= 3 && <p className="flex items-center gap-2"><X size={16} /> <strong>Draft Limit Reached:</strong> You can only have up to 3 active drafts. Please submit an existing draft to free up space.</p>}
+                  </div>
+                )}
               </form>
             </CardContent>
           </Card>

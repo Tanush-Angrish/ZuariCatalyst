@@ -1,7 +1,7 @@
 /**
  * NotificationContext.jsx
  *
- * Fully unified Database-Backed Notification System for Zuari Catalyst.
+ * Fully unified Database-Backed Notification System for Catalyst.
  *
  * - Toasts: Ephemeral, driven by local frontend state for immediate feedback.
  * - Bell: Persistent, user-specific, strictly synced with the backend Database.
@@ -16,6 +16,8 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import ReactDOM from 'react-dom';
 import { CheckCircle2, AlertCircle, Info, X, Bell, Trash2 } from 'lucide-react';
 import { useAuth } from './AuthContext';
+import { api } from '../services/api';
+
 
 // ─── Constants ────────────────────────────────────────────────────────────
 // The backend distributes these automatically now. The frontend `notify()`
@@ -276,6 +278,7 @@ export function NotificationBell() {
 let _nextId = 1;
 
 export function NotificationProvider({ children }) {
+
   const { user } = useAuth();
   const [toasts, setToasts] = useState([]);
   const [bellNotifs, setBellNotifs] = useState([]);
@@ -287,10 +290,8 @@ export function NotificationProvider({ children }) {
       return;
     }
     try {
-      const res = await fetch(`/api/notifications/${user.id}`);
-      if (res.ok) {
-        setBellNotifs(await res.json());
-      }
+      const data = await api.getNotifications(user.id);
+      setBellNotifs(data);
     } catch (err) {
       console.error('Error fetching notifications:', err);
     }
@@ -325,7 +326,7 @@ export function NotificationProvider({ children }) {
   const markRead = useCallback(async (id) => {
     setBellNotifs(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     try {
-      await fetch(`/api/notifications/${id}/read`, { method: 'PUT' });
+      await api.markNotificationRead(id);
     } catch (e) {
       console.error(e);
     }
@@ -335,7 +336,7 @@ export function NotificationProvider({ children }) {
   const deleteNotif = useCallback(async (id) => {
     setBellNotifs(prev => prev.filter(n => n.id !== id));
     try {
-      await fetch(`/api/notifications/${id}`, { method: 'DELETE' });
+      await api.deleteNotification(id);
     } catch (e) {
       console.error(e);
     }
@@ -346,7 +347,7 @@ export function NotificationProvider({ children }) {
     if (!user) return;
     setBellNotifs(prev => prev.map(n => ({ ...n, isRead: true })));
     try {
-      await fetch(`/api/notifications/user/${user.id}/read-all`, { method: 'PUT' });
+      await api.markAllNotificationsRead(user.id);
     } catch (e) {
       console.error(e);
     }
@@ -357,11 +358,12 @@ export function NotificationProvider({ children }) {
     if (!user) return;
     setBellNotifs([]);
     try {
-      await fetch(`/api/notifications/user/${user.id}`, { method: 'DELETE' });
+      await api.clearAllNotifications(user.id);
     } catch (e) {
       console.error(e);
     }
   }, [user]);
+
 
   return (
     <NotificationContext.Provider value={{ 

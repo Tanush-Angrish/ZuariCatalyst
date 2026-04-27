@@ -4,6 +4,8 @@ import { Badge } from '../../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { UserPlus, Upload, Check, Trash2, Users } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { api } from '../../services/api';
+
 
 const ROLES = ['Employee', 'Org Admin', 'Central Team'];
 const roleMap = { 'Superadmin': 'Central Team', 'Central Team': 'Central Team', 'Org Admin': 'Org Admin', 'Employee': 'Employee' };
@@ -23,16 +25,14 @@ export default function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users');
-      const data = await res.json();
+      const data = await api.getUsers();
       setUsers(data);
     } catch (e) { console.error(e); }
   };
 
   const fetchFormFields = async () => {
     try {
-      const res = await fetch('/api/form-fields/user');
-      const data = await res.json();
+      const data = await api.getUserFields();
       setFormFields(data);
     } catch (e) { console.error(e); }
   };
@@ -45,49 +45,35 @@ export default function UserManagement() {
     setLoading(true);
     try {
       const payload = { ...form, role: dbRole(form.role) };
-      const res = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert('User created successfully!');
-        setForm({ name: '', title: '', email: '', role: 'Employee', organization: '' });
-        fetchUsers();
-        setTab('table');
-      } else {
-        alert(data.error || 'Error creating user');
-      }
-    } catch (e) { alert('Error creating user'); }
+      await api.createUser(payload);
+      alert('User created successfully!');
+      setForm({ name: '', title: '', email: '', role: 'Employee', organization: '' });
+      fetchUsers();
+      setTab('table');
+    } catch (e) {
+      alert('Error creating user: ' + e.message);
+    }
     setLoading(false);
   };
 
   // ---------- Role Change ----------
   const handleRoleChange = async (userId, newRole) => {
     try {
-      const res = await fetch(`/api/users/${userId}/role`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: dbRole(newRole) })
-      });
-      if (res.ok) {
-        setEditingRole(prev => { const c = { ...prev }; delete c[userId]; return c; });
-        fetchUsers();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error updating role');
-      }
-    } catch (e) { alert('Error updating role'); }
+      await api.updateUserRole(userId, dbRole(newRole));
+      setEditingRole(prev => { const c = { ...prev }; delete c[userId]; return c; });
+      fetchUsers();
+    } catch (e) {
+      alert('Error updating role: ' + e.message);
+    }
   };
 
   // ---------- Delete User ----------
   const handleDelete = async (userId) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     try {
-      await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      await api.deleteUser(userId);
       fetchUsers();
-    } catch (e) { alert('Error deleting user'); }
+    } catch (e) { alert('Error deleting user: ' + e.message); }
   };
 
   // ---------- Bulk Upload ----------
@@ -120,15 +106,10 @@ export default function UserManagement() {
     setBulkResult(null);
     try {
       const payload = bulkUsers.map(u => ({ ...u, role: dbRole(u.role) }));
-      const res = await fetch('/api/users/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ users: payload })
-      });
-      const data = await res.json();
+      const data = await api.bulkCreateUsers(payload);
       setBulkResult(data);
       fetchUsers();
-    } catch (e) { alert('Error uploading users'); }
+    } catch (e) { alert('Error uploading users: ' + e.message); }
     setLoading(false);
   };
 

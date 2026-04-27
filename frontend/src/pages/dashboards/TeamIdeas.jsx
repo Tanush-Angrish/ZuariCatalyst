@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
 import { Users } from 'lucide-react';
 import IdeaCardGrid from '../../components/IdeaCardGrid';
+import { api } from '../../services/api';
+
 
 export default function TeamIdeas() {
   const { user } = useAuth();
@@ -11,8 +13,7 @@ export default function TeamIdeas() {
   useEffect(() => {
     const fetchTeamIdeas = async () => {
       try {
-        const res = await fetch(`/api/ideas/team/${user.organization}`);
-        const data = await res.json();
+        const data = await api.getOrgIdeas(user.organization);
         setTeamIdeas(data);
       } catch (e) {
         console.error(e);

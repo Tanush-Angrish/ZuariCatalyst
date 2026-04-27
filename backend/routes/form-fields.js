@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
+const authMiddleware = require('../middleware/auth');
+
+// All form-field endpoints require authentication
+router.use(authMiddleware);
+
 
 // GET form fields by form type ('user' or 'idea')
 router.get('/:formType', async (req, res) => {

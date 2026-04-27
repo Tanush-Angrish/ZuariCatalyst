@@ -61,22 +61,54 @@ async function runSeed() {
 
     // 3. Seed hardcoded templates into IdeaTemplate table
     const { IDEA_TEMPLATES } = require('./template-seed-data');
+    const masterTpl = IDEA_TEMPLATES.find(t => t.id === 'MASTER_TEMPLATE');
+    const masterFieldIds = masterTpl ? masterTpl.fields.map(f => f.id) : [];
+
     for (const t of IDEA_TEMPLATES) {
       const existingTpl = await prisma.ideaTemplate.findUnique({ where: { id: t.id } });
       if (!existingTpl) {
+        // Build default fieldOrder: master field IDs first, then template-specific field IDs
+        const fieldOrder = t.id === 'MASTER_TEMPLATE'
+          ? masterFieldIds
+          : [...masterFieldIds, ...t.fields.map(f => f.id).filter(id => !masterFieldIds.includes(id))];
+
         await prisma.ideaTemplate.create({
           data: {
             id: t.id,
             category: t.category,
             name: t.name,
             description: t.description || '',
-            fields: JSON.stringify(t.fields)
+            fields: JSON.stringify(t.fields),
+            fieldOrder: JSON.stringify(fieldOrder)
           }
         });
         console.log(`Seeded missing template: ${t.name}`);
       }
     }
     console.log('Template seed check complete.');
+
+    // 4. Sync template categories — ensures template_categories table is never empty
+    // Collects categories from: seed data definitions + all existing templates in DB
+    // Skips 'GLOBAL' (used by MASTER_TEMPLATE only, not a user-facing category)
+    const allExistingTemplates = await prisma.ideaTemplate.findMany({
+      where: { id: { not: 'MASTER_TEMPLATE' } },
+      select: { category: true }
+    });
+    const categorySet = new Set([
+      ...IDEA_TEMPLATES.filter(t => t.id !== 'MASTER_TEMPLATE').map(t => t.category),
+      ...allExistingTemplates.map(t => t.category)
+    ].filter(c => c && c.toUpperCase() !== 'GLOBAL'));
+
+    for (const name of categorySet) {
+      const normalized = name.trim().toUpperCase();
+      const existing = await prisma.templateCategory.findUnique({ where: { name: normalized } });
+      if (!existing) {
+        await prisma.templateCategory.create({ data: { name: normalized } });
+        console.log(`Seeded category: ${normalized}`);
+      }
+    }
+    console.log('Category sync complete.');
+
   } catch (error) {
     console.error('Seed execution failed:', error);
   }

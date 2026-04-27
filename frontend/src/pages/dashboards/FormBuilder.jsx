@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { Settings, Plus, Trash2, Save, ArrowUp, ArrowDown, Lock } from 'lucide-react';
+import { api } from '../../services/api';
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
@@ -12,6 +13,7 @@ const FIELD_TYPES = [
   { value: 'number', label: 'Number' },
   { value: 'date', label: 'Date' },
 ];
+
 
 export default function FormBuilder() {
   const [formType, setFormType] = useState('idea'); // 'idea' or 'user'
@@ -23,8 +25,7 @@ export default function FormBuilder() {
 
   const fetchFields = async () => {
     try {
-      const res = await fetch(`/api/form-fields/${formType}`);
-      const data = await res.json();
+      const data = await api.getFormFields(formType);
       setFields(data);
     } catch (e) { console.error(e); }
   };
@@ -45,20 +46,13 @@ export default function FormBuilder() {
     };
 
     try {
-      const res = await fetch('/api/form-fields', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        setNewField({ fieldName: '', fieldLabel: '', fieldType: 'text', required: false, options: '' });
-        setShowAddForm(false);
-        fetchFields();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error adding field');
-      }
-    } catch (e) { alert('Error adding field'); }
+      await api.createFormField(payload);
+      setNewField({ fieldName: '', fieldLabel: '', fieldType: 'text', required: false, options: '' });
+      setShowAddForm(false);
+      fetchFields();
+    } catch (e) {
+      alert('Error adding field: ' + e.message);
+    }
   };
 
   // Save edited field
@@ -72,31 +66,20 @@ export default function FormBuilder() {
     };
 
     try {
-      const res = await fetch(`/api/form-fields/${fieldId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        setEditingField(null);
-        setEditData({});
-        fetchFields();
-      }
-    } catch (e) { alert('Error updating field'); }
+      await api.updateFormField(fieldId, payload);
+      setEditingField(null);
+      setEditData({});
+      fetchFields();
+    } catch (e) { alert('Error updating field: ' + e.message); }
   };
 
   // Delete field
   const handleDelete = async (fieldId) => {
     if (!confirm('Delete this field? This cannot be undone.')) return;
     try {
-      const res = await fetch(`/api/form-fields/${fieldId}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchFields();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Cannot delete this field');
-      }
-    } catch (e) { alert('Error deleting field'); }
+      await api.deleteFormField(fieldId);
+      fetchFields();
+    } catch (e) { alert('Error deleting field: ' + e.message); }
   };
 
   // Move field up/down
@@ -109,11 +92,7 @@ export default function FormBuilder() {
     const fieldOrder = newFields.map((f, i) => ({ id: f.id, sortOrder: i + 1 }));
 
     try {
-      await fetch(`/api/form-fields/reorder/${formType}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fieldOrder })
-      });
+      await api.reorderFormFields(formType, fieldOrder);
       fetchFields();
     } catch (e) { console.error(e); }
   };

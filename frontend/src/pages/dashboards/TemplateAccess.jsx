@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Button } from '../../components/ui/Button';
 import { Save, AlertCircle } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
+import { api } from '../../services/api';
+
 
 export default function TemplateAccess() {
   const [organizations, setOrganizations] = useState([]);
@@ -20,18 +22,15 @@ export default function TemplateAccess() {
     setIsLoading(true);
     try {
       // 1. Fetch templates from API
-      const tplRes = await fetch('/api/templates');
-      const data = await tplRes.json();
-      setTemplates(data.templates || []);
+      const tdata = await api.getTemplates();
+      setTemplates(tdata.templates || []);
 
       // 2. Fetch unique organizations from Users
-      const orgRes = await fetch('/api/templates/organizations');
-      const orgs = await orgRes.json();
+      const orgs = await api.getOrganizations();
       setOrganizations(orgs);
 
       // 3. Fetch existing access map
-      const accessRes = await fetch('/api/templates/access');
-      const accessData = await accessRes.json();
+      const accessData = await api.getTemplateAccess();
 
       const loadedMap = {};
       accessData.forEach(record => {
@@ -86,21 +85,12 @@ export default function TemplateAccess() {
         });
       });
 
-      const res = await fetch('/api/templates/access', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mapping })
-      });
-
-      if (res.ok) {
-        setHasUnsavedChanges(false);
-        await fetchData();
-      } else {
-        const data = await res.json();
-        alert('Failed to save template access: ' + data.error);
-      }
+      await api.updateTemplateAccess({ mapping });
+      setHasUnsavedChanges(false);
+      await fetchData();
     } catch (e) {
       console.error('Error saving template access', e);
+      alert('Failed to save template access: ' + e.message);
     } finally {
       setIsSaving(false);
     }

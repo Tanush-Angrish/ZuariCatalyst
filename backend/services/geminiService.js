@@ -209,8 +209,122 @@ Example valid response:
   return null;
 }
 
+/**
+ * Generates a template structure from a natural-language prompt.
+ * @param {string} userPrompt - e.g. "Create a process improvement template..."
+ * @param {Array}  masterFields - fields from the Master Template (global fields to exclude)
+ * @returns {Promise<{template_name: string, fields: Array}>}
+ */
+async function generateTemplateFromPrompt(userPrompt, masterFields = []) {
+  console.log(`[AI] Generating template from prompt: "${userPrompt.slice(0, 80)}..."`);
+
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_api_key_here') {
+    console.warn("[AI] GEMINI_API_KEY not set. Skipping template generation.");
+    return null;
+  }
+
+  // Build a clear list of forbidden fields for the prompt
+  const masterFieldLines = masterFields.length
+    ? masterFields.map(f => `  - "${f.label}" (id: ${f.id}, type: ${f.type})`).join('\n')
+    : '  (none)';
+
+  const prompt = `
+You are a form template designer. Based on the user's description below, generate a structured template for an idea submission system.
+
+User Request: "${userPrompt}"
+
+Supported field types: text, textarea, number, select, date, url
+
+STRICT RULES — read carefully:
+1. Generate a template name and 4-8 relevant, specific fields.
+2. Each field must have: id (camelCase, unique), label (human-readable), type (from supported list), required (true/false), options (array, only for "select" type, otherwise [])
+3. Do NOT include ANY of the following global fields that already exist in EVERY template. These are FORBIDDEN:
+${masterFieldLines}
+4. NEVER generate these field types: "file", "voice", "attachment" — these are always provided globally.
+5. Do NOT generate duplicate field ids or duplicate field labels.
+6. Do NOT generate fields for: title, description, category — these are handled by the system.
+7. For "select" fields, provide 3-6 relevant and distinct options.
+8. Keep fields focused and specific to the template's purpose — avoid generic fields.
+
+Response must be valid JSON (no markdown, no code blocks):
+{
+  "template_name": "...",
+  "description": "one-line description of the template",
+  "fields": [
+    { "id": "fieldId", "label": "Field Label", "type": "text", "required": true, "options": [] }
+  ]
+}
+Return ONLY the JSON object, no other text.
+`.trim();
+
+  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  let lastError = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`[AI] Attempting template generation with model: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error(`[AI] No JSON found in template response from ${modelName}`);
+        continue;
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.template_name && Array.isArray(parsed.fields)) {
+        // ── Post-processing guardrail pipeline ─────────────────────────────
+        const RESTRICTED_TYPES = new Set(['file', 'voice', 'attachment']);
+        const VALID_TYPES = new Set(['text', 'textarea', 'number', 'select', 'date', 'url']);
+        const masterLabelSet = new Set(masterFields.map(f => f.label.toLowerCase().trim()));
+        const masterIdSet = new Set(masterFields.map(f => f.id.toLowerCase().trim()));
+        const seenIds = new Set();
+        const seenLabels = new Set();
+
+        const cleanFields = [];
+        for (const f of parsed.fields) {
+          const id = (f.id || '').trim();
+          const label = (f.label || '').trim();
+          const type = (f.type || 'text').trim();
+
+          if (!id || !label) continue;                                      // Step 1: must have id + label
+          if (RESTRICTED_TYPES.has(type)) continue;                         // Step 3: no file/voice
+          if (!VALID_TYPES.has(type)) continue;                             // Step 4: only valid types
+          if (masterIdSet.has(id.toLowerCase())) continue;                  // Step 2: no master overlap (id)
+          if (masterLabelSet.has(label.toLowerCase())) continue;            // Step 2: no master overlap (label)
+          if (seenIds.has(id.toLowerCase())) continue;                      // Step 2: no duplicate id
+          if (seenLabels.has(label.toLowerCase())) continue;                // Step 2: no duplicate label
+
+          seenIds.add(id.toLowerCase());
+          seenLabels.add(label.toLowerCase());
+          cleanFields.push({
+            id,
+            label,
+            type: VALID_TYPES.has(type) ? type : 'text',
+            required: f.required === true,
+            options: Array.isArray(f.options) ? f.options : [],
+          });
+        }
+
+        console.log(`[AI] Template generated via ${modelName}: "${parsed.template_name}" — raw: ${parsed.fields.length} fields, clean: ${cleanFields.length} fields`);
+        return { ...parsed, fields: cleanFields };
+      }
+    } catch (error) {
+      console.error(`[AI] Template generation failed with ${modelName}:`, error.message);
+      lastError = error;
+    }
+  }
+
+  console.error("[AI] All models failed for template generation:", lastError?.message);
+  return null;
+}
+
 module.exports = {
   generateIdeaInsights,
   generateProjectPlan,
-  generateFormAutofill
+  generateFormAutofill,
+  generateTemplateFromPrompt
 };

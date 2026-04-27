@@ -2,13 +2,19 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
 const { generateProjectPlan } = require('../services/geminiService');
-const { sendMentionEmail } = require('../services/emailService');
+const { awardPoints } = require('../services/pointService');
+const { sendProjectStatusChangeEmail, sendChatMentionEmail } = require('../services/emailService');
 const {
   notifyCentralTeam,
   notifyOrgAdmins,
   notifyUser,
   notifyUsers
 } = require('../services/notificationService');
+const authMiddleware = require('../middleware/auth');
+
+// All project endpoints require authentication
+router.use(authMiddleware);
+
 
 // Helper: get all Central Team (Superadmin) emails
 async function getCentralTeamEmails() {
@@ -43,10 +49,29 @@ router.get('/', async (req, res) => {
     const where = buildProjectFilter(parseInt(userId), role, organization || '');
     const projects = await prisma.project.findMany({
       where,
-      include: { steps: true },
+      include: {
+        steps: true,
+        // Join idea to get submitter + approver names
+        idea: {
+          select: {
+            author: { select: { name: true } },
+            approvedBy: { select: { name: true } },
+            approvedByRole: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
-    res.json(projects);
+
+    // Flatten idea attribution fields onto project
+    const formatted = projects.map(p => ({
+      ...p,
+      submittedByName: p.idea?.author?.name || null,
+      approvedByName: p.idea?.approvedBy?.name || null,
+      approvedByRole: p.idea?.approvedByRole || null,
+      idea: undefined  // don't expose entire idea object
+    }));
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -59,11 +84,26 @@ router.get('/:id', async (req, res) => {
       where: { id: parseInt(req.params.id) },
       include: {
         steps: { orderBy: { id: 'asc' } },
-        messages: { orderBy: { createdAt: 'asc' } }
+        messages: { orderBy: { createdAt: 'asc' } },
+        idea: {
+          select: {
+            author: { select: { name: true } },
+            approvedBy: { select: { name: true } },
+            approvedByRole: true
+          }
+        }
       }
     });
     if (!project) return res.status(404).json({ error: 'Project not found' });
-    res.json(project);
+
+    const formatted = {
+      ...project,
+      submittedByName: project.idea?.author?.name || null,
+      approvedByName: project.idea?.approvedBy?.name || null,
+      approvedByRole: project.idea?.approvedByRole || null,
+      idea: undefined
+    };
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -87,6 +127,18 @@ router.put('/:id/status', async (req, res) => {
     notifyUser(project.createdById, 'project', `Project '${project.title}' status changed to ${status}.`, project.id);
     notifyOrgAdmins(project.orgId, 'project', `Project '${project.title}' status changed to ${status}.`, project.id);
     notifyCentralTeam('project', `Project '${project.title}' status changed to ${status}.`, project.id);
+
+    // Strict Rule: Employee Email ONLY for Project Status Changes
+    const author = await prisma.user.findUnique({ where: { id: project.createdById }, select: { name: true, email: true } });
+    if (author && author.email) {
+      sendProjectStatusChangeEmail({
+        toEmail: author.email,
+        projectTitle: project.title,
+        authorName: author.name,
+        newStatus: status,
+        projectId: project.projectId
+      }).catch(console.error);
+    }
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Project not found' });
     res.status(500).json({ error: error.message });
@@ -116,15 +168,41 @@ router.put('/:id/deadline', async (req, res) => {
 
 // ─── POST /api/projects/:id/steps ─────────────────────────────────────────
 router.post('/:id/steps', async (req, res) => {
-  const { description, status, deadline } = req.body;
+  const { description, status, deadline, dependencyStepId } = req.body;
+  const projectId = parseInt(req.params.id);
+
   if (!description) return res.status(400).json({ error: 'Description is required' });
+
   try {
+    // 1. Validate custom dependency 
+    if (dependencyStepId) {
+      const dep = await prisma.projectStep.findUnique({ where: { id: parseInt(dependencyStepId) } });
+      if (!dep || dep.projectId !== projectId) {
+        return res.status(400).json({ error: 'Invalid dependency step selected.' });
+      }
+      if ((status === 'Completed' || status === 'In Progress') && dep.status !== 'Completed') {
+        return res.status(400).json({ error: 'Cannot start or complete this step until its dependency is marked Completed.' });
+      }
+    }
+
+    // 2. Validate Sequential Deadline (ensure this step's deadline >= last step's deadline)
+    if (deadline) {
+      const lastStep = await prisma.projectStep.findFirst({
+        where: { projectId },
+        orderBy: { id: 'desc' }
+      });
+      if (lastStep && lastStep.deadline && new Date(deadline) < new Date(lastStep.deadline)) {
+        return res.status(400).json({ error: 'Deadline must be after the preceding step\'s deadline.' });
+      }
+    }
+
     const step = await prisma.projectStep.create({
       data: {
-        projectId: parseInt(req.params.id),
+        projectId,
         description,
         status: status || 'Pending',
-        deadline: deadline ? new Date(deadline) : null
+        deadline: deadline ? new Date(deadline) : null,
+        dependencyStepId: dependencyStepId ? parseInt(dependencyStepId) : null
       }
     });
     res.json(step);
@@ -143,14 +221,48 @@ router.post('/:id/steps', async (req, res) => {
 
 // ─── PUT /api/projects/:id/steps/:stepId ──────────────────────────────────
 router.put('/:id/steps/:stepId', async (req, res) => {
-  const { description, status, deadline } = req.body;
+  const { description, status, deadline, dependencyStepId } = req.body;
+  const stepId = parseInt(req.params.stepId);
+  const projectId = parseInt(req.params.id);
+
   try {
+    const existingStep = await prisma.projectStep.findUnique({ where: { id: stepId } });
+    if (!existingStep) return res.status(404).json({ error: 'Step not found' });
+
+    // Determine values to validate
+    const finalDepId = dependencyStepId !== undefined ? (dependencyStepId ? parseInt(dependencyStepId) : null) : existingStep.dependencyStepId;
+    const finalStatus = status !== undefined ? status : existingStep.status;
+    const finalDeadline = deadline !== undefined ? (deadline ? new Date(deadline) : null) : existingStep.deadline;
+
+    // 1. Dependency Validation
+    if (finalDepId) {
+      if (finalDepId === stepId) return res.status(400).json({ error: 'A step cannot depend on itself.' });
+      const dep = await prisma.projectStep.findUnique({ where: { id: finalDepId } });
+      if (!dep || dep.projectId !== projectId) return res.status(400).json({ error: 'Invalid dependency step selected.' });
+      
+      if ((finalStatus === 'Completed' || finalStatus === 'In Progress') && dep.status !== 'Completed') {
+        return res.status(400).json({ error: `Cannot mark as ${finalStatus} until dependent step '${dep.description.substring(0, 15)}...' is Completed.` });
+      }
+    }
+
+    // 2. Sequential Deadline Validation (ensure it's not earlier than a preceding step)
+    if (finalDeadline) {
+      const prevStep = await prisma.projectStep.findFirst({
+        where: { projectId, id: { lt: stepId } },
+        orderBy: { id: 'desc' }
+      });
+      if (prevStep && prevStep.deadline && finalDeadline < new Date(prevStep.deadline)) {
+        return res.status(400).json({ error: 'Deadline must be equal to or after the preceding step\'s deadline.' });
+      }
+    }
+
     const step = await prisma.projectStep.update({
-      where: { id: parseInt(req.params.stepId) },
+      where: { id: stepId },
       data: {
         ...(description !== undefined && { description }),
         ...(status !== undefined && { status }),
-        ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null })
+        ...(deadline !== undefined && { deadline: finalDeadline }),
+        ...(dependencyStepId !== undefined && { dependencyStepId: finalDepId })
       }
     });
     res.json(step);
@@ -170,6 +282,17 @@ router.put('/:id/steps/:stepId', async (req, res) => {
   }
 });
 
+// ─── DELETE /api/projects/:id/steps/all ───────────────────────────────────
+// MUST be declared BEFORE /:id/steps/:stepId — otherwise Express treats 'all' as a stepId
+router.delete('/:id/steps/all', async (req, res) => {
+  try {
+    await prisma.projectStep.deleteMany({ where: { projectId: parseInt(req.params.id) } });
+    res.json({ message: 'All steps deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ─── DELETE /api/projects/:id/steps/:stepId ───────────────────────────────
 router.delete('/:id/steps/:stepId', async (req, res) => {
   try {
@@ -182,25 +305,61 @@ router.delete('/:id/steps/:stepId', async (req, res) => {
 });
 
 // ─── POST /api/projects/:id/steps/bulk ────────────────────────────────────
-// Save multiple steps at once (used after Gemini plan confirmation)
+// Save multiple steps at once and optionally finalize (lock AI)
 router.post('/:id/steps/bulk', async (req, res) => {
-  const { steps } = req.body; // array of { description, status, deadline }
+  const projectId = parseInt(req.params.id);
+  const { steps, finalize } = req.body; // finalize: boolean
+
   if (!Array.isArray(steps) || steps.length === 0) {
     return res.status(400).json({ error: 'steps array is required' });
   }
+
+  // Pre-flight validation: sequential deadlines
+  let lastValidDeadline = null;
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    if (s.deadline) {
+      const currentDl = new Date(s.deadline);
+      if (lastValidDeadline && currentDl < lastValidDeadline) {
+        return res.status(400).json({ error: `Sequential deadline error: Step ${i+1}'s deadline cannot be earlier than previous steps.` });
+      }
+      lastValidDeadline = currentDl;
+    }
+  }
+
   try {
     const created = await prisma.$transaction(
       steps.map(s => prisma.projectStep.create({
         data: {
-          projectId: parseInt(req.params.id),
+          projectId,
           description: s.description,
           status: s.status || 'Pending',
-          deadline: s.deadline ? new Date(s.deadline) : null
+          deadline: s.deadline ? new Date(s.deadline) : null,
+          dependencyStepId: s.dependencyStepId ? parseInt(s.dependencyStepId) : null
         }
       }))
     );
-    res.json(created);
+    if (finalize) {
+      await prisma.project.update({ where: { id: projectId }, data: { isStepsFinalized: true } });
+    }
+    res.json({ steps: created, isStepsFinalized: !!finalize });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// ─── PUT /api/projects/:id/finalize-steps ─────────────────────────────────
+// Permanently lock AI step generation for this project
+router.put('/:id/finalize-steps', async (req, res) => {
+  try {
+    const project = await prisma.project.update({
+      where: { id: parseInt(req.params.id) },
+      data: { isStepsFinalized: true }
+    });
+    res.json({ isStepsFinalized: project.isStepsFinalized });
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'Project not found' });
     res.status(500).json({ error: error.message });
   }
 });
@@ -258,8 +417,8 @@ router.post('/:id/messages', async (req, res) => {
         notifyUser(u.id, 'mention', `${senderName} mentioned you in '${project.title}'`, project.id);
 
         // ONLY email the target, NOT the Central Team (per user feedback)
-        sendMentionEmail({
-          toEmails: [u.email], // Only the mentioned user
+        sendChatMentionEmail({
+          toEmail: u.email,
           mentionedName: u.name,
           senderName,
           projectTitle: project.title,

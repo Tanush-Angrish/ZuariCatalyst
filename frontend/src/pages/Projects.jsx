@@ -3,14 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from '../components/ui/Badge';
 import { Users, PartyPopper } from 'lucide-react';
 import IdeaCardGrid from '../components/IdeaCardGrid';
+import { api } from '../services/api';
+
 
 export default function Projects() {
   const [ideas, setIdeas] = useState([]);
 
   const fetchCommunityIdeas = async () => {
     try {
-      const res = await fetch('/api/ideas/projects');
-      const data = await res.json();
+      const data = await api.getInnovationProjects();
       setIdeas(data);
     } catch (e) {
       console.error(e);
