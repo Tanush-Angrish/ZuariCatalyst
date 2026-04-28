@@ -281,4 +281,8 @@ export const api = {
     method: 'DELETE',
   }),
 
+  // Product Tour
+  getTourStatus: () => request('/api/tour/status'),
+  completeTour: () => request('/api/tour/complete', { method: 'POST' }),
+
 };

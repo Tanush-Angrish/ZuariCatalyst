@@ -1,11 +1,26 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Users, PlusCircle, LayoutList, UserCog, Settings, Wrench, Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTour } from '../../context/TourContext';
+import {
+  LayoutDashboard, Users, PlusCircle, LayoutList, UserCog,
+  Settings, Wrench, Trophy, ChevronLeft, ChevronRight, PlayCircle
+} from 'lucide-react';
 import { cn } from '../../lib/utils';
+import '../ProductTour.css';
+
+// Map sidebar link names → tour target IDs
+const TOUR_ID_MAP = {
+  'Submit Idea':    'sidebar-submit',
+  'My Ideas':       'sidebar-myideas',
+  'Community Hub':  'sidebar-community',
+  'Projects':       'sidebar-projects',
+  'Leaderboard':    'sidebar-leaderboard',
+};
 
 export default function Sidebar({ isMobile }) {
   const { user } = useAuth();
+  const { startTour } = useTour();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -77,11 +92,13 @@ export default function Sidebar({ isMobile }) {
 
         {links.map((link) => {
           const Icon = link.icon;
+          const tourId = TOUR_ID_MAP[link.name];
           return (
             <NavLink
               key={link.name}
               to={link.path}
               end={link.path === '/dashboard'}
+              id={tourId}
               title={isCollapsed ? link.name : undefined}
               className={({ isActive }) =>
                 cn(
@@ -117,6 +134,37 @@ export default function Sidebar({ isMobile }) {
             </div>
           )}
         </div>
+
+        {/* ASSISTANCE — Product Tour Button */}
+        {!isCollapsed && (
+          <div className="mt-4">
+            <p className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest mb-2 px-1">
+              Assistance
+            </p>
+            <button
+              id="sidebar-product-tour"
+              className="tour-sidebar-btn"
+              onClick={startTour}
+              title="Replay the product tour"
+            >
+              <PlayCircle size={15} />
+              <span>Product Tour</span>
+            </button>
+          </div>
+        )}
+
+        {isCollapsed && (
+          <div className="mt-4 flex justify-center">
+            <button
+              id="sidebar-product-tour"
+              onClick={startTour}
+              title="Product Tour"
+              className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-brand-blue hover:bg-blue-50 transition-all"
+            >
+              <PlayCircle size={18} />
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

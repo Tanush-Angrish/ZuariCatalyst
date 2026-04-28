@@ -1,18 +1,52 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import { Button } from '../ui/Button';
 import { X } from 'lucide-react';
+import ProductTour from '../ProductTour';
+import { useTour } from '../../context/TourContext';
+import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 
 export default function DashboardLayout() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const { isTourActive, startTour, endTour } = useTour();
+  const { user } = useAuth();
+  const [isMandatory, setIsMandatory] = useState(false);
+  const [tourChecked, setTourChecked] = useState(false);
 
   // Close menu on route change
   React.useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  // Check if this is a first-time user — auto-launch tour if needed
+  useEffect(() => {
+    if (!user || tourChecked) return;
+
+    api.getTourStatus()
+      .then(({ hasCompletedTour }) => {
+        setTourChecked(true);
+        if (!hasCompletedTour) {
+          setIsMandatory(true);
+          startTour();
+        }
+      })
+      .catch(() => setTourChecked(true)); // fail silently — don't block the app
+  }, [user, tourChecked, startTour]);
+
+  const handleTourClose = () => {
+    // If mandatory (first-time), only allow closing via Finish button
+    if (isMandatory && isTourActive) return;
+    endTour();
+  };
+
+  const handleTourOpen = () => {
+    setIsMandatory(false); // manual replay is never mandatory
+    startTour();
+  };
 
   return (
     <div className="h-full flex flex-col bg-gray-50 relative">
@@ -51,6 +85,13 @@ export default function DashboardLayout() {
           <Sidebar isMobile />
         </div>
       </div>
+
+      {/* Product Tour */}
+      <ProductTour
+        isOpen={isTourActive}
+        onClose={endTour}
+        isMandatory={isMandatory}
+      />
     </div>
   );
 }

@@ -13,6 +13,7 @@ const uploadRoutes = require('./routes/upload');
 const projectsRoutes = require('./routes/projects');
 const notificationsRoutes = require('./routes/notifications');
 const pointsRoutes = require('./routes/points');
+const tourRoutes = require('./routes/tour');
 const { sendTestEmail } = require('./services/emailService');
 const runSeed = require('./scripts/seed');
 
@@ -22,10 +23,10 @@ const PORT = process.env.PORT || 5000;
 // Enable gzip compression for API responses and static files
 app.use(compression());
 
-// Setup rate limiting to protect the 1GB RAM server from DoS/spam
+// Setup rate limiting to protect the server
 const apiLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 300, // Limit each IP to 300 requests per window
+  max: 3000, // Increased limit for dev
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests from this IP, please try again after 5 minutes.' }
@@ -72,6 +73,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/points', pointsRoutes);
+app.use('/api/tour', tourRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Zuari Catalyst Backend Running' });

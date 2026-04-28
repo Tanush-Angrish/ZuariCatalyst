@@ -209,3 +209,15 @@ model TemplateCategory {
 
   @@map("template_categories")
 }
+
+// ─── Product Tour State ───────────────────────────────────────────────────────
+
+model TourState {
+  id               Int       @id @default(autoincrement())
+  userId           Int       @unique
+  hasCompletedTour Boolean   @default(false)
+  completedAt      DateTime?
+  xpAwarded        Boolean   @default(false)
+
+  @@map("tour_states")
+}

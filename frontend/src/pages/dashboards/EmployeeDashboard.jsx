@@ -169,6 +169,7 @@ function AIAutofillBar({ fields, onAutofill, onClose }) {
       <div className="px-5 pb-4">
         <div className="relative flex items-end gap-2 bg-white rounded-xl border border-blue-200 shadow-sm px-4 py-3 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
           <textarea
+            id="ai-fill-box"
             ref={textareaRef}
             className="flex-1 resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none leading-relaxed min-h-[48px] max-h-[160px]"
             placeholder="Describe your idea in plain language... e.g. 'We need a system to reduce paperwork in procurement by digitizing approval workflows'..."
@@ -603,9 +604,10 @@ export default function EmployeeDashboard() {
                     {category}
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {categoryTemplates.map(template => (
+                    {categoryTemplates.map((template, tIdx) => (
                       <Card
                         key={template.id}
+                        id={`template-card-${category === categories[0] && tIdx === 0 ? '0' : template.id}`}
                         className="cursor-pointer hover:border-brand-blue hover:shadow-md transition duration-200 border-gray-200"
                         onClick={() => handleTemplateSelect(template)}
                       >
@@ -636,6 +638,7 @@ export default function EmployeeDashboard() {
           {!showAIBar && (
             <div className="flex items-center gap-3">
               <Button
+                id="ai-fill-btn"
                 type="button"
                 variant="outline"
                 onClick={() => setShowAIBar(true)}
