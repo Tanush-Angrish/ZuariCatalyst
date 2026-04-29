@@ -26,6 +26,12 @@ export default function DashboardLayout() {
   useEffect(() => {
     if (!user || tourChecked) return;
 
+    // Only auto-launch for roles that actually have a tour
+    if (user.role !== 'Employee' && user.role !== 'Org Admin') {
+      setTourChecked(true);
+      return;
+    }
+
     api.getTourStatus()
       .then(({ hasCompletedTour }) => {
         setTourChecked(true);

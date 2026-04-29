@@ -9,13 +9,14 @@ import {
 import { cn } from '../../lib/utils';
 import '../ProductTour.css';
 
-// Map sidebar link names → tour target IDs
 const TOUR_ID_MAP = {
   'Submit Idea':    'sidebar-submit',
   'My Ideas':       'sidebar-myideas',
   'Community Hub':  'sidebar-community',
   'Projects':       'sidebar-projects',
   'Leaderboard':    'sidebar-leaderboard',
+  'Assigned Ideas': 'sidebar-assigned',
+  'Team Ideas':     'sidebar-team',
 };
 
 export default function Sidebar({ isMobile }) {
@@ -136,34 +137,38 @@ export default function Sidebar({ isMobile }) {
         </div>
 
         {/* ASSISTANCE — Product Tour Button */}
-        {!isCollapsed && (
-          <div className="mt-4">
-            <p className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest mb-2 px-1">
-              Assistance
-            </p>
-            <button
-              id="sidebar-product-tour"
-              className="tour-sidebar-btn"
-              onClick={startTour}
-              title="Replay the product tour"
-            >
-              <PlayCircle size={15} />
-              <span>Product Tour</span>
-            </button>
-          </div>
-        )}
+        {(user?.role === 'Employee' || user?.role === 'Org Admin') && (
+          <>
+            {!isCollapsed && (
+              <div className="mt-4">
+                <p className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest mb-2 px-1">
+                  Assistance
+                </p>
+                <button
+                  id="sidebar-product-tour"
+                  className="tour-sidebar-btn"
+                  onClick={startTour}
+                  title={`Replay the ${user.role === 'Org Admin' ? 'admin walkthrough' : 'product tour'}`}
+                >
+                  <PlayCircle size={15} />
+                  <span>{user.role === 'Org Admin' ? 'Admin Walkthrough' : 'Product Tour'}</span>
+                </button>
+              </div>
+            )}
 
-        {isCollapsed && (
-          <div className="mt-4 flex justify-center">
-            <button
-              id="sidebar-product-tour"
-              onClick={startTour}
-              title="Product Tour"
-              className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-brand-blue hover:bg-blue-50 transition-all"
-            >
-              <PlayCircle size={18} />
-            </button>
-          </div>
+            {isCollapsed && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  id="sidebar-product-tour"
+                  onClick={startTour}
+                  title={user.role === 'Org Admin' ? 'Admin Walkthrough' : 'Product Tour'}
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-brand-blue hover:bg-blue-50 transition-all"
+                >
+                  <PlayCircle size={18} />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </aside>

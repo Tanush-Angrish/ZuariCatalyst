@@ -15,6 +15,7 @@ import {
 const TABS = [
   {
     id: 'assigned',
+    tourId: 'filter-action',
     label: 'Action Required',
     icon: UserCheck,
     description: 'Ideas delegated to you by the Central Team',
@@ -25,6 +26,7 @@ const TABS = [
   },
   {
     id: 'underReview',
+    tourId: 'filter-review',
     label: 'Under Review Queue',
     icon: Clock,
     description: 'Ideas you are actively reviewing',
@@ -35,6 +37,7 @@ const TABS = [
   },
   {
     id: 'approved',
+    tourId: 'filter-approved',
     label: 'Approved by Me',
     icon: CheckCircle2,
     description: 'Ideas you have finalized and converted to projects',
@@ -45,6 +48,7 @@ const TABS = [
   },
   {
     id: 'rejected',
+    tourId: 'filter-rejected',
     label: 'Rejected',
     icon: AlertTriangle,
     description: 'Ideas you have decided not to pursue',
@@ -205,6 +209,7 @@ export default function OrgAdminDashboard() {
           return (
             <button
               key={tab.id}
+              id={tab.tourId}
               onClick={() => { setActiveTab(tab.id); setTabSearch(''); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${isActive
                   ? `${tab.activeBg} text-white border-transparent shadow-md`

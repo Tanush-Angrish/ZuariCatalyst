@@ -8,81 +8,44 @@ import './ProductTour.css';
 /* ═══════════════════════════════════════════════════════════════════════════
    TOUR STEP DEFINITIONS
    ═══════════════════════════════════════════════════════════════════════════ */
-const STEPS = [
-  {
-    target: 'sidebar-submit',
-    title: 'Innovation Hub',
-    body: 'This is where you share new ideas. You have 5 submission slots per month to help us shape the future.',
-    voice: {
-      english: "Welcome! This is your Innovation Hub. You can submit 5 ideas per month. Let's learn how to make an impact.",
-      hindi: "नमस्ते! ये आपका आईडिया हब है। यहाँ आप हर महीने 5 आईडिया भेज सकते हैं। चलिए देखते हैं ये कैसे काम करता है।",
-    },
-  },
-  {
-    target: 'template-card-0',
-    title: 'Strategic Templates',
-    body: 'Select the template category that best fits your innovation, such as Cost Optimization or Safety.',
-    fallbackCenter: true, // if target not found, show tooltip centered
-    voice: {
-      english: "Pick a template to start. We have specialized presets for everything from cost saving to manufacturing.",
-      hindi: "शुरू करने के लिए एक टेम्पलेट चुन लें। हमारे पास आपके आईडिया को बेहतर बनाने के लिए कई ऑप्शंस मौजूद हैं।",
-    },
-  },
-  {
-    target: 'ai-fill-box',
-    title: 'Smart AI Assistant',
-    body: 'Click the mic button to describe your idea in English, Hindi, or Hinglish. The AI will understand and fill out the form for you automatically.',
-    fallbackCenter: true,
-    voice: {
-      english: "Our AI assistant is here to help. Just speak your idea and the AI will fill the entire form automatically.",
-      hindi: "हमारा AI असिस्टेंट आपकी मदद के लिए यहाँ है। बस अपनी बात बताएं। AI पूरा फॉर्म अपने आप भर देगा।",
-    },
-  },
-  {
-    target: 'sidebar-myideas',
-    title: 'Track Your Ideas',
-    body: 'Monitor the status of your submissions. See when they move from draft to review or approval.',
-    voice: {
-      english: "Track your progress here. You'll see when your ideas are moved to review or approved by management.",
-      hindi: "अपने आईडिया का स्टेटस यहाँ चेक करें। देखें कि वो कब रिव्यु के लिए गया या कब अप्रूव हुआ।",
-    },
-  },
-  {
-    target: 'sidebar-community',
-    title: 'Community Hub',
-    body: 'Explore innovations from across the organization. Get inspired by what other teams are doing.',
-    voice: {
-      english: "Explore the Community Hub to see what others are working on. Collaboration starts with inspiration.",
-      hindi: "कम्युनिटी हब में आप दूसरों के बढ़िया आइडियाज देख सकते हैं और उनसे प्रेरणा ले सकते हैं।",
-    },
-  },
-  {
-    target: 'sidebar-projects',
-    title: 'Project Lifecycle',
-    body: 'Once approved, track your idea through execution. Manage tasks, milestones, and collaborate with teams.',
-    voice: {
-      english: "Once your ideas are approved, you can manage the whole project lifecycle and track implementation here.",
-      hindi: "एक बार आपके आईडिया अप्रूव हो जाने के बाद, आप यहाँ प्रोजेक्ट्स को मैनेज कर सकते हैं।",
-    },
-  },
-  {
-    target: 'sidebar-leaderboard',
-    title: 'Innovation Rankings',
-    body: 'Earn points for every idea and project. Climb the leaderboard to become a top innovator.',
-    voice: {
-      english: "Finally, check the Leaderboard. Every successful contribution earns you points and company-wide recognition.",
-      hindi: "और अंत में लीडरबोर्ड! पॉइंट्स कमाएं और कंपनी के टॉप इनोवेटर्स की लिस्ट में अपनी जगह बनाएं।",
-    },
-  },
+const EMPLOYEE_STEPS = [
+  { target: 'sidebar-submit', title: 'Innovation Hub', body: 'This is where you share new ideas. You have 5 submission slots per month to help us shape the future.' },
+  { target: 'template-card-0', title: 'Strategic Templates', body: 'Select the template category that best fits your innovation, such as Cost Optimization or Safety.', fallbackCenter: true },
+  { target: 'ai-fill-box', title: 'Smart AI Assistant', body: 'Click the mic button to describe your idea in English, Hindi, or Hinglish. The AI will understand and fill out the form for you automatically.', fallbackCenter: true },
+  { target: 'sidebar-myideas', title: 'Track Your Ideas', body: 'Monitor the status of your submissions. See when they move from draft to review or approval.' },
+  { target: 'sidebar-community', title: 'Community Hub', body: 'Explore innovations from across the organization. Get inspired by what other teams are doing.' },
+  { target: 'sidebar-projects', title: 'Project Lifecycle', body: 'Once approved, track your idea through execution. Manage tasks, milestones, and collaborate with teams.' },
+  { target: 'sidebar-leaderboard', title: 'Innovation Rankings', body: 'Earn points for every idea and project. Climb the leaderboard to become a top innovator.' },
 ];
 
-const WELCOME_VOICE = {
+const EMPLOYEE_WELCOME_VOICE = {
   english: "Ready to turn your ideas into organizational impact? Select your voice language and let's take a quick tour.",
   hindi: "क्या आप अपने आईडिया से कंपनी में बदलाव लाना चाहते हैं? अपनी आवाज की भाषा चुनें और डेमो देखें।",
 };
-const DONE_VOICE = {
+const EMPLOYEE_DONE_VOICE = {
   english: "Mission complete! You've mastered the basics and earned your first innovator points.",
   hindi: "बधाई हो! आपने ट्रेनिंग पूरी कर ली है और 5 पॉइंट्स जीत लिए हैं। अब आप अपना पहला आईडिया भेजने के लिए तैयार हैं।",
+};
+
+const ADMIN_STEPS = [
+  { target: 'sidebar-assigned', title: 'Admin Dashboard', body: 'Welcome to your command center. All ideas requiring your administrative attention are organized here.' },
+  { target: 'filter-action', title: 'Action Required', body: 'This filter shows new submissions waiting for your initial review or final sign-off.' },
+  { target: 'filter-review', title: 'Under Review', body: 'Track ideas that you have personally moved from the submitted stage into the active review phase.' },
+  { target: 'filter-approved', title: 'Approved Ideas', body: 'Access the archive of all innovations you have successfully cleared for implementation.' },
+  { target: 'filter-rejected', title: 'Rejected Ideas', body: 'Review submissions that did not meet the strategic criteria or were deemed unfeasible.' },
+  { target: 'sidebar-team', title: 'Team Ideas', body: 'Monitor all ideas submitted by employees within your specific company or team to ensure internal alignment.' },
+  { target: 'sidebar-projects', title: 'Project Pipeline', body: 'Track the real-world execution and impact of your approved innovations here.' },
+  { target: 'sidebar-leaderboard', title: 'Top Innovators', body: 'Recognize and reward the individuals driving change in your organization.' }
+];
+
+const ADMIN_WELCOME_VOICE = {
+  english: "Greetings, Admin! Ready to manage the innovation pipeline? Select your language and let's explore every filter in your dashboard.",
+  hindi: "नमस्ते एडमिन! क्या आप Zuari के नए आइडियाज़ को मैनेज करने के लिए तैयार हैं? अपनी भाषा चुनें और चलिए डैशबोर्ड का छोटा सा टूर करते हैं।"
+};
+
+const ADMIN_DONE_VOICE = {
+  english: "Admin guide complete! You now have a full overview of the review states and organizational tools.",
+  hindi: "बधाई हो! एडमिन टूर पूरा हुआ। अब आप डैशबोर्ड को अच्छी तरह से इस्तेमाल करने के लिए तैयार हैं।"
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -224,6 +187,12 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
   const { user } = useAuth();
   const navigate  = useNavigate();
 
+  const isOrgAdmin = user?.role === 'Org Admin';
+  const STEPS = isOrgAdmin ? ADMIN_STEPS : EMPLOYEE_STEPS;
+  const WELCOME = isOrgAdmin ? ADMIN_WELCOME_VOICE : EMPLOYEE_WELCOME_VOICE;
+  const DONE = isOrgAdmin ? ADMIN_DONE_VOICE : EMPLOYEE_DONE_VOICE;
+  const prefix = isOrgAdmin ? 'admin_' : '';
+
   const [phase, setPhase]         = useState('welcome'); // welcome | tour | done
   const [lang,  setLang]          = useState('english');
   const [step,  setStep]          = useState(0);
@@ -260,11 +229,11 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
   // ── Speak helper ───────────────────────────────────────────────────────
   const speak = useCallback((stepId, language) => {
     ttsRef.current?.play(
-      stepId, language,
+      `${prefix}${stepId}`, language,
       () => setPlaying(true),
       () => setPlaying(false)
     );
-  }, []);
+  }, [prefix]);
 
   // ── Auto-speak on welcome ─────────────────────────────────────────────
   useEffect(() => {
@@ -303,6 +272,15 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
           if (aiBtn) aiBtn.click();
         }, 150);
       }
+    } else if (s.target.startsWith('filter-')) {
+      if (window.location.pathname !== '/dashboard') navigate('/dashboard');
+      setTimeout(() => {
+        const filterBtn = document.getElementById(s.target);
+        if (filterBtn) filterBtn.click();
+      }, 100);
+    } else if (s.target.startsWith('sidebar-')) {
+      const el = document.getElementById(s.target);
+      if (el) el.click();
     }
 
     setTimeout(() => {
@@ -442,10 +420,9 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
             <button className="tour-x" onClick={onClose} aria-label="Close">×</button>
           )}
           <div className="tour-emoji-box tour-emoji-welcome">⚡</div>
-          <h2 className="tour-heading">Welcome, {user?.name}!</h2>
+          <h2 className="tour-heading">{isOrgAdmin ? 'Greetings, Admin!' : `Welcome, ${user?.name}!`}</h2>
           <p className="tour-sub">
-            Ready to turn your ideas into organizational impact?<br />
-            Select your voice language and take a quick tour.
+            {isOrgAdmin ? "Ready to manage the innovation pipeline? Select your language and let's explore your dashboard." : "Ready to turn your ideas into organizational impact? Select your voice language and take a quick tour."}
           </p>
 
           <div className="tour-lang-bar">
@@ -457,7 +434,7 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
 
           <div className="tour-actions">
             <button className="tour-play-sm" onClick={togglePlay}>{playing ? '⏸' : '▶'}</button>
-            <button className="tour-btn-primary" onClick={launch}>Launch Discovery Mission →</button>
+            <button className="tour-btn-primary" onClick={launch}>{isOrgAdmin ? 'Begin Admin Tour' : 'Launch Discovery Mission →'}</button>
           </div>
         </div>
       </div>
@@ -472,12 +449,13 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
       <div className="tour-backdrop" role="dialog" aria-modal="true">
         <div className="tour-card tour-card-done">
           <div className="tour-emoji-box tour-emoji-done">🏆</div>
-          <h2 className="tour-heading">Mission Complete!</h2>
+          <h2 className="tour-heading">{isOrgAdmin ? 'Admin Guide Complete!' : 'Mission Complete!'}</h2>
           <p className="tour-sub">
-            You've mastered the discovery mission.{' '}
-            {xpEarned > 0 && <>We've credited <span className="tour-xp">+{xpEarned} XP</span> to your profile.</>}
+            {isOrgAdmin ? "You now have a full overview of the review states and organizational tools." : (
+              <>You've mastered the discovery mission. {xpEarned > 0 && <span>We've credited <span className="tour-xp">+{xpEarned} XP</span> to your profile.</span>}</>
+            )}
           </p>
-          <button className="tour-btn-dark" onClick={close}>Start Innovating</button>
+          <button className="tour-btn-dark" onClick={close}>{isOrgAdmin ? 'Start Managing' : 'Start Innovating'}</button>
         </div>
       </div>
     );
