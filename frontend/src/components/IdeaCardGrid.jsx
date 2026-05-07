@@ -983,15 +983,7 @@ export default function IdeaCardGrid({
 
   const showSearchUI = showSearch && parsedIdeas.length > 0;
 
-  if (parsedIdeas.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-gray-500 bg-white">
-        <FileText className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-        <h3 className="text-lg font-medium text-brand-black">No ideas found</h3>
-        <p className="text-sm">There are currently no ideas to display in this view.</p>
-      </div>
-    );
-  }
+
 
   // Superadmin gets wider cards (2 cols) to fit assign + approve/reject
   const gridCols = viewType === 'superadmin'
