@@ -633,10 +633,34 @@ export default function EmployeeDashboard() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Disclaimer Marquee */}
-      <div className="bg-[#dc2626] text-white font-bold text-[14px] sm:text-[15px] tracking-wide py-2.5 px-4 shadow-sm rounded-xl border-2 border-red-800 flex items-center overflow-hidden">
-        <marquee scrollamount="6" behavior="scroll" direction="left" className="w-full">
-          🚨 This platform is a digital suggestion box only. NOT for emergency use! &nbsp; &nbsp; | &nbsp; &nbsp; 🚨 यह प्लेटफ़ॉर्म केवल सुझाव बॉक्स है। आपातकालीन उपयोग के लिए नहीं! &nbsp; &nbsp; | &nbsp; &nbsp; 🚨 This platform is a digital suggestion box only. NOT for emergency use! &nbsp; &nbsp; | &nbsp; &nbsp; 🚨 यह प्लेटफ़ॉर्म केवल सुझाव बॉक्स है। आपातकालीन उपयोग के लिए नहीं!
-        </marquee>
+      <style>{`
+        @keyframes continuous-marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-continuous-marquee {
+          display: flex;
+          width: max-content;
+          animation: continuous-marquee 20s linear infinite;
+        }
+      `}</style>
+      <div className="max-w-[95%] mx-auto bg-[#dc2626] text-white font-bold text-[14px] sm:text-[15px] tracking-wide py-2 shadow-sm rounded-xl border-2 border-red-800 overflow-hidden flex items-center relative">
+        <div className="animate-continuous-marquee">
+          {/* First Block */}
+          <div className="flex shrink-0 px-2 items-center">
+            <span>🚨 This platform is a digital suggestion box only. NOT for emergency use!</span>
+            <span className="mx-6 text-red-300/60 font-normal">|</span>
+            <span>🚨 यह प्लेटफ़ॉर्म केवल सुझाव बॉक्स है। आपातकालीन उपयोग के लिए नहीं!</span>
+            <span className="mx-6 text-red-300/60 font-normal">|</span>
+          </div>
+          {/* Second Block (Duplicate) */}
+          <div className="flex shrink-0 px-2 items-center">
+            <span>🚨 This platform is a digital suggestion box only. NOT for emergency use!</span>
+            <span className="mx-6 text-red-300/60 font-normal">|</span>
+            <span>🚨 यह प्लेटफ़ॉर्म केवल सुझाव बॉक्स है। आपातकालीन उपयोग के लिए नहीं!</span>
+            <span className="mx-6 text-red-300/60 font-normal">|</span>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
