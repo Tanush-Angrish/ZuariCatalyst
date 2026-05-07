@@ -18,8 +18,8 @@ export default function EmployeeGamificationBar({ userId }) {
   }, [userId]);
 
   const coins = points * 5;
-  const progress = Math.min(points, 200);
-  const percentage = (progress / 200) * 100;
+  const progress = Math.min(points, 2000);
+  const percentage = (progress / 2000) * 100;
 
   return (
     <>
@@ -46,7 +46,7 @@ export default function EmployeeGamificationBar({ userId }) {
               <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">Idea Score</span>
             </div>
             <div className="text-[10px] font-semibold text-gray-400">
-              <span className="text-gray-700">{points}</span> / 200 Pts
+              <span className="text-gray-700">{points}</span> / 2000 Pts
             </div>
           </div>
           
