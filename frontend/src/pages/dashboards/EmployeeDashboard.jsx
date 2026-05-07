@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { api } from '../../services/api';
 
 import { useAuth } from '../../context/AuthContext';
+import { useTour } from '../../context/TourContext';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../context/NotificationContext';
 import { Button } from '../../components/ui/Button';
@@ -314,13 +315,31 @@ export default function EmployeeDashboard() {
 
   // Disclaimer State
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const { isTourActive } = useTour();
 
-  // Disclaimer — show every time an Employee (or admin in Employee view) enters this dashboard
+  // Disclaimer — show only when tour is not running and has been handled
   React.useEffect(() => {
     if (user && user.role?.toLowerCase() === 'employee') {
-      setShowDisclaimer(true);
+      api.getTourStatus()
+        .then(({ hasCompletedTour }) => {
+          if (hasCompletedTour) {
+            // Tour is already done from a previous session, show disclaimer safely
+            setShowDisclaimer(true);
+          }
+        })
+        .catch(() => setShowDisclaimer(true)); // Fallback
     }
   }, [user?.id, user?.role]);
+
+  // When tour transitions from active to inactive, show disclaimer
+  const previousTourState = useRef(false);
+  React.useEffect(() => {
+    if (previousTourState.current && !isTourActive && user && user.role?.toLowerCase() === 'employee') {
+      // Tour just finished! Show disclaimer.
+      setShowDisclaimer(true);
+    }
+    previousTourState.current = isTourActive;
+  }, [isTourActive, user]);
 
   // Template Access State
   const [allowedTemplates, setAllowedTemplates] = useState([]);
