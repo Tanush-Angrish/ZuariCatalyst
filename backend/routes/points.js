@@ -18,7 +18,7 @@ router.get('/leaderboard', async (req, res) => {
       take: 10,
       include: {
         user: {
-          select: { id: true, name: true, organization: true, role: true }
+          select: { id: true, name: true, organization: true, role: true, profile_photo_url: true }
         }
       }
     });
@@ -29,6 +29,7 @@ router.get('/leaderboard', async (req, res) => {
       name: entry.user.name,
       organization: entry.user.organization || '—',
       role: entry.user.role,
+      profilePhotoUrl: entry.user.profile_photo_url || null,
       totalPoints: entry.totalPoints
     }));
 

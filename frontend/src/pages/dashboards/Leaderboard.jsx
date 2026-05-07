@@ -3,6 +3,28 @@ import { Trophy, Medal, Crown, Star } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 
+// ─── Avatar with photo or initials fallback ──────────────────────────────────
+function EntryAvatar({ name, photoUrl, size = 'md', highlight = false }) {
+  const sizeClass = size === 'lg' ? 'h-11 w-11 text-base' : 'h-9 w-9 text-sm';
+  const initials = name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
+  if (photoUrl) {
+    return (
+      <img
+        src={api.getFileUrl(photoUrl)}
+        alt={name}
+        className={`${sizeClass} rounded-full object-cover border-2 ${highlight ? 'border-brand-blue' : 'border-white'} shadow-sm shrink-0`}
+        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling?.style && (e.target.nextSibling.style.display = 'flex'); }}
+      />
+    );
+  }
+  return (
+    <div className={`${sizeClass} rounded-full flex items-center justify-center font-bold shrink-0 shadow-sm ${highlight ? 'bg-brand-blue text-white' : 'bg-gray-100 text-gray-600'}`}>
+      {initials}
+    </div>
+  );
+}
+
 export default function Leaderboard() {
   const { user } = useAuth();
   const [leaders, setLeaders] = useState([]);
@@ -64,9 +86,7 @@ export default function Leaderboard() {
       {user && user.role === 'Employee' && (
         <div className="flex items-center justify-between p-4 rounded-xl bg-brand-blue/5 border border-brand-blue/10">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-brand-blue text-white flex items-center justify-center font-bold text-sm">
-              {user.name?.charAt(0) || '?'}
-            </div>
+            <EntryAvatar name={user.name} photoUrl={user.profilePhotoUrl} size="lg" highlight />
             <div>
               <p className="text-sm font-semibold text-brand-black">{user.name}</p>
               <p className="text-xs text-gray-500">{user.organization || 'No org'}</p>
@@ -100,10 +120,12 @@ export default function Leaderboard() {
                   {rankIcon(entry.rank)}
                 </div>
 
-                {/* Avatar */}
-                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${entry.rank <= 3 ? 'bg-brand-blue text-white' : 'bg-gray-100 text-gray-600'}`}>
-                  {entry.name?.charAt(0) || '?'}
-                </div>
+                {/* Avatar with photo */}
+                <EntryAvatar
+                  name={entry.name}
+                  photoUrl={entry.profilePhotoUrl}
+                  highlight={entry.rank <= 3}
+                />
 
                 {/* Name + Org */}
                 <div className="flex-1 min-w-0">

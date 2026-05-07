@@ -245,13 +245,7 @@ function AILoader() {
 
 // ─── Disclaimer Popup ──────────────────────────────────────────────────────
 function DisclaimerPopup({ onClose }) {
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 10000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
+  // Lock body scroll while open
   React.useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
@@ -269,6 +263,7 @@ function DisclaimerPopup({ onClose }) {
         <button 
           onClick={onClose}
           className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+          aria-label="Close disclaimer"
         >
           <X size={20} />
         </button>
@@ -320,15 +315,12 @@ export default function EmployeeDashboard() {
   // Disclaimer State
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
+  // Disclaimer — show every time an Employee (or admin in Employee view) enters this dashboard
   React.useEffect(() => {
     if (user && user.role?.toLowerCase() === 'employee') {
-      const hasSeen = sessionStorage.getItem('disclaimerShown');
-      if (!hasSeen) {
-        setShowDisclaimer(true);
-        sessionStorage.setItem('disclaimerShown', 'true');
-      }
+      setShowDisclaimer(true);
     }
-  }, [user]);
+  }, [user?.id, user?.role]);
 
   // Template Access State
   const [allowedTemplates, setAllowedTemplates] = useState([]);

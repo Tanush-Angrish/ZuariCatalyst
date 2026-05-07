@@ -32,13 +32,11 @@ async function generateIdeaInsights(ideaData) {
     }
   `;
 
-  // Model priority: 2.5 Flash → 2.5 Pro → 2.0 Flash (stable) → 1.5 Flash (stable legacy)
-  // Each tried once in sequence. No retry loops — fail fast and move on.
+  // Model priority: 2.0 Flash (stable) → 1.5 Pro → 1.5 Flash
   const modelsToTry = [
-    "gemini-2.5-flash-preview-04-17",  // Latest Flash preview
-    "gemini-2.5-pro-preview-05-06",    // Pro preview as fallback
-    "gemini-2.0-flash",                // Stable Flash 2.0
-    "gemini-1.5-flash",                // Stable legacy fallback
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
   ];
 
   let lastError = null;
@@ -97,6 +95,7 @@ async function generateProjectPlan(projectData) {
 
     Generate 5-8 specific, practical action steps.
     Each step should be a concrete task, not vague advice.
+    IMPORTANT: Even if the provided description is very short or vague, DO NOT refuse to generate steps. You MUST extrapolate and generate a full set of 5-8 logical, detailed steps that would be required to implement such an idea. DO NOT output errors or complaints about the text being too short.
 
     Response must be a valid JSON array of objects:
     [
@@ -107,9 +106,8 @@ async function generateProjectPlan(projectData) {
   `;
 
   const modelsToTry = [
-    "gemini-2.5-flash-preview-04-17",
-    "gemini-2.5-pro-preview-05-06",
     "gemini-2.0-flash",
+    "gemini-1.5-pro",
     "gemini-1.5-flash",
   ];
   let lastError = null;
@@ -180,22 +178,20 @@ ${fieldDescriptions}
 
 Rules:
 1. Return a valid JSON object where keys are field IDs and values are the extracted content
-2. Only include fields you can confidently fill from the description
-3. For "select" type fields, only use one of the valid options listed — if unsure, omit
-4. For "textarea" type fields, write clear, professional content
-5. For "text" type fields, keep it concise
-6. For "url" type fields, only include if a URL was explicitly mentioned
-7. Leave fields empty (omit them) if the description doesn't provide enough info — do NOT guess
-8. Do NOT add any explanation — return ONLY the raw JSON object
+2. Fill out AS MANY FIELDS AS POSSIBLE. If the description is very short or vague, DO NOT refuse to fill the form. You MUST extrapolate, expand on the idea, and generate professional, detailed content to fill the fields. DO NOT output complaints or errors about the text being too short.
+3. For "select" type fields, pick the best matching valid option. If unsure, pick the most likely one.
+4. For "textarea" type fields, write clear, professional, and expansive content.
+5. For "text" type fields, keep it concise but descriptive.
+6. For "url" type fields, only include if a URL was explicitly mentioned.
+7. Do NOT add any explanation — return ONLY the raw JSON object.
 
 Example valid response:
 {"title": "...", "problemDescription": "...", "proposedSolution": "..."}
 `.trim();
 
   const modelsToTry = [
-    "gemini-2.5-flash-preview-04-17",
-    "gemini-2.5-pro-preview-05-06",
     "gemini-2.0-flash",
+    "gemini-1.5-pro",
     "gemini-1.5-flash",
   ];
   let lastError = null;
@@ -276,9 +272,8 @@ Return ONLY the JSON object, no other text.
 `.trim();
 
   const modelsToTry = [
-    "gemini-2.5-flash-preview-04-17",
-    "gemini-2.5-pro-preview-05-06",
     "gemini-2.0-flash",
+    "gemini-1.5-pro",
     "gemini-1.5-flash",
   ];
   let lastError = null;
