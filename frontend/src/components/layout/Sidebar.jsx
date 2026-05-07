@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTour } from '../../context/TourContext';
 import {
   LayoutDashboard, Users, PlusCircle, LayoutList, UserCog,
-  Settings, Wrench, Trophy, ChevronLeft, ChevronRight, PlayCircle
+  Settings, Wrench, Trophy, ChevronLeft, ChevronRight, PlayCircle, UserCircle
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import '../ProductTour.css';
@@ -30,6 +30,7 @@ export default function Sidebar({ isMobile }) {
       { name: 'Community Hub', path: '/community-hub', icon: Users },
       { name: 'Projects', path: '/dashboard/projects', icon: LayoutList },
       { name: 'Leaderboard', path: '/dashboard/leaderboard', icon: Trophy },
+      { name: 'Profile', path: '/dashboard/profile', icon: UserCircle },
     ];
 
     if (!user) return common;
@@ -51,13 +52,12 @@ export default function Sidebar({ isMobile }) {
           ...common
         ];
       case 'Employee':
+      default:
         return [
           { name: 'Submit Idea', path: '/dashboard', icon: PlusCircle },
           { name: 'My Ideas', path: '/dashboard/my-ideas', icon: LayoutDashboard },
           ...common
         ];
-      default:
-        return common;
     }
   };
 

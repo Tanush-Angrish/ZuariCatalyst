@@ -116,6 +116,27 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ description, fields }),
   }),
+  regenerateSummary: (ideaId) => request(`/api/ideas/${ideaId}/regenerate-summary`, {
+    method: 'POST',
+  }),
+
+  // Profile
+  uploadProfilePhoto: (formData) => request('/api/upload/profile-photo', {
+    method: 'POST',
+    body: formData,
+  }),
+  updateProfilePhoto: (userId, url) => request(`/api/users/${userId}/profile-photo`, {
+    method: 'PUT',
+    body: JSON.stringify({ url }),
+  }),
+  switchActiveRole: (userId, role) => request(`/api/users/${userId}/active-role`, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
+  }),
+  updateUser: (userId, data) => request(`/api/users/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
 
   // Projects
   getProjects: (params = {}) => {

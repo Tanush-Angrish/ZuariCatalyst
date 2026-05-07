@@ -11,17 +11,14 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // On every page load, ask the server to verify the httpOnly cookie and return the user.
-    // If the cookie is missing or expired, /api/auth/me returns 401 and we stay logged out.
-    // This replaces the insecure localStorage approach.
     api.getMe()
       .then(data => setUser(data.user))
-      .catch(() => setUser(null))   // 401 = not logged in, clear state silently
+      .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
   const login = async (email, password) => {
     try {
-      // Server sets the httpOnly auth_token cookie and returns the user object
       const data = await api.login({ email, password });
       setUser(data.user);
       return data.user;
@@ -33,7 +30,6 @@ export const AuthProvider = ({ children }) => {
 
   const msLogin = async (idToken) => {
     try {
-      // Server verifies Azure token, sets httpOnly auth_token cookie, returns user
       const data = await api.msLogin({ idToken });
       setUser(data.user);
       return data.user;
@@ -45,12 +41,41 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Ask the server to clear the httpOnly cookie (JS cannot clear it directly)
       await api.logout();
     } catch {
       // Even if the server call fails, clear client state so the UI resets
     } finally {
       setUser(null);
+    }
+  };
+
+  /**
+   * Switches the user's active role (for multi-role users).
+   * Calls the backend to update the active role, then re-fetches /me
+   * to get a fresh JWT with the new active role baked in.
+   */
+  const switchRole = async (newRole) => {
+    if (!user) return;
+    try {
+      await api.switchActiveRole(user.id, newRole);
+      // Re-fetch fresh user from /me (backend re-issues cookie with new role)
+      const data = await api.getMe();
+      setUser(data.user);
+    } catch (error) {
+      console.error('Role switch error:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Refresh user profile — call after uploading a new profile photo.
+   */
+  const refreshUser = async () => {
+    try {
+      const data = await api.getMe();
+      setUser(data.user);
+    } catch (error) {
+      console.error('Refresh user error:', error);
     }
   };
 
@@ -66,7 +91,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, msLogin, logout }}>
+    <AuthContext.Provider value={{ user, login, msLogin, logout, switchRole, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

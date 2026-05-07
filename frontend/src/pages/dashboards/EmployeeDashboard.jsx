@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import {
   Send, FileText, ArrowLeft, Lightbulb, Boxes, Building, FileSpreadsheet,
-  Mic, Square, Trash2, Paperclip, Sparkles, Loader2, X, MicOff
+  Mic, Square, Trash2, Paperclip, Sparkles, Loader2, X, MicOff, AlertTriangle
 } from 'lucide-react';
 
 const CATEGORY_ICONS = {
@@ -243,6 +243,59 @@ function AILoader() {
   );
 }
 
+// ─── Disclaimer Popup ──────────────────────────────────────────────────────
+function DisclaimerPopup({ onClose }) {
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  return (
+    <div 
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative animate-modal-in"
+        onClick={e => e.stopPropagation()}
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+        >
+          <X size={20} />
+        </button>
+        
+        <div className="text-center mb-5 mt-2">
+          <div className="mx-auto w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mb-4 border border-amber-100">
+            <AlertTriangle size={24} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Disclaimer</h2>
+        </div>
+
+        <div className="space-y-5 text-center text-gray-700">
+          <p className="text-[14.5px] leading-relaxed">
+            This platform is a digital suggestion and idea submission system only. Please do not use it to report emergencies, safety incidents, or urgent plant-related issues. Kindly follow official emergency reporting procedures for immediate assistance.
+          </p>
+          
+          <div className="h-px bg-gray-100 w-full" />
+          
+          <p className="text-[14.5px] leading-relaxed font-medium">
+            यह प्लेटफ़ॉर्म केवल सुझाव और आइडिया साझा करने के लिए है। कृपया किसी भी आपातकालीन स्थिति, सुरक्षा घटना या अत्यावश्यक प्लांट समस्या की रिपोर्ट यहाँ न करें। ऐसी परिस्थितियों में निर्धारित आपातकालीन प्रक्रिया का पालन करें।
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function EmployeeDashboard() {
   const { user } = useAuth();
@@ -264,6 +317,19 @@ export default function EmployeeDashboard() {
   // AI Bar State
   const [showAIBar, setShowAIBar] = useState(false);
 
+  // Disclaimer State
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+
+  React.useEffect(() => {
+    if (user && user.role?.toLowerCase() === 'employee') {
+      const hasSeen = sessionStorage.getItem('disclaimerShown');
+      if (!hasSeen) {
+        setShowDisclaimer(true);
+        sessionStorage.setItem('disclaimerShown', 'true');
+      }
+    }
+  }, [user]);
+
   // Template Access State
   const [allowedTemplates, setAllowedTemplates] = useState([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
@@ -284,10 +350,25 @@ export default function EmployeeDashboard() {
         const data = await api.getTemplates();
         const allTemplates = data.templates || [];
 
+        if (!Array.isArray(allTemplates)) return;
+
+        // ── Admin in Employee view: see ALL templates ─────────────────────────
+        // If this user's full roles include Org Admin or Central Team (Superadmin),
+        // they are using the Employee view to submit ideas — give them access to
+        // every template in the system, unrestricted.
+        const userRoles = Array.isArray(user?.roles) ? user.roles : [];
+        const isAdminInEmployeeView = userRoles.some(r => r === 'Org Admin' || r === 'Superadmin');
+
+        if (isAdminInEmployeeView) {
+          setAllowedTemplates(allTemplates);
+          const cats = [...new Set(allTemplates.map(t => t.category).filter(Boolean))];
+          setCategories(cats);
+          return;
+        }
+
+        // ── Regular Employee: filter by org-level template access ─────────────
         const accessData = await api.getTemplateAccess();
-
-
-        if (!Array.isArray(allTemplates) || !Array.isArray(accessData)) return;
+        if (!Array.isArray(accessData)) return;
 
         const allowedIds = new Set();
         accessData.forEach(a => {
@@ -308,7 +389,11 @@ export default function EmployeeDashboard() {
         setIsLoadingTemplates(false);
       }
     };
-    if (user?.organization) fetchData();
+
+    // Admins in Employee view don't need an organization to load templates
+    const userRoles = Array.isArray(user?.roles) ? user.roles : [];
+    const isAdminInEmployeeView = userRoles.some(r => r === 'Org Admin' || r === 'Superadmin');
+    if (isAdminInEmployeeView || user?.organization) fetchData();
     else setIsLoadingTemplates(false);
   }, [user]);
 
@@ -743,6 +828,8 @@ export default function EmployeeDashboard() {
           </Card>
         </div>
       )}
+
+      {showDisclaimer && <DisclaimerPopup onClose={() => setShowDisclaimer(false)} />}
     </div>
   );
 }

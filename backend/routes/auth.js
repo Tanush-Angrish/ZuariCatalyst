@@ -20,30 +20,88 @@ function getKey(header, callback) {
 }
 
 /**
+ * Derives the full roles array from the primary role.
+ * Org Admin and Central Team (Superadmin) automatically also have Employee access.
+ */
+function deriveRoles(primaryRole) {
+  if (primaryRole === 'Org Admin') return ['Org Admin', 'Employee'];
+  if (primaryRole === 'Superadmin') return ['Superadmin', 'Employee'];
+  return ['Employee'];
+}
+
+/**
+ * Gets or initializes the roles array for a user.
+ * If roles is empty "[]" (legacy user), auto-populate from primary role.
+ */
+async function ensureRoles(user) {
+  let roles = [];
+  try {
+    roles = JSON.parse(user.roles || '[]');
+  } catch { roles = []; }
+
+  if (roles.length === 0) {
+    // Auto-derive for existing/legacy users
+    roles = deriveRoles(user.role);
+    // Persist the derived roles so future logins are fast
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { roles: JSON.stringify(roles) }
+    }).catch(() => {}); // Fail silently — roles will be re-derived next time
+  }
+
+  return roles;
+}
+
+/**
  * Signs a JWT with the user object and sets it as an httpOnly cookie.
- * The cookie is: httpOnly (JS can't read it), Secure in prod (HTTPS only),
- * SameSite=Lax (safe for same-origin + top-level nav), expires in 8h.
  */
 function issueToken(res, user) {
   const token = jwt.sign(
-    { id: user.id, email: user.email, name: user.name, role: user.role, organization: user.organization },
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      roles: user.roles,
+      organization: user.organization,
+      title: user.title,
+      mobileNumber: user.mobileNumber,
+      employeeId: user.employeeId,
+      profilePhotoUrl: user.profilePhotoUrl,
+    },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 
   res.cookie('auth_token', token, {
-    httpOnly: true,                                           // invisible to JavaScript
-    secure: process.env.NODE_ENV === 'production',           // HTTPS only in production
-    sameSite: 'lax',                                         // safe for same-origin requests
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: TOKEN_MAX_AGE_MS,
     path: '/'
   });
 }
 
+/**
+ * Builds the user object shape returned to the frontend.
+ */
+function buildUserPayload(row, roles) {
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    title: row.title || '',
+    role: row.role,
+    roles,
+    organization: row.organization,
+    mobileNumber: row.mobile_number || null,
+    employeeId: row.employee_id || null,
+    profilePhotoUrl: row.profile_photo_url || null,
+  };
+}
+
 // ─── GET /api/auth/me ─────────────────────────────────────────────────────────
-// Called by frontend on every page load to restore session from cookie.
-// Returns the current user if the cookie is valid, 401 otherwise.
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   const cookieHeader = req.headers.cookie || '';
   const match = cookieHeader.split(';').find(c => c.trim().startsWith('auth_token='));
   const token = match ? match.trim().slice('auth_token='.length) : null;
@@ -52,26 +110,37 @@ router.get('/me', (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    res.json({
-      user: {
-        id: decoded.id, email: decoded.email, name: decoded.name,
-        role: decoded.role, organization: decoded.organization
+
+    // Fetch fresh user data on every /me call to pick up profile photo changes etc.
+    const row = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true, email: true, name: true, title: true, role: true, roles: true,
+        organization: true, mobile_number: true, employee_id: true, profile_photo_url: true
       }
     });
+
+    if (!row) return res.status(401).json({ error: 'User not found' });
+
+    const roles = await ensureRoles(row);
+    const user = buildUserPayload(row, roles);
+
+    // Re-issue token if roles were just auto-populated (so next /me is fast)
+    issueToken(res, user);
+
+    res.json({ user });
   } catch {
     return res.status(401).json({ error: 'Session expired' });
   }
 });
 
 // ─── POST /api/auth/logout ────────────────────────────────────────────────────
-// Clears the auth cookie. Frontend should clear its user state after this.
 router.post('/logout', (req, res) => {
   res.clearCookie('auth_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/' });
   res.json({ message: 'Logged out successfully' });
 });
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
-// Password login (legacy — will be removed once all users are on Outlook SSO)
 router.post('/login', async (req, res) => {
   const { email, password } = req.body || {};
 
@@ -83,13 +152,20 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const row = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const row = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: {
+        id: true, email: true, name: true, title: true, role: true, roles: true,
+        organization: true, mobile_number: true, employee_id: true, profile_photo_url: true, password: true
+      }
+    });
 
     if (!row) return res.status(404).json({ error: 'User not found. Contact your administrator.' });
     if (row.password !== password) return res.status(401).json({ error: 'Invalid password' });
     if (!row.role) return res.status(403).json({ error: 'No role assigned. Contact your administrator.' });
 
-    const user = { id: row.id, email: row.email, name: row.name, title: row.title, role: row.role, organization: row.organization };
+    const roles = await ensureRoles(row);
+    const user = buildUserPayload(row, roles);
     issueToken(res, user);
     res.json({ user });
   } catch (error) {
@@ -99,7 +175,6 @@ router.post('/login', async (req, res) => {
 });
 
 // ─── POST /api/auth/ms-login ──────────────────────────────────────────────────
-// Microsoft SSO login — verifies Azure AD token, issues our own JWT cookie
 router.post('/ms-login', (req, res) => {
   const { idToken } = req.body;
 
@@ -122,7 +197,13 @@ router.post('/ms-login', (req, res) => {
     }
 
     try {
-      const row = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      const row = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+        select: {
+          id: true, email: true, name: true, title: true, role: true, roles: true,
+          organization: true, mobile_number: true, employee_id: true, profile_photo_url: true
+        }
+      });
 
       if (!row) {
         return res.status(404).json({ error: 'Your Microsoft account does not have a registered profile in Zuari Catalyst. Contact Central Team.' });
@@ -131,7 +212,8 @@ router.post('/ms-login', (req, res) => {
         return res.status(403).json({ error: 'No role assigned. Contact your administrator.' });
       }
 
-      const user = { id: row.id, email: row.email, name: row.name, title: row.title, role: row.role, organization: row.organization };
+      const roles = await ensureRoles(row);
+      const user = buildUserPayload(row, roles);
       issueToken(res, user);
       res.json({ user });
     } catch (dbError) {

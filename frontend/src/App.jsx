@@ -20,6 +20,7 @@ const TemplateAccess      = lazy(() => import('./pages/dashboards/TemplateAccess
 const TemplateConfig      = lazy(() => import('./pages/dashboards/TemplateConfig'));
 const CommunityHub        = lazy(() => import('./pages/dashboards/CommunityHub'));
 const Leaderboard         = lazy(() => import('./pages/dashboards/Leaderboard'));
+const ProfilePage         = lazy(() => import('./pages/dashboards/ProfilePage'));
 
 // Minimal loading fallback — shown while a page chunk is downloading
 function PageLoader() {
@@ -80,6 +81,7 @@ function App() {
                   <Route path="team-ideas" element={<ProtectedRoute allowedRoles={['Org Admin']}><TeamIdeas /></ProtectedRoute>} />
                   <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><ProjectsPage /></ProtectedRoute>} />
                   <Route path="leaderboard" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><Leaderboard /></ProtectedRoute>} />
+                  <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 </Route>
 
                 {/* Central Team / Hub routes */}

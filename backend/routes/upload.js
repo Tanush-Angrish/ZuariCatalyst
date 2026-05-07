@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 const authMiddleware = require('../middleware/auth');
 
 // All upload endpoints require authentication
@@ -12,8 +13,10 @@ router.use(authMiddleware);
 // Ensure upload directories exist
 const fileDir = path.join(__dirname, '..', 'uploads', 'ideas', 'files');
 const voiceDir = path.join(__dirname, '..', 'uploads', 'ideas', 'voice-notes');
+const profileDir = path.join(__dirname, '..', 'uploads', 'profiles');
 fs.mkdirSync(fileDir, { recursive: true });
 fs.mkdirSync(voiceDir, { recursive: true });
+fs.mkdirSync(profileDir, { recursive: true });
 
 // Multer storage for files
 const fileStorage = multer.diskStorage({
@@ -33,6 +36,9 @@ const voiceStorage = multer.diskStorage({
     cb(null, unique + '.webm');
   }
 });
+
+// Multer memory storage for profile photos (we'll process with sharp before saving)
+const profileStorage = multer.memoryStorage();
 
 const uploadFile = multer({
   storage: fileStorage,
@@ -57,6 +63,21 @@ const uploadVoice = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
+const uploadProfile = multer({
+  storage: profileStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB input (we compress down)
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.png', '.jpg', '.jpeg', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    const mimeAllowed = ['image/png', 'image/jpeg', 'image/webp'];
+    if (allowed.includes(ext) && mimeAllowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPG, PNG, WEBP) are allowed for profile photos'), false);
+    }
+  }
+});
+
 // POST upload file
 router.post('/file', uploadFile.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
@@ -75,6 +96,31 @@ router.post('/voice', uploadVoice.single('voice'), (req, res) => {
     url: `/uploads/ideas/voice-notes/${req.file.filename}`,
     type: 'voice'
   });
+});
+
+// POST upload profile photo — compressed to 400x400 JPEG at 80% quality
+router.post('/profile-photo', uploadProfile.single('photo'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No photo uploaded' });
+
+  try {
+    const filename = `profile-${req.user.id}-${Date.now()}.jpg`;
+    const outputPath = path.join(profileDir, filename);
+
+    // Compress: resize to max 400x400, convert to JPEG 80% quality
+    await sharp(req.file.buffer)
+      .resize(400, 400, {
+        fit: 'cover',      // crop to fill the square
+        position: 'centre' // center the crop
+      })
+      .jpeg({ quality: 80, progressive: true })
+      .toFile(outputPath);
+
+    const url = `/uploads/profiles/${filename}`;
+    res.json({ url });
+  } catch (err) {
+    console.error('[Profile Photo Upload] Error:', err.message);
+    res.status(500).json({ error: 'Failed to process photo. Please try again.' });
+  }
 });
 
 module.exports = router;

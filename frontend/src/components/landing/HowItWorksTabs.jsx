@@ -98,7 +98,7 @@ export default function HowItWorksTabs() {
                         </div>
                         <div style={{ display: 'flex', gap: '4px' }}>
                           <div style={{ padding: '3px 8px', background: 'var(--teal-l)', borderRadius: '4px', fontSize: '9px', fontWeight: 700, color: 'var(--teal)', fontFamily: 'var(--fb)' }}>Approve</div>
-                          <div style={{ padding: '3px 8px', background: '#FEE8E8', borderRadius: '4px', fontSize: '9px', fontWeight: 700, color: '#C42B2B', fontFamily: 'var(--fb)' }}>Reject</div>
+                          <div style={{ padding: '3px 8px', background: '#FEE8E8', borderRadius: '4px', fontSize: '9px', fontWeight: 700, color: '#C42B2B', fontFamily: 'var(--fb)' }}>Decline</div>
                         </div>
                       </div>
                       <div style={{ background: 'var(--bg)', border: '1px solid rgba(15,14,26,.08)', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>

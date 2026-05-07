@@ -22,13 +22,13 @@ function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onCon
       // Under review: can Approve or Reject (with reason)
       const acts = [
         { id: 'Approved', label: 'Approve Idea', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', desc: 'Approve and convert to a project.' },
-        { id: 'Rejected', label: 'Reject Idea', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', desc: 'Reject this idea with a reason.' },
+        { id: 'Rejected', label: 'Decline Idea', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', desc: 'Decline this idea with a reason.' },
       ];
       return acts;
     }
     const acts = [
       { id: 'Under Review', label: 'Put Under Review', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', desc: 'Move to active review. Required before approving.' },
-      { id: 'Rejected', label: 'Reject Idea', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', desc: 'Reject this idea with a reason.' },
+      { id: 'Rejected', label: 'Decline Idea', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', desc: 'Decline this idea with a reason.' },
     ];
     if (viewType === 'superadmin') {
       acts.push({ id: 'Assigned', label: 'Assign to Org Admin', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', desc: 'Delegate review to an Org Admin.' });
@@ -45,7 +45,7 @@ function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onCon
 
   const handleConfirm = async () => {
     if (!selectedAction) { setError('Please select an action.'); return; }
-    if (selectedAction === 'Rejected' && !reason.trim()) { setError('A reason is required when rejecting an idea.'); return; }
+    if (selectedAction === 'Rejected' && !reason.trim()) { setError('A reason is required when declining an idea.'); return; }
     if (selectedAction === 'Assigned' && !selectedAdmin) { setError('Please select an Org Admin to assign to.'); return; }
 
     setLoading(true);
@@ -126,7 +126,7 @@ function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onCon
         {selectedAction === 'Rejected' && (
           <div className="px-6 pt-4">
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-              Reason for Rejection <span className="text-red-500">*</span>
+              Reason for Declining <span className="text-red-500">*</span>
               <span className="ml-1 font-normal text-gray-400">(required)</span>
             </label>
             <textarea
@@ -134,7 +134,7 @@ function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onCon
               value={reason}
               onChange={e => { setReason(e.target.value); setError(''); }}
               rows={3}
-              placeholder="Explain why this idea is being rejected. This will be shared with the employee…"
+              placeholder="Explain why this idea is being declined. This will be shared with the employee…"
               className="w-full rounded-xl border border-red-200 focus:border-red-400 focus:ring-red-100 p-3 text-sm resize-none transition-all focus:outline-none focus:ring-2"
             />
           </div>
@@ -340,7 +340,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
               <h2 className="text-xl font-bold text-brand-black leading-snug">{idea.title}</h2>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
                 {!(isEmployee && viewType === 'community') && (
-                  <Badge variant={statusVariant(idea.status)}>{idea.status}</Badge>
+                  <Badge variant={statusVariant(idea.status)}>{idea.status === 'Rejected' ? 'Declined' : idea.status}</Badge>
                 )}
                 {displayOrg && !(isEmployee && viewType === 'community') && (
                   <span className="text-xs text-gray-400 flex items-center gap-1">
@@ -370,7 +370,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <XCircle size={16} className="text-red-500 shrink-0" />
-                <h3 className="text-sm font-bold text-red-700">Rejected — Reviewer Feedback</h3>
+                <h3 className="text-sm font-bold text-red-700">Declined — Reviewer Feedback</h3>
               </div>
               <p className="text-sm text-red-800 leading-relaxed">{idea.rejectionReason}</p>
               <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
@@ -388,7 +388,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
             <div className="rounded-xl border border-red-200 bg-red-50 p-4">
               <div className="flex items-center gap-2">
                 <XCircle size={16} className="text-red-500 shrink-0" />
-                <span className="text-sm font-semibold text-red-700">Idea Rejected</span>
+                <span className="text-sm font-semibold text-red-700">Idea Declined</span>
               </div>
               <div className="mt-2 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
                 <RefreshCw size={14} className="text-amber-600 mt-0.5 shrink-0" />
@@ -433,16 +433,36 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
 
             {/* Author block (Shown to all) */}
             <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-              <div className="h-9 w-9 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center font-bold text-sm shrink-0">
-                {displayName.charAt(0)}
-              </div>
-              <div>
+              {/* Avatar: photo or initials */}
+              {idea.authorPhotoUrl ? (
+                <img
+                  src={api.getFileUrl(idea.authorPhotoUrl)}
+                  alt={displayName}
+                  className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-brand-blue to-blue-400 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                  {displayName.charAt(0)}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-brand-black">{displayName}</p>
-                {!(isEmployee && viewType === 'community') && (
-                  <p className="text-xs text-gray-400">{displayOrg || 'No organization'}</p>
-                )}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                  {!(isEmployee && viewType === 'community') && displayOrg && (
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                      <Building size={10} />{displayOrg}
+                    </span>
+                  )}
+                  {/* Employee ID + Mobile — visible to admins in review/assigned views */}
+                  {!isEmployee && idea.authorEmployeeId && (
+                    <span className="text-xs text-gray-400 font-mono">ID: {idea.authorEmployeeId}</span>
+                  )}
+                  {!isEmployee && idea.authorMobile && (
+                    <span className="text-xs text-gray-400 font-mono">📱 {idea.authorMobile}</span>
+                  )}
+                </div>
               </div>
-              <div className="ml-auto text-xs text-gray-400 flex items-center gap-1">
+              <div className="ml-auto text-xs text-gray-400 flex items-center gap-1 shrink-0">
                 <Calendar size={11} />
                 {new Date(idea.createdAt).toLocaleDateString()}
               </div>
@@ -729,9 +749,17 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
         {/* Card Header */}
         <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="h-7 w-7 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center font-bold text-xs shrink-0">
-              {displayName.charAt(0)}
-            </div>
+            {idea.authorPhotoUrl ? (
+              <img
+                src={api.getFileUrl(idea.authorPhotoUrl)}
+                alt={displayName}
+                className="h-7 w-7 rounded-full object-cover border border-gray-200 shrink-0"
+              />
+            ) : (
+              <div className="h-7 w-7 rounded-full bg-gradient-to-br from-brand-blue to-blue-400 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                {displayName.charAt(0)}
+              </div>
+            )}
             <span className="text-sm font-medium text-brand-black truncate">{displayName}</span>
             {idea.authorOrganization && !isOwn && viewType !== 'community' && (
               <span className="text-xs text-gray-400 hidden sm:block truncate">• {idea.authorOrganization}</span>
@@ -739,7 +767,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
           </div>
           {/* Hide Status badge for employees in community view */}
           {!(isEmployee && viewType === 'community') && (
-            <Badge variant={statusVariant(idea.status)} className={`shrink-0 text-xs ${idea.status === 'Draft' ? 'bg-amber-100 text-amber-800' : ''}`}>{idea.status}</Badge>
+            <Badge variant={statusVariant(idea.status)} className={`shrink-0 text-xs ${idea.status === 'Draft' ? 'bg-amber-100 text-amber-800' : ''}`}>{idea.status === 'Rejected' ? 'Declined' : idea.status}</Badge>
           )}
         </div>
 

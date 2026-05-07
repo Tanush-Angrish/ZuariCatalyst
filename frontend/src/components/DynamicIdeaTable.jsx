@@ -3,6 +3,7 @@ import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { IDEA_TEMPLATES } from '../lib/templates';
 import { FileText } from 'lucide-react';
+import { api } from '../services/api';
 
 export default function DynamicIdeaTable({ 
   ideas, 
@@ -138,12 +139,21 @@ export default function DynamicIdeaTable({
                         {viewType !== 'myIdeas' && (
                           <td className="px-5 py-4 align-top">
                             <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center font-bold text-xs shrink-0">
-                                {(idea.authorName || '?').charAt(0)}
-                              </div>
+                              {idea.authorPhotoUrl ? (
+                                <img
+                                  src={api.getFileUrl(idea.authorPhotoUrl)}
+                                  alt={idea.authorName || '?'}
+                                  className="h-8 w-8 rounded-full object-cover border border-gray-200 shrink-0"
+                                />
+                              ) : (
+                                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-blue to-blue-400 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                  {(idea.authorName || '?').charAt(0)}
+                                </div>
+                              )}
                               <div>
                                 <div className="font-medium text-brand-black text-sm">{idea.authorName}</div>
                                 {idea.authorOrganization && <div className="text-gray-400 text-xs">{idea.authorOrganization}</div>}
+                                {idea.authorEmployeeId && <div className="text-gray-400 text-xs font-mono">ID: {idea.authorEmployeeId}</div>}
                               </div>
                             </div>
                           </td>
@@ -222,7 +232,7 @@ export default function DynamicIdeaTable({
 
                         {/* Status */}
                         <td className="px-5 py-4 align-top">
-                          <Badge variant={getStatusBadgeVariant(idea.status)}>{idea.status}</Badge>
+                          <Badge variant={getStatusBadgeVariant(idea.status)}>{idea.status === 'Rejected' ? 'Declined' : idea.status}</Badge>
                         </td>
 
                         {/* Specific Action / Date Columns */}
@@ -271,7 +281,7 @@ export default function DynamicIdeaTable({
                                 </Button>
                                 <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 px-3 py-1 h-auto text-xs font-semibold" 
                                   onClick={() => onDirectAction(idea.id, 'Rejected')}>
-                                  Reject
+                                  Decline
                                 </Button>
                               </div>
                             </td>
@@ -287,7 +297,7 @@ export default function DynamicIdeaTable({
                               </Button>
                               <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 px-3 py-1 h-auto text-xs font-semibold" 
                                 onClick={() => onAction(idea.id, 'Rejected')}>
-                                Reject
+                                Decline
                               </Button>
                             </div>
                           </td>

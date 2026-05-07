@@ -32,7 +32,15 @@ async function generateIdeaInsights(ideaData) {
     }
   `;
 
-  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  // Model priority: 2.5 Flash → 2.5 Pro → 2.0 Flash (stable) → 1.5 Flash (stable legacy)
+  // Each tried once in sequence. No retry loops — fail fast and move on.
+  const modelsToTry = [
+    "gemini-2.5-flash-preview-04-17",  // Latest Flash preview
+    "gemini-2.5-pro-preview-05-06",    // Pro preview as fallback
+    "gemini-2.0-flash",                // Stable Flash 2.0
+    "gemini-1.5-flash",                // Stable legacy fallback
+  ];
+
   let lastError = null;
 
   for (const modelName of modelsToTry) {
@@ -98,7 +106,12 @@ async function generateProjectPlan(projectData) {
     Return ONLY the JSON array, no other text.
   `;
 
-  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  const modelsToTry = [
+    "gemini-2.5-flash-preview-04-17",
+    "gemini-2.5-pro-preview-05-06",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+  ];
   let lastError = null;
 
   for (const modelName of modelsToTry) {
@@ -179,7 +192,12 @@ Example valid response:
 {"title": "...", "problemDescription": "...", "proposedSolution": "..."}
 `.trim();
 
-  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  const modelsToTry = [
+    "gemini-2.5-flash-preview-04-17",
+    "gemini-2.5-pro-preview-05-06",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+  ];
   let lastError = null;
 
   for (const modelName of modelsToTry) {
@@ -257,7 +275,12 @@ Response must be valid JSON (no markdown, no code blocks):
 Return ONLY the JSON object, no other text.
 `.trim();
 
-  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  const modelsToTry = [
+    "gemini-2.5-flash-preview-04-17",
+    "gemini-2.5-pro-preview-05-06",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+  ];
   let lastError = null;
 
   for (const modelName of modelsToTry) {

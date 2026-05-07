@@ -86,10 +86,10 @@ router.get('/pending', async (req, res) => {
   try {
     const ideas = await prisma.idea.findMany({
       where: { status: 'Pending Review' },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
-    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name, authorOrganization: idea.author.organization }));
+    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name, authorOrganization: idea.author.organization, authorTitle: idea.author.title, authorMobile: idea.author.mobile_number, authorEmployeeId: idea.author.employee_id, authorPhotoUrl: idea.author.profile_photo_url }));
     res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -105,7 +105,7 @@ router.get('/central/assigned', async (req, res) => {
         status: { not: 'Draft' }
       },
       include: {
-        author: { select: { name: true, organization: true } },
+        author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } },
         assignedTo: { select: { id: true, name: true, organization: true } }
       },
       orderBy: { createdAt: 'desc' }
@@ -128,10 +128,10 @@ router.get('/central/under-review', async (req, res) => {
   try {
     const ideas = await prisma.idea.findMany({
       where: { status: 'Under Review', assignedToId: null },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
-    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name, authorOrganization: idea.author.organization }));
+    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name, authorOrganization: idea.author.organization, authorTitle: idea.author.title, authorMobile: idea.author.mobile_number, authorEmployeeId: idea.author.employee_id, authorPhotoUrl: idea.author.profile_photo_url }));
     res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -147,7 +147,7 @@ router.get('/central/approved', async (req, res) => {
         approvedByRole: 'central'   // STRICT: only Central Team approvals
       },
       include: {
-        author: { select: { name: true, organization: true } },
+        author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } },
         approvedBy: { select: { id: true, name: true, role: true } }
       },
       orderBy: { createdAt: 'desc' }
@@ -185,7 +185,7 @@ router.get('/central/approved-by-admin', async (req, res) => {
         approvedByRole: 'admin'     // STRICT: only Org Admin approvals
       },
       include: {
-        author: { select: { name: true, organization: true } },
+        author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } },
         approvedBy: { select: { id: true, name: true, role: true } }
       },
       orderBy: { createdAt: 'desc' }
@@ -222,7 +222,7 @@ router.get('/assigned/:userId', async (req, res) => {
         assignedToId: parseInt(req.params.userId),
         status: 'Assigned to Org Admin' 
       },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
     const formatted = ideas.map(idea => ({ 
@@ -244,7 +244,7 @@ router.get('/assigned/:userId/under-review', async (req, res) => {
         assignedToId: parseInt(req.params.userId),
         status: 'Under Review' 
       },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
     const formatted = ideas.map(idea => ({ 
@@ -266,7 +266,7 @@ router.get('/assigned/:userId/processed', async (req, res) => {
         assignedToId: parseInt(req.params.userId),
         status: { in: ['Approved', 'Rejected'] } 
       },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -303,7 +303,7 @@ router.get('/team/:organization', async (req, res) => {
         },
         status: { not: 'Draft' }
       },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
     const formatted = ideas.map(idea => ({ 
@@ -392,8 +392,25 @@ router.post('/', async (req, res) => {
     }
 
     // AI Processing - Background (don't block the response)
+    // Build a rich content string from ALL text fields in extraFields so that
+    // Gemini gets the full idea content regardless of which template was used.
+    const enrichedDescription = (() => {
+      const parts = [];
+      if (description && description !== `Submitted via ${req.body.extraFields?._templateName || ''}`) {
+        parts.push(description);
+      }
+      const ef = extraFields || {};
+      const TEXT_SKIP = new Set(['_templateId', '_templateName', 'referenceLink', 'supportingLink']);
+      Object.entries(ef).forEach(([k, v]) => {
+        if (!TEXT_SKIP.has(k) && typeof v === 'string' && v.trim()) {
+          parts.push(`${k}: ${v.trim()}`);
+        }
+      });
+      return parts.join('\n\n') || description;
+    })();
+
     console.log(`[AI-Queue] Triggering AI processing for idea ID: ${idea.id}`);
-    generateIdeaInsights({ title, description, proposedSolution: extraFields?.proposedSolution || '' })
+    generateIdeaInsights({ title, description: enrichedDescription, proposedSolution: extraFields?.proposedSolution || '' })
       .then(async (insights) => {
         if (insights) {
           console.log(`[AI-Queue] Updating idea ID: ${idea.id} with insights`);
@@ -449,7 +466,7 @@ router.put('/:id/submit-draft', async (req, res) => {
   const ideaId = parseInt(req.params.id);
   
   try {
-    const idea = await prisma.idea.findUnique({ where: { id: ideaId }, include: { author: { select: { name: true, organization: true } } } });
+    const idea = await prisma.idea.findUnique({ where: { id: ideaId }, include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } } });
     if (!idea || idea.status !== 'Draft') {
       return res.status(400).json({ error: 'This idea is not a draft or does not exist.' });
     }
@@ -473,14 +490,28 @@ router.put('/:id/submit-draft', async (req, res) => {
 
     // Extract proposed solution for AI
     let proposedSolution = '';
+    let enrichedDescriptionDraft = updated.description || '';
     try {
       const extra = JSON.parse(idea.extraFields || '{}');
       proposedSolution = extra.proposedSolution || '';
+
+      // Build a rich description from ALL text fields in extraFields
+      const TEXT_SKIP = new Set(['_templateId', '_templateName', 'referenceLink', 'supportingLink']);
+      const parts = [];
+      if (updated.description && !updated.description.startsWith('Submitted via ')) {
+        parts.push(updated.description);
+      }
+      Object.entries(extra).forEach(([k, v]) => {
+        if (!TEXT_SKIP.has(k) && typeof v === 'string' && v.trim()) {
+          parts.push(`${k}: ${v.trim()}`);
+        }
+      });
+      if (parts.length > 0) enrichedDescriptionDraft = parts.join('\n\n');
     } catch(e) {}
 
     // AI Processing - Background
     console.log(`[AI-Queue] Triggering AI processing for idea ID: ${updated.id}`);
-    generateIdeaInsights({ title: updated.title, description: updated.description, proposedSolution })
+    generateIdeaInsights({ title: updated.title, description: enrichedDescriptionDraft, proposedSolution })
       .then(async (insights) => {
         if (insights) {
           console.log(`[AI-Queue] Updating idea ID: ${updated.id} with insights`);
@@ -543,7 +574,7 @@ router.put('/:id/assign', async (req, res) => {
         assignedToId: parseInt(assignedToId),
         status: 'Assigned to Org Admin'
       },
-      include: { author: { select: { name: true, organization: true } } }
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } }
     });
     res.json({ message: 'Idea assigned successfully' });
 
@@ -573,7 +604,7 @@ router.put('/:id/under-review', async (req, res) => {
     const idea = await prisma.idea.update({
       where: { id: ideaId },
       data: { status: 'Under Review' },
-      include: { author: { select: { name: true, organization: true } } }
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } }
     });
     res.json({ message: 'Idea is now Under Review' });
 
@@ -636,7 +667,7 @@ router.put('/:id/status', async (req, res) => {
           approvedByRole: approvedByRole || 'admin'
         } : {})
       },
-      include: { author: { select: { name: true, organization: true } } }
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } }
     });
 
     // Auto-create project when approved (if not already existing)
@@ -718,6 +749,48 @@ router.get('/orgadmins', async (req, res) => {
   }
 });
 
+
+// POST /api/ideas/:id/regenerate-summary — Re-run AI summary for a specific idea
+// Useful to backfill missing summaries without resubmitting.
+router.post('/:id/regenerate-summary', async (req, res) => {
+  const ideaId = parseInt(req.params.id);
+  try {
+    const idea = await prisma.idea.findUnique({ where: { id: ideaId } });
+    if (!idea) return res.status(404).json({ error: 'Idea not found' });
+
+    // Build enriched description from all text fields in extraFields
+    let enriched = idea.description || '';
+    try {
+      const extra = JSON.parse(idea.extraFields || '{}');
+      const TEXT_SKIP = new Set(['_templateId', '_templateName', 'referenceLink', 'supportingLink']);
+      const parts = [];
+      if (idea.description && !idea.description.startsWith('Submitted via ')) parts.push(idea.description);
+      Object.entries(extra).forEach(([k, v]) => {
+        if (!TEXT_SKIP.has(k) && typeof v === 'string' && v.trim()) {
+          parts.push(`${k}: ${v.trim()}`);
+        }
+      });
+      if (parts.length > 0) enriched = parts.join('\n\n');
+    } catch(e) {}
+
+    // Respond immediately — process in background
+    res.json({ message: 'AI summary generation triggered.' });
+
+    generateIdeaInsights({ title: idea.title, description: enriched, proposedSolution: '' })
+      .then(async (insights) => {
+        if (insights) {
+          await prisma.idea.update({
+            where: { id: ideaId },
+            data: { aiSummary: insights.summary, aiTags: JSON.stringify(insights.tags) }
+          });
+          console.log(`[AI-Queue] Regenerated summary for idea ID: ${ideaId}`);
+        }
+      })
+      .catch(err => console.error(`[AI-Queue] Regenerate failed for ID ${ideaId}:`, err));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // POST autofill form fields using Gemini AI
 router.post('/autofill', async (req, res) => {

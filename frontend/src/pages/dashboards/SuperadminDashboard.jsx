@@ -109,7 +109,7 @@ function AssignedIdeaRow({ idea, orgAdmins, onReassign }) {
               )}
               {idea.status === 'Rejected' && (
                 <Badge variant="danger" className="text-xs flex items-center gap-1">
-                  <AlertTriangle size={10} /> Rejected
+                  <AlertTriangle size={10} /> Declined
                 </Badge>
               )}
               {idea.status === 'Approved' && (
@@ -291,8 +291,8 @@ export default function SuperadminDashboard() {
       const isApp = status === 'Approved';
       notify({
         type: isApp ? 'success' : 'info',
-        title: isApp ? 'Idea Approved' : 'Idea Rejected',
-        message: isApp ? 'Project auto-created.' : 'Idea rejected.',
+        title: isApp ? 'Idea Approved' : 'Idea Declined',
+        message: isApp ? 'Project auto-created.' : 'Idea declined.',
         event: isApp ? 'idea_approved' : 'idea_rejected',
       });
       fetchAll();
@@ -416,7 +416,7 @@ export default function SuperadminDashboard() {
           <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-gray-500 bg-white">
             <Clock className="mx-auto h-12 w-12 text-gray-300 mb-4" />
             <h3 className="text-lg font-medium text-brand-black">Queue is empty</h3>
-            <p className="text-sm mt-1">Ideas you put "Under Review" will appear here for final approval/rejection.</p>
+            <p className="text-sm mt-1">Ideas you put "Under Review" will appear here for final approval/declining.</p>
           </div>
         ) : (
           <IdeaCardGrid

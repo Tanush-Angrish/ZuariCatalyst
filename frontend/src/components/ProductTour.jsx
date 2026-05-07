@@ -32,7 +32,7 @@ const ADMIN_STEPS = [
   { target: 'filter-action', title: 'Action Required', body: 'This filter shows new submissions waiting for your initial review or final sign-off.' },
   { target: 'filter-review', title: 'Under Review', body: 'Track ideas that you have personally moved from the submitted stage into the active review phase.' },
   { target: 'filter-approved', title: 'Approved Ideas', body: 'Access the archive of all innovations you have successfully cleared for implementation.' },
-  { target: 'filter-rejected', title: 'Rejected Ideas', body: 'Review submissions that did not meet the strategic criteria or were deemed unfeasible.' },
+  { target: 'filter-rejected', title: 'Declined Ideas', body: 'Review submissions that did not meet the strategic criteria or were deemed unfeasible.' },
   { target: 'sidebar-team', title: 'Team Ideas', body: 'Monitor all ideas submitted by employees within your specific company or team to ensure internal alignment.' },
   { target: 'sidebar-projects', title: 'Project Pipeline', body: 'Track the real-world execution and impact of your approved innovations here.' },
   { target: 'sidebar-leaderboard', title: 'Top Innovators', body: 'Recognize and reward the individuals driving change in your organization.' }

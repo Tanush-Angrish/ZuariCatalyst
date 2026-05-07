@@ -11,13 +11,17 @@ datasource db {
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  role          String
-  name          String
-  title         String   @default("")
-  password      String   @default("password")
-  organization  String?  
+  id                Int      @id @default(autoincrement())
+  email             String   @unique
+  role              String   // Active/primary role for current session
+  roles             String   @default("[]") // JSON array of all assigned roles e.g. ["Org Admin","Employee"]
+  name              String
+  title             String   @default("")
+  password          String   @default("password")
+  organization      String?
+  mobile_number     String?
+  employee_id       String?
+  profile_photo_url String?
   
   // Relations
   authoredIdeas  Idea[]         @relation("IdeaAuthor")
