@@ -312,36 +312,36 @@ export default function LandingPage() {
             <div className="bg-[#F8F7FF] rounded-[24px] p-10 shadow-[0_20px_40px_-15px_rgba(91,76,245,0.15)] border border-[#5B4CF5] hover:shadow-xl hover:-translate-y-1 transition-all relative z-10 w-full md:scale-105">
               <div className="flex justify-between items-start mb-8">
                 <div className="w-12 h-12 rounded-[14px] bg-[#F0EEFF] text-[22px] flex items-center justify-center border border-purple-100">
-                  🎯
+                  🏛️
                 </div>
                 <div className="bg-[#5B4CF5] text-white text-[11px] font-bold px-3 py-1.5 rounded-[8px] tracking-wide relative">
-                  Most Powerful
+                  Command Centre
                 </div>
               </div>
-              <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{ fontFamily: 'var(--fd)' }}>Community Manager</h3>
-              <p className="text-[14.5px] text-[#4b5563] mb-8 leading-relaxed">Own your entity's idea pipeline. Review, decide, convert, and track execution.</p>
+              <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{ fontFamily: 'var(--fd)' }}>Central Admin</h3>
+              <p className="text-[14.5px] text-[#4b5563] mb-8 leading-relaxed">Govern the entire platform across all entities from one command centre.</p>
               <ul className="space-y-4 text-[13.5px] text-[#4b5563] font-medium leading-[1.4]">
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Auto-assigned all ideas from your entity</span></li>
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Approve, decline with reason, or request detail</span></li>
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Convert ideas to projects with AI steps</span></li>
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>SLA nudges so nothing sits in review too long</span></li>
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Comment, tag, and close projects with outcome</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Cross-entity dashboard — all ideas, all projects</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Manage users, designate CMs, configure SLAs</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Create and map global templates per entity</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Escalation nudges when CMs miss SLAs</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-purple-50 text-[#5B4CF5] flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Full audit log across all ideas and projects</span></li>
               </ul>
             </div>
 
             {/* Card 3 */}
             <div className="bg-white rounded-[24px] p-10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] border border-gray-100 hover:shadow-md transition-all hover:-translate-y-1">
               <div className="w-12 h-12 rounded-[14px] bg-[#F3F4F6] text-[22px] flex items-center justify-center mb-8 border border-gray-100">
-                🏛️
+                🎯
               </div>
-              <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{ fontFamily: 'var(--fd)' }}>Central Admin</h3>
-              <p className="text-[14.5px] text-[#4b5563] mb-8 leading-relaxed">Govern the entire platform across all entities from one command centre.</p>
+              <h3 className="text-[22px] font-extrabold text-[#0A0A0A] mb-4 tracking-tight" style={{ fontFamily: 'var(--fd)' }}>OrgAdmin</h3>
+              <p className="text-[14.5px] text-[#4b5563] mb-8 leading-relaxed">Own your entity's idea pipeline. Review, decide, convert, and track execution.</p>
               <ul className="space-y-4 text-[13.5px] text-[#4b5563] font-medium leading-[1.4]">
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Cross-entity dashboard — all ideas, all projects</span></li>
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Manage users, designate CMs, configure SLAs</span></li>
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Create and map global templates per entity</span></li>
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Escalation nudges when CMs miss SLAs</span></li>
-                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Full audit log across all ideas and projects</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Auto-assigned all ideas from your entity</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Approve, decline with reason, or request detail</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Convert ideas to projects with AI steps</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>SLA nudges so nothing sits in review too long</span></li>
+                <li className="flex gap-3 items-start"><div className="w-4 h-4 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mt-0.5"><Check className="w-3 h-3" strokeWidth={3} /></div> <span>Comment, tag, and close projects with outcome</span></li>
               </ul>
             </div>
           </div>

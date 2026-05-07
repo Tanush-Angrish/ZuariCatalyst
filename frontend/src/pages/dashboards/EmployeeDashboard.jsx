@@ -268,21 +268,21 @@ function DisclaimerPopup({ onClose }) {
           <X size={20} />
         </button>
         
-        <div className="text-center mb-5 mt-2">
-          <div className="mx-auto w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mb-4 border border-amber-100">
-            <AlertTriangle size={24} />
+        <div className="text-center mb-6 mt-2">
+          <div className="mx-auto w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-5 border border-red-100 shadow-sm">
+            <AlertTriangle size={32} strokeWidth={2.5} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Disclaimer</h2>
+          <h2 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight uppercase" style={{ fontFamily: 'var(--fd, inherit)' }}>Disclaimer</h2>
         </div>
 
-        <div className="space-y-5 text-center text-gray-700">
-          <p className="text-[14.5px] leading-relaxed">
+        <div className="space-y-6 text-center text-gray-800">
+          <p className="text-[16px] sm:text-[18px] leading-relaxed font-bold">
             This platform is a digital suggestion and idea submission system only. Please do not use it to report emergencies, safety incidents, or urgent plant-related issues. Kindly follow official emergency reporting procedures for immediate assistance.
           </p>
           
-          <div className="h-px bg-gray-100 w-full" />
+          <div className="h-[2px] bg-gray-200 w-full" />
           
-          <p className="text-[14.5px] leading-relaxed font-medium">
+          <p className="text-[16px] sm:text-[18px] leading-relaxed font-bold">
             यह प्लेटफ़ॉर्म केवल सुझाव और आइडिया साझा करने के लिए है। कृपया किसी भी आपातकालीन स्थिति, सुरक्षा घटना या अत्यावश्यक प्लांट समस्या की रिपोर्ट यहाँ न करें। ऐसी परिस्थितियों में निर्धारित आपातकालीन प्रक्रिया का पालन करें।
           </p>
         </div>
@@ -631,7 +631,14 @@ export default function EmployeeDashboard() {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Disclaimer Marquee */}
+      <div className="bg-[#dc2626] text-white font-bold text-[14px] sm:text-[15px] tracking-wide py-2.5 px-4 shadow-sm rounded-xl border-2 border-red-800 flex items-center overflow-hidden">
+        <marquee scrollamount="6" behavior="scroll" direction="left" className="w-full">
+          🚨 This platform is a digital suggestion box only. NOT for emergency use! &nbsp; &nbsp; | &nbsp; &nbsp; 🚨 यह प्लेटफ़ॉर्म केवल सुझाव बॉक्स है। आपातकालीन उपयोग के लिए नहीं! &nbsp; &nbsp; | &nbsp; &nbsp; 🚨 This platform is a digital suggestion box only. NOT for emergency use! &nbsp; &nbsp; | &nbsp; &nbsp; 🚨 यह प्लेटफ़ॉर्म केवल सुझाव बॉक्स है। आपातकालीन उपयोग के लिए नहीं!
+        </marquee>
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-brand-black">Submit New Idea</h1>
