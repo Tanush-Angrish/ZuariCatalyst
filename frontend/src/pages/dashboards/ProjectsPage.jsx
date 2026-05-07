@@ -4,8 +4,9 @@ import ProjectModal from '../../components/ProjectModal';
 import { Badge } from '../../components/ui/Badge';
 import {
   FolderKanban, Calendar, Sparkles, Clock, Building,
-  CheckCircle2, AlertCircle, Loader2, Search, Filter
+  CheckCircle2, AlertCircle, Loader2, Search, Filter, Plus
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 
 const STATUS_COLORS = {
@@ -211,6 +212,23 @@ export default function ProjectsPage() {
         <div className="flex items-center justify-center py-20 text-gray-400">
           <Loader2 className="animate-spin mr-2" size={24} />
           <span>Loading projects...</span>
+        </div>
+      ) : filtered.length === 0 && projects.length === 0 && user?.role === 'Employee' ? (
+        <div className="rounded-2xl border border-dashed border-gray-200 p-16 text-center text-gray-500 bg-white shadow-sm max-w-2xl mx-auto mt-12 animate-fade-in-up">
+          <div className="mx-auto w-16 h-16 bg-blue-50 text-brand-blue rounded-full flex items-center justify-center mb-5 border border-blue-100">
+            <FolderKanban size={32} strokeWidth={2} />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">No Projects Yet</h3>
+          <p className="text-[15px] mb-8 max-w-md mx-auto leading-relaxed">
+            You don't have any ideas converted into projects yet. Submit a new idea to get started on improving the organization!
+          </p>
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-800 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-[0_4px_12px_rgba(0,53,128,0.2)] hover:-translate-y-0.5"
+          >
+            <Plus size={18} />
+            Submit New Idea
+          </Link>
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 p-16 text-center bg-white">

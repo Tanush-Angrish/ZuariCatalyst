@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import mammoth from 'mammoth';
+import { Link } from 'react-router-dom';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { useAuth } from '../context/AuthContext';
@@ -9,7 +10,7 @@ import {
   Building, Tag, CheckCircle2, XCircle,
   Calendar, Paperclip, Link as LinkIcon, UserCheck,
   Download, Eye, Mic, Lightbulb, ThumbsUp, Search, SlidersHorizontal,
-  AlertTriangle, RefreshCw, Send, Clock, ChevronRight, Users
+  AlertTriangle, RefreshCw, Send, Clock, ChevronRight, Users, Plus
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -1050,19 +1051,43 @@ export default function IdeaCardGrid({
         </div>
       )}
 
-      {/* ── No results state ────────────────────────────────────────── */}
-      {filteredIdeas.length === 0 && (
+      {/* ── Completely Empty State for Employees ──────────────────────── */}
+      {parsedIdeas.length === 0 && isEmployee && (
+        <div className="rounded-2xl border border-dashed border-gray-200 p-16 text-center text-gray-500 bg-white shadow-sm max-w-2xl mx-auto mt-12 animate-fade-in-up">
+          <div className="mx-auto w-16 h-16 bg-blue-50 text-brand-blue rounded-full flex items-center justify-center mb-5 border border-blue-100">
+            <Lightbulb size={32} strokeWidth={2} />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Nothing here yet</h3>
+          <p className="text-[15px] mb-8 max-w-md mx-auto leading-relaxed">
+            There are no ideas to display right now. Start sharing your innovative thoughts to help improve the organization and climb the leaderboard!
+          </p>
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-800 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-[0_4px_12px_rgba(0,53,128,0.2)] hover:-translate-y-0.5"
+          >
+            <Plus size={18} />
+            Submit New Idea
+          </Link>
+        </div>
+      )}
+
+      {/* ── No Search Results State / Default Empty State ─────────────── */}
+      {((parsedIdeas.length > 0 && filteredIdeas.length === 0) || (parsedIdeas.length === 0 && !isEmployee)) && (
         <div className="rounded-xl border border-dashed border-gray-200 p-12 text-center text-gray-400 bg-white">
           <Search className="mx-auto h-10 w-10 text-gray-200 mb-3" />
           <h3 className="text-base font-semibold text-gray-600 mb-1">No results found</h3>
-          <p className="text-sm">Try adjusting your search or clearing the status filter.</p>
-          <button
-            type="button"
-            onClick={() => { setSearchQuery(''); setStatusFilter('All'); }}
-            className="mt-3 text-xs font-semibold text-brand-blue hover:underline"
-          >
-            Clear all filters
-          </button>
+          <p className="text-sm">
+            {parsedIdeas.length === 0 ? "No ideas have been submitted yet." : "Try adjusting your search or clearing the status filter."}
+          </p>
+          {parsedIdeas.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { setSearchQuery(''); setStatusFilter('All'); }}
+              className="mt-3 text-xs font-semibold text-brand-blue hover:underline"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       )}
 
