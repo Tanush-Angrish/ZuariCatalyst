@@ -631,7 +631,7 @@ export default function EmployeeDashboard() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="flex flex-col w-full h-full">
       {/* Disclaimer Marquee */}
       <style>{`
         @keyframes continuous-marquee {
@@ -644,7 +644,7 @@ export default function EmployeeDashboard() {
           animation: continuous-marquee 20s linear infinite;
         }
       `}</style>
-      <div className="max-w-[95%] mx-auto bg-[#dc2626] text-white font-bold text-[14px] sm:text-[15px] tracking-wide py-2 shadow-sm rounded-xl border-2 border-red-800 overflow-hidden flex items-center relative">
+      <div className="-mt-4 md:-mt-8 -mx-4 md:-mx-8 mb-8 bg-[#dc2626] text-white font-bold text-[13px] sm:text-[14px] tracking-wide py-1.5 shadow-sm overflow-hidden flex items-center relative z-10 border-b border-red-800">
         <div className="animate-continuous-marquee">
           {/* First Block */}
           <div className="flex shrink-0 px-2 items-center">
@@ -663,7 +663,8 @@ export default function EmployeeDashboard() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="space-y-6 max-w-5xl mx-auto w-full">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-brand-black">Submit New Idea</h1>
           <p className="text-gray-500 mt-1">Share your innovative ideas to improve the organization.</p>
@@ -851,6 +852,8 @@ export default function EmployeeDashboard() {
           </Card>
         </div>
       )}
+
+      </div>
 
       {showDisclaimer && <DisclaimerPopup onClose={() => setShowDisclaimer(false)} />}
     </div>
