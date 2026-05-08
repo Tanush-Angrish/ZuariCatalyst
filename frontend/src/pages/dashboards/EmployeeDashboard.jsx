@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import {
   Send, FileText, ArrowLeft, Lightbulb, Boxes, Building, FileSpreadsheet,
-  Mic, Square, Trash2, Paperclip, Sparkles, Loader2, X, MicOff, AlertTriangle
+  Mic, Square, Trash2, Paperclip, Sparkles, Loader2, X, MicOff
 } from 'lucide-react';
 
 const CATEGORY_ICONS = {
@@ -244,53 +244,6 @@ function AILoader() {
   );
 }
 
-// ─── Disclaimer Popup ──────────────────────────────────────────────────────
-function DisclaimerPopup({ onClose }) {
-  // Lock body scroll while open
-  React.useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
-
-  return (
-    <div 
-      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div 
-        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative animate-modal-in"
-        onClick={e => e.stopPropagation()}
-      >
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-          aria-label="Close disclaimer"
-        >
-          <X size={20} />
-        </button>
-        
-        <div className="text-center mb-6 mt-2">
-          <div className="mx-auto w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-5 border border-red-100 shadow-sm">
-            <AlertTriangle size={32} strokeWidth={2.5} />
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight uppercase" style={{ fontFamily: 'var(--fd, inherit)' }}>Disclaimer</h2>
-        </div>
-
-        <div className="space-y-6 text-center text-gray-800">
-          <p className="text-[16px] sm:text-[18px] leading-relaxed font-bold">
-            This platform is a digital suggestion and idea submission system only. Please do not use it to report emergencies, safety incidents, or urgent plant-related issues. Kindly follow official emergency reporting procedures for immediate assistance.
-          </p>
-          
-          <div className="h-[2px] bg-gray-200 w-full" />
-          
-          <p className="text-[16px] sm:text-[18px] leading-relaxed font-bold">
-            यह प्लेटफ़ॉर्म केवल सुझाव और आइडिया साझा करने के लिए है। कृपया किसी भी आपातकालीन स्थिति, सुरक्षा घटना या अत्यावश्यक प्लांट समस्या की रिपोर्ट यहाँ न करें। ऐसी परिस्थितियों में निर्धारित आपातकालीन प्रक्रिया का पालन करें।
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function EmployeeDashboard() {
@@ -313,50 +266,6 @@ export default function EmployeeDashboard() {
   // AI Bar State
   const [showAIBar, setShowAIBar] = useState(false);
 
-  // Disclaimer State
-  const [showDisclaimer, setShowDisclaimer] = useState(false);
-  const [isFirstTimeTour, setIsFirstTimeTour] = useState(false);
-  const { isTourActive } = useTour();
-
-  // Disclaimer — show only once per day, and wait for automatic tour if first time
-  React.useEffect(() => {
-    if (user && user.role?.toLowerCase() === 'employee') {
-      const today = new Date().toLocaleDateString('en-IN');
-      const lastSeen = localStorage.getItem(`disclaimer_seen_${user.id}`);
-      
-      if (lastSeen === today) return; // Already seen today
-
-      api.getTourStatus()
-        .then(({ hasCompletedTour }) => {
-          if (hasCompletedTour) {
-            // Tour is already done from a previous session, show disclaimer safely now
-            setShowDisclaimer(true);
-            localStorage.setItem(`disclaimer_seen_${user.id}`, today);
-          } else {
-            // It's their first time, so the tour will launch automatically. Wait for it.
-            setIsFirstTimeTour(true);
-          }
-        })
-        .catch(() => {
-          // Fallback
-          setShowDisclaimer(true);
-          localStorage.setItem(`disclaimer_seen_${user.id}`, today);
-        });
-    }
-  }, [user?.id, user?.role]);
-
-  // When FIRST TIME tour transitions from active to inactive, show disclaimer
-  const previousTourState = useRef(false);
-  React.useEffect(() => {
-    if (previousTourState.current && !isTourActive && isFirstTimeTour && user) {
-      // Tour just finished! Show disclaimer.
-      const today = new Date().toLocaleDateString('en-IN');
-      setShowDisclaimer(true);
-      localStorage.setItem(`disclaimer_seen_${user.id}`, today);
-      setIsFirstTimeTour(false); // Disable so manual tour replays don't trigger it again
-    }
-    previousTourState.current = isTourActive;
-  }, [isTourActive, isFirstTimeTour, user]);
 
   // Template Access State
   const [allowedTemplates, setAllowedTemplates] = useState([]);
@@ -888,10 +797,7 @@ export default function EmployeeDashboard() {
           </Card>
         </div>
       )}
-
       </div>
-
-      {showDisclaimer && <DisclaimerPopup onClose={() => setShowDisclaimer(false)} />}
     </div>
   );
 }
