@@ -315,31 +315,48 @@ export default function EmployeeDashboard() {
 
   // Disclaimer State
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [isFirstTimeTour, setIsFirstTimeTour] = useState(false);
   const { isTourActive } = useTour();
 
-  // Disclaimer — show only when tour is not running and has been handled
+  // Disclaimer — show only once per day, and wait for automatic tour if first time
   React.useEffect(() => {
     if (user && user.role?.toLowerCase() === 'employee') {
+      const today = new Date().toLocaleDateString('en-IN');
+      const lastSeen = localStorage.getItem(`disclaimer_seen_${user.id}`);
+      
+      if (lastSeen === today) return; // Already seen today
+
       api.getTourStatus()
         .then(({ hasCompletedTour }) => {
           if (hasCompletedTour) {
-            // Tour is already done from a previous session, show disclaimer safely
+            // Tour is already done from a previous session, show disclaimer safely now
             setShowDisclaimer(true);
+            localStorage.setItem(`disclaimer_seen_${user.id}`, today);
+          } else {
+            // It's their first time, so the tour will launch automatically. Wait for it.
+            setIsFirstTimeTour(true);
           }
         })
-        .catch(() => setShowDisclaimer(true)); // Fallback
+        .catch(() => {
+          // Fallback
+          setShowDisclaimer(true);
+          localStorage.setItem(`disclaimer_seen_${user.id}`, today);
+        });
     }
   }, [user?.id, user?.role]);
 
-  // When tour transitions from active to inactive, show disclaimer
+  // When FIRST TIME tour transitions from active to inactive, show disclaimer
   const previousTourState = useRef(false);
   React.useEffect(() => {
-    if (previousTourState.current && !isTourActive && user && user.role?.toLowerCase() === 'employee') {
+    if (previousTourState.current && !isTourActive && isFirstTimeTour && user) {
       // Tour just finished! Show disclaimer.
+      const today = new Date().toLocaleDateString('en-IN');
       setShowDisclaimer(true);
+      localStorage.setItem(`disclaimer_seen_${user.id}`, today);
+      setIsFirstTimeTour(false); // Disable so manual tour replays don't trigger it again
     }
     previousTourState.current = isTourActive;
-  }, [isTourActive, user]);
+  }, [isTourActive, isFirstTimeTour, user]);
 
   // Template Access State
   const [allowedTemplates, setAllowedTemplates] = useState([]);
