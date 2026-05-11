@@ -187,6 +187,14 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
   const { user } = useAuth();
   const navigate  = useNavigate();
 
+  // ── Mobile detection ─────────────────────────────────────────────────
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const isOrgAdmin = user?.role === 'Org Admin';
   const STEPS = isOrgAdmin ? ADMIN_STEPS : EMPLOYEE_STEPS;
   const WELCOME = isOrgAdmin ? ADMIN_WELCOME_VOICE : EMPLOYEE_WELCOME_VOICE;
@@ -253,13 +261,20 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
     ttsRef.current?.stop();
     setStep(idx);
     
-    // We intentionally DO NOT setGeo(null) or setCentered(false) here.
-    // By keeping the old coordinates while we wait for the 400ms timeout, 
-    // the UI will smoothly "drift" from the old element to the new element
-    // instead of flashing white and flying in from nowhere.
-
     // Remove old highlights
     document.querySelectorAll('.tour-hi').forEach(el => el.classList.remove('tour-hi'));
+
+    // ── On MOBILE: skip all programmatic UI interactions — just speak ──
+    if (isMobile) {
+      setTimeout(() => speak(`step_${idx + 1}`, lng), 200);
+      return;
+    }
+
+    // ── DESKTOP guided tour: trigger programmatic navigation ──────────
+    // We intentionally DO NOT setGeo(null) or setCentered(false) here.
+    // By keeping the old coordinates while we wait for the 400ms timeout,
+    // the UI will smoothly "drift" from the old element to the new element
+    // instead of flashing white and flying in from nowhere.
 
     // Trigger specific actions if needed
     if (s.target === 'ai-fill-box') {
@@ -300,13 +315,13 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
       el.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
       speak(`step_${idx + 1}`, lng);
     }, 400); // 400ms delay to allow all programmatic clicks/rendering to settle
-  }, [lang, speak]);
+  }, [lang, speak, isMobile]);
 
-  // ── Continuous Tracking Loop ───────────────────────────────────────────
+  // ── Continuous Tracking Loop (DESKTOP ONLY) ───────────────────────────
   // This ensures the spotlight tracks the element perfectly during smooth
   // scrolling, layout shifts (like Navbar logo loading), and CSS animations.
   useEffect(() => {
-    if (!isOpen || phase !== 'tour') return;
+    if (!isOpen || phase !== 'tour' || isMobile) return;
     let animationFrameId;
 
     const trackTarget = () => {
@@ -320,12 +335,9 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
       });
       
       if (el && !centered) {
-        // Only update if it significantly changed (to avoid React render spam)
-        // or just let React handle it (we'll stringify to compare quickly)
         const newGeo = calcGeometry(el);
         setGeo(prev => {
           if (!prev) return newGeo;
-          // Simple heuristic: if top/left drifted by more than 1px, update
           if (
             Math.abs(prev.spotlight.top - newGeo.spotlight.top) > 1 ||
             Math.abs(prev.spotlight.left - newGeo.spotlight.left) > 1 ||
@@ -342,7 +354,7 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
 
     animationFrameId = requestAnimationFrame(trackTarget);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isOpen, phase, step, centered]);
+  }, [isOpen, phase, step, centered, isMobile]);
 
   // ── Launch ─────────────────────────────────────────────────────────────
   const launch = () => {
@@ -396,16 +408,16 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
     navigate('/dashboard');
   };
 
-  // ── Resize handler: recalculate geometry ───────────────────────────────
+  // ── Resize handler: recalculate geometry (DESKTOP ONLY) ───────────────
   useEffect(() => {
-    if (!isOpen || phase !== 'tour') return;
+    if (!isOpen || phase !== 'tour' || isMobile) return;
     const onResize = () => {
       const el = document.getElementById(STEPS[step]?.target);
       if (el) setGeo(calcGeometry(el));
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [isOpen, phase, step]);
+  }, [isOpen, phase, step, isMobile]);
 
   if (!isOpen) return null;
 
@@ -463,7 +475,46 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
 
 
   /* ═══════════════════════════════════════════════════════════════════════
-     TOUR STEP — spotlight + arrow + tooltip
+     MOBILE TOUR STEP — simple centered card, no spotlight, no element nav
+     ═══════════════════════════════════════════════════════════════════════ */
+  if (phase === 'tour' && isMobile) {
+    const cur = STEPS[step];
+    return (
+      <div className="tour-backdrop" role="dialog" aria-modal="true">
+        <div className="tour-card" style={{ maxWidth: '92vw', padding: '28px 22px 22px' }}>
+          {/* Step badge */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <span className="tour-tip-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+              STEP {step + 1} / {STEPS.length}
+            </span>
+            <button className="tour-tip-lang" onClick={() => switchLang(lang === 'english' ? 'hindi' : 'english')}>
+              {lang === 'english' ? '🌐 EN' : '🇮🇳 HI'}
+            </button>
+          </div>
+          <h3 className="tour-tip-title" style={{ fontSize: 20, marginBottom: 10 }}>{cur.title}</h3>
+          <p className="tour-tip-body">{cur.body}</p>
+          {/* Nav */}
+          <div className="tour-tip-nav" style={{ marginTop: 20 }}>
+            <button className="tour-tip-back" onClick={prev} disabled={step === 0}>Back</button>
+            <div className="tour-tip-right">
+              <button className="tour-tip-play" onClick={togglePlay}>{playing ? '⏸' : '▶'}</button>
+              {step < STEPS.length - 1 ? (
+                <button className="tour-tip-next" onClick={next}>Continue →</button>
+              ) : (
+                <button className="tour-tip-finish" onClick={finish}>Complete Mission →</button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     DESKTOP TOUR STEP — spotlight + arrow + tooltip
      ═══════════════════════════════════════════════════════════════════════ */
   const cur = STEPS[step];
 
