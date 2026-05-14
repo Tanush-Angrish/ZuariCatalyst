@@ -360,8 +360,8 @@ router.post('/', async (req, res) => {
       const draftCount = await prisma.idea.count({
         where: { authorId: aid, status: 'Draft' }
       });
-      if (draftCount >= 3) {
-        return res.status(400).json({ error: 'Draft limit reached. You can only have up to 3 drafts at a time.' });
+      if (draftCount >= 5) {
+        return res.status(400).json({ error: 'Draft limit reached. You can only have up to 5 drafts at a time.' });
       }
     } else {
       const now = new Date();
@@ -369,8 +369,8 @@ router.post('/', async (req, res) => {
       const submittedCount = await prisma.idea.count({
         where: { authorId: aid, createdAt: { gte: startOfMonth }, status: { not: 'Draft' } }
       });
-      if (submittedCount >= 5) {
-        return res.status(400).json({ error: 'Monthly limit reached. You can only submit 5 ideas per month.' });
+      if (submittedCount >= 3) {
+        return res.status(400).json({ error: 'Monthly limit reached. You can only submit 3 ideas per month.' });
       }
     }
     const idea = await prisma.idea.create({
@@ -428,18 +428,20 @@ router.post('/', async (req, res) => {
       })
       .catch(err => console.error(`[AI-Queue] Error in background AI processing for ID: ${idea.id}:`, err));
 
-    // Award +10 points for idea submission
-    awardPoints(aid, 'idea_submitted', 10, idea.id);
-
-    // Check if this is the user's very first submitted idea (all-time) → +50 bonus pts
+    // Points logic:
+    // - First idea ever (all-time): award ONLY +50 bonus (skip the regular 10pts)
+    // - All subsequent ideas: award regular +10 pts
     const totalSubmitted = await prisma.idea.count({
       where: { authorId: aid, status: { not: 'Draft' } }
     });
     const isFirstIdea = totalSubmitted === 1;
     if (isFirstIdea) {
-      // Use idea.id as referenceId — unique constraint prevents double-award
+      // First idea: only 50 pts — no 10 pt award
       awardPoints(aid, 'first_idea_bonus', 50, idea.id);
-      console.log(`[Points] First-idea bonus +50 awarded to userId=${aid}`);
+      console.log(`[Points] First-idea bonus +50 awarded to userId=${aid} (no regular 10pts)`);
+    } else {
+      // Subsequent ideas: regular 10 pts
+      awardPoints(aid, 'idea_submitted', 10, idea.id);
     }
 
     res.json({ id: idea.id, status: idea.status, isFirstIdea });
@@ -489,8 +491,8 @@ router.put('/:id/submit-draft', async (req, res) => {
       where: { authorId: idea.authorId, createdAt: { gte: startOfMonth }, status: { not: 'Draft' } }
     });
     
-    if (submittedCount >= 5) {
-      return res.status(400).json({ error: 'Monthly limit reached. You can only submit 5 ideas per month.' });
+    if (submittedCount >= 3) {
+      return res.status(400).json({ error: 'Monthly limit reached. You can only submit 3 ideas per month.' });
     }
 
     // Submit it
@@ -538,17 +540,20 @@ router.put('/:id/submit-draft', async (req, res) => {
       })
       .catch(err => console.error(`[AI-Queue] Error in background AI processing for ID: ${updated.id}:`, err));
 
-    // Award +10 points for idea submission
-    awardPoints(idea.authorId, 'idea_submitted', 10, idea.id);
-
-    // Check if this is the user's very first submitted idea (all-time) → +50 bonus pts
+    // Points logic:
+    // - First idea ever (all-time): award ONLY +50 bonus (skip the regular 10pts)
+    // - All subsequent ideas: award regular +10 pts
     const totalSubmittedDraft = await prisma.idea.count({
       where: { authorId: idea.authorId, status: { not: 'Draft' } }
     });
     const isFirstIdeaDraft = totalSubmittedDraft === 1;
     if (isFirstIdeaDraft) {
+      // First idea: only 50 pts — no 10 pt award
       awardPoints(idea.authorId, 'first_idea_bonus', 50, idea.id);
-      console.log(`[Points] First-idea bonus +50 awarded to userId=${idea.authorId} (via draft submit)`);
+      console.log(`[Points] First-idea bonus +50 awarded to userId=${idea.authorId} (via draft submit, no regular 10pts)`);
+    } else {
+      // Subsequent ideas: regular 10 pts
+      awardPoints(idea.authorId, 'idea_submitted', 10, idea.id);
     }
 
     res.json({ message: 'Draft submitted successfully', status: 'Pending Review', isFirstIdea: isFirstIdeaDraft });

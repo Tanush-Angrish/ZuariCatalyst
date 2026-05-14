@@ -32,8 +32,9 @@ async function generateIdeaInsights(ideaData) {
     }
   `;
 
-  // Model priority: 2.0 Flash (stable) → 1.5 Pro → 1.5 Flash
+  // Model priority: 2.5 Flash → 2.0 Flash → 1.5 Pro → 1.5 Flash
   const modelsToTry = [
+    "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-1.5-pro",
     "gemini-1.5-flash",
@@ -106,6 +107,7 @@ async function generateProjectPlan(projectData) {
   `;
 
   const modelsToTry = [
+    "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-1.5-pro",
     "gemini-1.5-flash",
@@ -177,12 +179,12 @@ Form Fields Structure:
 ${fieldDescriptions}
 
 Rules:
-1. Return a valid JSON object where keys are field IDs and values are the extracted content
-2. Fill out AS MANY FIELDS AS POSSIBLE. If the description is very short or vague, DO NOT refuse to fill the form. You MUST extrapolate, expand on the idea, and generate professional, detailed content to fill the fields. DO NOT output complaints or errors about the text being too short.
+1. Return a valid JSON object where keys are field IDs and values are the extracted content.
+2. MANDATORY: You MUST fill out EVERY SINGLE FIELD provided in the structure. Even if the user's description is just one word, use your creativity to invent, extrapolate, and flesh out highly detailed, professional content for EVERY field based on that hint. NEVER return an empty object or skip fields because the input is too short. Your job is to transform a simple hint into a fully developed proposal.
 3. For "select" type fields, pick the best matching valid option. If unsure, pick the most likely one.
-4. For "textarea" type fields, write clear, professional, and expansive content.
+4. For "textarea" type fields, write clear, professional, and expansive content (at least 2-3 sentences).
 5. For "text" type fields, keep it concise but descriptive.
-6. For "url" type fields, only include if a URL was explicitly mentioned.
+6. For "url" type fields, only include if a URL was explicitly mentioned, otherwise omit.
 7. Do NOT add any explanation — return ONLY the raw JSON object.
 
 Example valid response:
@@ -190,6 +192,7 @@ Example valid response:
 `.trim();
 
   const modelsToTry = [
+    "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-1.5-pro",
     "gemini-1.5-flash",
@@ -272,6 +275,7 @@ Return ONLY the JSON object, no other text.
 `.trim();
 
   const modelsToTry = [
+    "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-1.5-pro",
     "gemini-1.5-flash",

@@ -619,14 +619,14 @@ export default function EmployeeDashboard() {
         <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm shrink-0 divide-x divide-gray-100 overflow-hidden">
           <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Monthly Subm.</span>
-            <span className={`text-[17px] font-extrabold ${limits.submittedCount >= 5 ? 'text-red-500' : 'text-brand-blue'}`}>
-              {limits.submittedCount} <span className="text-gray-400 text-sm font-medium">/ 5</span>
+            <span className={`text-[17px] font-extrabold ${limits.submittedCount >= 3 ? 'text-red-500' : 'text-brand-blue'}`}>
+              {limits.submittedCount} <span className="text-gray-400 text-sm font-medium">/ 3</span>
             </span>
           </div>
           <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Saved Drafts</span>
-            <span className={`text-[17px] font-extrabold ${limits.draftCount >= 3 ? 'text-amber-500' : 'text-brand-blue'}`}>
-              {limits.draftCount} <span className="text-gray-400 text-sm font-medium">/ 3</span>
+            <span className={`text-[17px] font-extrabold ${limits.draftCount >= 5 ? 'text-amber-500' : 'text-brand-blue'}`}>
+              {limits.draftCount} <span className="text-gray-400 text-sm font-medium">/ 5</span>
             </span>
           </div>
         </div>
@@ -767,18 +767,18 @@ export default function EmployeeDashboard() {
                       type="button"
                       variant="outline"
                       onClick={handleSaveDraft}
-                      disabled={isSubmitting || isAIFilling || limits.draftCount >= 3}
+                      disabled={isSubmitting || isAIFilling || limits.draftCount >= 5}
                       className="w-full sm:w-auto font-semibold shadow-sm hover:shadow"
-                      title={limits.draftCount >= 3 ? "You can only have up to 3 drafts at a time" : ""}
+                      title={limits.draftCount >= 5 ? "You can only have up to 5 drafts at a time" : ""}
                     >
                       Save as Draft
                     </Button>
 
                     <Button
                       type="submit"
-                      disabled={isSubmitting || isAIFilling || limits.submittedCount >= 5}
+                      disabled={isSubmitting || isAIFilling || limits.submittedCount >= 3}
                       className="w-full sm:w-auto font-semibold shadow-md hover:shadow-lg transition-all"
-                      title={limits.submittedCount >= 5 ? "You can only submit 5 ideas per month" : ""}
+                      title={limits.submittedCount >= 3 ? "You can only submit 3 ideas per month" : ""}
                     >
                       <Send className="mr-2 h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Submit Idea for Review'}
                     </Button>
@@ -786,10 +786,10 @@ export default function EmployeeDashboard() {
                 </div>
 
                 {/* Block Messages below form */}
-                {(limits.submittedCount >= 5 || limits.draftCount >= 3) && (
+                {(limits.submittedCount >= 3 || limits.draftCount >= 5) && (
                   <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600 flex flex-col gap-2">
-                    {limits.submittedCount >= 5 && <p className="flex items-center gap-2"><X size={16} /> <strong>Submission Limit Reached:</strong> You can only submit 5 ideas per month.</p>}
-                    {limits.draftCount >= 3 && <p className="flex items-center gap-2"><X size={16} /> <strong>Draft Limit Reached:</strong> You can only have up to 3 active drafts. Please submit an existing draft to free up space.</p>}
+                    {limits.submittedCount >= 3 && <p className="flex items-center gap-2"><X size={16} /> <strong>Submission Limit Reached:</strong> You can only submit 3 ideas per month.</p>}
+                    {limits.draftCount >= 5 && <p className="flex items-center gap-2"><X size={16} /> <strong>Draft Limit Reached:</strong> You can only have up to 5 active drafts. Please submit an existing draft to free up space.</p>}
                   </div>
                 )}
               </form>
