@@ -1,3 +1,12 @@
+/**
+ * generate-new-steps-audio.js
+ * Regenerates ONLY the changed/new audio files:
+ *   - step_7 (removed "Finally")
+ *   - step_8 (new — profile page intro)
+ *   - step_9 (new — add profile photo)
+ *   - done   (updated — 9 steps + profile photo mention)
+ * Uses Gemini 2.5 Flash TTS with Aoede voice — same as all other tour audio.
+ */
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -6,36 +15,6 @@ const API_KEY = process.env.GEMINI_API_KEY.replace(/\n/g, '').trim();
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
 
 const STEPS = [
-  {
-    id: 'step_1',
-    english: "Welcome! This is your Innovation Hub. You can submit 5 ideas per month. Let's learn how to make an impact.",
-    hindi: "नमस्ते! ये आपका आईडिया हब है। यहाँ आप हर महीने 5 आईडिया भेज सकते हैं। चलिए देखते हैं ये कैसे काम करता है।",
-  },
-  {
-    id: 'step_2',
-    english: "Pick a template to start. We have specialized presets for everything from cost saving to manufacturing.",
-    hindi: "शुरू करने के लिए एक टेम्पलेट चुन लें। हमारे पास आपके आईडिया को बेहतर बनाने के लिए कई ऑप्शंस मौजूद हैं।",
-  },
-  {
-    id: 'step_3',
-    english: "Our AI assistant is here to help. Just speak your idea and the AI will fill the entire form automatically.",
-    hindi: "हमारा AI असिस्टेंट आपकी मदद के लिए यहाँ है। बस अपनी बात बताएं। AI पूरा फॉर्म अपने आप भर देगा।",
-  },
-  {
-    id: 'step_4',
-    english: "Track your progress here. You'll see when your ideas are moved to review or approved by management.",
-    hindi: "अपने आईडिया का स्टेटस यहाँ चेक करें। देखें कि वो कब रिव्यु के लिए गया या कब अप्रूव हुआ।",
-  },
-  {
-    id: 'step_5',
-    english: "Explore the Community Hub to see what others are working on. Collaboration starts with inspiration.",
-    hindi: "कम्युनिटी हब में आप दूसरों के बढ़िया आइडियाज देख सकते हैं और उनसे प्रेरणा ले सकते हैं।",
-  },
-  {
-    id: 'step_6',
-    english: "Once your ideas are approved, you can manage the whole project lifecycle and track implementation here.",
-    hindi: "एक बार आपके आईडिया अप्रूव हो जाने के बाद, आप यहाँ प्रोजेक्ट्स को मैनेज कर सकते हैं।",
-  },
   {
     id: 'step_7',
     english: "Check the Leaderboard. Every successful contribution earns you points and company-wide recognition.",
@@ -52,11 +31,6 @@ const STEPS = [
     hindi: "सर्कल पर माउस ले जाएं और क्लिक करके अपनी प्रोफ़ाइल फ़ोटो अपलोड करें। चेहरा देखने से टीम में भरोसा और पहचान बढ़ती है!",
   },
   {
-    id: 'welcome',
-    english: "Ready to turn your ideas into organizational impact? Select your voice language and let's take a quick tour.",
-    hindi: "क्या आप अपने आईडिया से कंपनी में बदलाव लाना चाहते हैं? अपनी आवाज की भाषा चुनें और डेमो देखें।",
-  },
-  {
     id: 'done',
     english: "Mission complete! You've mastered all 9 steps. Don't forget to upload your profile photo so your teammates can put a face to your brilliant ideas!",
     hindi: "बधाई हो! आपने सभी 9 स्टेप्स पूरे कर लिए हैं। अपनी प्रोफ़ाइल फोटो ज़रूर अपलोड करें ताकि आपकी टीम आपको पहचान सके!",
@@ -71,13 +45,13 @@ function getWavHeader(dataLength, sampleRate = 24000) {
   buffer.writeUInt32LE(36 + dataLength, 4);
   buffer.write('WAVE', 8);
   buffer.write('fmt ', 12);
-  buffer.writeUInt32LE(16, 16); // PCM
-  buffer.writeUInt16LE(1, 20); // 1 = PCM
-  buffer.writeUInt16LE(1, 22); // 1 channel
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
   buffer.writeUInt32LE(sampleRate, 24);
-  buffer.writeUInt32LE(sampleRate * 2, 28); // byteRate
-  buffer.writeUInt16LE(2, 32); // blockAlign
-  buffer.writeUInt16LE(16, 34); // bitsPerSample
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
   buffer.write('data', 36);
   buffer.writeUInt32LE(dataLength, 40);
   return buffer;
@@ -108,39 +82,34 @@ async function generateAudio(text, filename) {
     }
 
     const data = await res.json();
-    
-    // Gemini 2.5 Flash TTS typically returns the audio in the first candidate's parts
     const part = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
     if (part && part.inlineData) {
       const base64Audio = part.inlineData.data;
       const pcmBuffer = Buffer.from(base64Audio, 'base64');
       const headerBuffer = getWavHeader(pcmBuffer.length, 24000);
       const finalWavBuffer = Buffer.concat([headerBuffer, pcmBuffer]);
-      
       fs.writeFileSync(path.join(OUT_DIR, filename), finalWavBuffer);
-      console.log(`Saved ${filename} (Size: ${finalWavBuffer.length} bytes)`);
+      console.log(`✅ Saved ${filename} (${finalWavBuffer.length} bytes)`);
     } else {
-      console.error(`No inlineData found for ${filename}`);
+      console.error(`❌ No inlineData found for ${filename}`);
       console.log(JSON.stringify(data, null, 2));
     }
   } catch (err) {
-    console.error(`Network error for ${filename}:`, err);
+    console.error(`❌ Network error for ${filename}:`, err);
   }
 }
 
 async function run() {
-  if (!fs.existsSync(OUT_DIR)) {
-    fs.mkdirSync(OUT_DIR, { recursive: true });
-  }
+  if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
 
   for (const step of STEPS) {
     await generateAudio(step.english, `${step.id}_en.wav`);
-    // Wait slightly to avoid API rate limits
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1200)); // rate-limit buffer
     await generateAudio(step.hindi, `${step.id}_hi.wav`);
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1200));
   }
-  console.log("All audio files generated successfully.");
+  console.log('\n🎉 All new audio files generated successfully.');
+  console.log('Files saved to:', OUT_DIR);
 }
 
 run();

@@ -124,7 +124,7 @@ export default function ProfilePage() {
         {/* Header / Avatar Section */}
         <div className="relative bg-gradient-to-br from-brand-blue/5 via-blue-50 to-purple-50 px-6 py-8 flex flex-col sm:flex-row items-center gap-6 border-b border-gray-100">
           {/* Avatar with upload overlay */}
-          <div className="relative group shrink-0">
+          <div id="profile-photo-section" className="relative group shrink-0">
             {user.profilePhotoUrl ? (
               <img
                 src={api.getFileUrl(user.profilePhotoUrl)}

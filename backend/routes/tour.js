@@ -81,4 +81,29 @@ router.post('/complete', async (req, res) => {
   }
 });
 
+// GET /api/tour/nudge-status — Returns tour state + first-idea submission state
+// Used by the frontend to decide whether to show the "Submit Your First Idea" nudge popup.
+router.get('/nudge-status', async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Tour state
+    const tourState = await prisma.tourState.findUnique({ where: { userId } });
+
+    // Has user ever submitted a non-draft idea (all-time)?
+    const ideaCount = await prisma.idea.count({
+      where: { authorId: userId, status: { not: 'Draft' } }
+    });
+
+    res.json({
+      hasCompletedTour: tourState?.hasCompletedTour ?? false,
+      hasSubmittedFirstIdea: ideaCount > 0,
+    });
+  } catch (error) {
+    console.error('[Tour] GET /nudge-status error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
+

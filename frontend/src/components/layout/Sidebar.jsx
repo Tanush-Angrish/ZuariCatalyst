@@ -17,6 +17,7 @@ const TOUR_ID_MAP = {
   'Leaderboard':    'sidebar-leaderboard',
   'Assigned Ideas': 'sidebar-assigned',
   'Team Ideas':     'sidebar-team',
+  'Profile':        'sidebar-profile',
 };
 
 export default function Sidebar({ isMobile }) {

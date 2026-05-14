@@ -16,6 +16,8 @@ const EMPLOYEE_STEPS = [
   { target: 'sidebar-community', title: 'Community Hub', body: 'Explore innovations from across the organization. Get inspired by what other teams are doing.' },
   { target: 'sidebar-projects', title: 'Project Lifecycle', body: 'Once approved, track your idea through execution. Manage tasks, milestones, and collaborate with teams.' },
   { target: 'sidebar-leaderboard', title: 'Innovation Rankings', body: 'Earn points for every idea and project. Climb the leaderboard to become a top innovator.' },
+  { target: 'sidebar-profile', title: 'Your Profile', body: 'This is your personal profile page. Keep your details up to date so your team can recognise you across the platform.' },
+  { target: 'profile-photo-section', title: 'Add Your Photo', body: 'Hover over the circle and click to upload your profile photo. A face to a name builds trust and makes collaboration easier!', fallbackCenter: true },
 ];
 
 const EMPLOYEE_WELCOME_VOICE = {
@@ -23,8 +25,8 @@ const EMPLOYEE_WELCOME_VOICE = {
   hindi: "क्या आप अपने आईडिया से कंपनी में बदलाव लाना चाहते हैं? अपनी आवाज की भाषा चुनें और डेमो देखें।",
 };
 const EMPLOYEE_DONE_VOICE = {
-  english: "Mission complete! You've mastered the basics and earned your first innovator points.",
-  hindi: "बधाई हो! आपने ट्रेनिंग पूरी कर ली है और 5 पॉइंट्स जीत लिए हैं। अब आप अपना पहला आईडिया भेजने के लिए तैयार हैं।",
+  english: "Mission complete! You've mastered all 9 steps. Don't forget to upload your profile photo so your teammates can put a face to your brilliant ideas!",
+  hindi: "बधाई हो! आपने सभी 9 स्टेप्स पूरे कर लिए हैं। अपनी प्रोफ़ाइल फोटो ज़रूर अपलोड करें ताकि आपकी टीम आपको पहचान सके!",
 };
 
 const ADMIN_STEPS = [
@@ -287,6 +289,9 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
           if (aiBtn) aiBtn.click();
         }, 150);
       }
+    } else if (s.target === 'profile-photo-section') {
+      // Navigate to profile page so the photo section renders
+      navigate('/dashboard/profile');
     } else if (s.target.startsWith('filter-')) {
       if (window.location.pathname !== '/dashboard') navigate('/dashboard');
       setTimeout(() => {
@@ -297,6 +302,9 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
       const el = document.getElementById(s.target);
       if (el) el.click();
     }
+
+    // profile-photo-section lives inside a lazy-loaded page — give it extra time
+    const settleMs = s.target === 'profile-photo-section' ? 800 : 400;
 
     setTimeout(() => {
       // Find the *visible* element (handles duplicate IDs between desktop and mobile sidebars)
@@ -314,7 +322,7 @@ export default function ProductTour({ isOpen, onClose, isMandatory = false }) {
       el.classList.add('tour-hi');
       el.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
       speak(`step_${idx + 1}`, lng);
-    }, 400); // 400ms delay to allow all programmatic clicks/rendering to settle
+    }, settleMs);
   }, [lang, speak, isMobile]);
 
   // ── Continuous Tracking Loop (DESKTOP ONLY) ───────────────────────────

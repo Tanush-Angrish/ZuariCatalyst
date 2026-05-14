@@ -431,7 +431,18 @@ router.post('/', async (req, res) => {
     // Award +10 points for idea submission
     awardPoints(aid, 'idea_submitted', 10, idea.id);
 
-    res.json({ id: idea.id, status: idea.status });
+    // Check if this is the user's very first submitted idea (all-time) → +50 bonus pts
+    const totalSubmitted = await prisma.idea.count({
+      where: { authorId: aid, status: { not: 'Draft' } }
+    });
+    const isFirstIdea = totalSubmitted === 1;
+    if (isFirstIdea) {
+      // Use idea.id as referenceId — unique constraint prevents double-award
+      awardPoints(aid, 'first_idea_bonus', 50, idea.id);
+      console.log(`[Points] First-idea bonus +50 awarded to userId=${aid}`);
+    }
+
+    res.json({ id: idea.id, status: idea.status, isFirstIdea });
 
     // DB Notifications & Email
     const author = await prisma.user.findUnique({ where: { id: parseInt(authorId) }, select: { name: true, organization: true } });
@@ -530,7 +541,17 @@ router.put('/:id/submit-draft', async (req, res) => {
     // Award +10 points for idea submission
     awardPoints(idea.authorId, 'idea_submitted', 10, idea.id);
 
-    res.json({ message: 'Draft submitted successfully', status: 'Pending Review' });
+    // Check if this is the user's very first submitted idea (all-time) → +50 bonus pts
+    const totalSubmittedDraft = await prisma.idea.count({
+      where: { authorId: idea.authorId, status: { not: 'Draft' } }
+    });
+    const isFirstIdeaDraft = totalSubmittedDraft === 1;
+    if (isFirstIdeaDraft) {
+      awardPoints(idea.authorId, 'first_idea_bonus', 50, idea.id);
+      console.log(`[Points] First-idea bonus +50 awarded to userId=${idea.authorId} (via draft submit)`);
+    }
+
+    res.json({ message: 'Draft submitted successfully', status: 'Pending Review', isFirstIdea: isFirstIdeaDraft });
 
     // DB Notifications & Email
     const author = idea.author;

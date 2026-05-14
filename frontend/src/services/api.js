@@ -305,5 +305,6 @@ export const api = {
   // Product Tour
   getTourStatus: () => request('/api/tour/status'),
   completeTour: () => request('/api/tour/complete', { method: 'POST' }),
+  getNudgeStatus: () => request('/api/tour/nudge-status'),
 
 };
