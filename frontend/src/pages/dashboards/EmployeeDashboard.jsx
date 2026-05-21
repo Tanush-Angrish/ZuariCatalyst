@@ -281,6 +281,27 @@ export default function EmployeeDashboard() {
     }
   }, [user]);
 
+  const motivationalAudioRef = useRef(null);
+  const playMotivationalAudio = () => {
+    if (motivationalAudioRef.current) {
+      motivationalAudioRef.current.pause();
+      motivationalAudioRef.current.currentTime = 0;
+    } else {
+      motivationalAudioRef.current = new Audio('/tour-audio/motivational_worker_hi.wav');
+    }
+    motivationalAudioRef.current.play().catch(err => {
+      console.error("Audio playback prevented:", err);
+    });
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (motivationalAudioRef.current) {
+        motivationalAudioRef.current.pause();
+      }
+    };
+  }, []);
+
   React.useEffect(() => {
     const fetchData = async () => {
       try {
@@ -609,194 +630,249 @@ export default function EmployeeDashboard() {
       </div>
 
       <div className="space-y-6 max-w-5xl mx-auto w-full">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-brand-black">Submit New Idea</h1>
-          <p className="text-gray-500 mt-1">Share your innovative ideas to improve the organization.</p>
-        </div>
-
-        {/* Limits Display */}
-        <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm shrink-0 divide-x divide-gray-100 overflow-hidden">
-          <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Monthly Subm.</span>
-            <span className={`text-[17px] font-extrabold ${limits.submittedCount >= 3 ? 'text-red-500' : 'text-brand-blue'}`}>
-              {limits.submittedCount} <span className="text-gray-400 text-sm font-medium">/ 3</span>
-            </span>
-          </div>
-          <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Saved Drafts</span>
-            <span className={`text-[17px] font-extrabold ${limits.draftCount >= 5 ? 'text-amber-500' : 'text-brand-blue'}`}>
-              {limits.draftCount} <span className="text-gray-400 text-sm font-medium">/ 5</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* STEP 1: SELECT TEMPLATE */}
-      {step === 1 && (
-        <div className="space-y-6">
-          <p className="text-sm font-medium text-gray-700">Step 1: Select a template category that best fits your idea</p>
-
-          {isLoadingTemplates ? (
-            <div className="py-8 text-center text-gray-500">Loading templates...</div>
-          ) : allowedTemplates.length === 0 ? (
-            <div className="py-8 text-center text-gray-500 border border-dashed border-gray-200 rounded-xl bg-gray-50">
-              <Boxes className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-              <h3 className="font-semibold text-gray-700">No Templates Available</h3>
-              <p className="text-sm mt-1">Your organization currently does not have access to any idea templates. Please contact the Central Team.</p>
-            </div>
-          ) : (
-            categories.map(category => {
-              const CatIcon = CATEGORY_ICONS[category] || FileText;
-              const categoryTemplates = allowedTemplates.filter(t => t.category === category);
-              if (categoryTemplates.length === 0) return null;
-
-              return (
-                <div key={category} className="space-y-3">
-                  <h2 className="text-lg font-bold text-brand-black flex items-center gap-2">
-                    <span className="p-1.5 rounded-md bg-gray-100 text-brand-blue"><CatIcon size={16} /></span>
-                    {category}
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {categoryTemplates.map((template, tIdx) => (
-                      <Card
-                        key={template.id}
-                        id={`template-card-${category === categories[0] && tIdx === 0 ? '0' : template.id}`}
-                        className="cursor-pointer hover:border-brand-blue hover:shadow-md transition duration-200 border-gray-200"
-                        onClick={() => handleTemplateSelect(template)}
-                      >
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base text-brand-blue leading-tight truncate" title={template.name}>
-                            {template.name}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-gray-500 line-clamp-2" title={template.description}>
-                            {template.description}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
+        {step === 1 ? (
+          <>
+            {/* TOP SECTION (Header + Motivational Card next to it) */}
+            <div className="flex flex-col md:flex-row md:items-stretch justify-between gap-6">
+              {/* Left Side: Title, Subtitle, and Limits Card below it */}
+              <div className="flex-1 flex flex-col justify-end gap-3 pb-3">
+                <div className="mb-1.5">
+                  <h1 className="text-4xl font-extrabold tracking-tight text-brand-black">Submit New Idea</h1>
+                  <p className="text-gray-500 mt-2.5">Share your innovative ideas to improve the organization.</p>
+                </div>
+                
+                {/* Limits Display (Slightly larger) shifted up */}
+                <div className="mt-1 inline-flex self-start items-center bg-white rounded-xl border border-gray-200 overflow-hidden h-[52px] divide-x divide-gray-100">
+                  <div className="flex flex-col items-center justify-center px-5 py-1.5 bg-gray-50/50">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-none mb-0.5">Monthly Subm.</span>
+                    <span className={`text-[17px] font-extrabold leading-none ${limits.submittedCount >= 3 ? 'text-red-500' : 'text-brand-blue'}`}>
+                      {limits.submittedCount} <span className="text-gray-400 text-xs font-medium">/ 3</span>
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center px-5 py-1.5 bg-gray-50/50">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-none mb-0.5">Saved Drafts</span>
+                    <span className={`text-[17px] font-extrabold leading-none ${limits.draftCount >= 5 ? 'text-amber-500' : 'text-brand-blue'}`}>
+                      {limits.draftCount} <span className="text-gray-400 text-xs font-medium">/ 5</span>
+                    </span>
                   </div>
                 </div>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      {/* STEP 2: FILL FORM */}
-      {step === 2 && selectedTemplate && (
-        <div className="space-y-4">
-          {/* AI Autofill button (collapsed) */}
-          {!showAIBar && (
-            <div className="flex items-center gap-3">
-              <Button
-                id="ai-fill-btn"
-                type="button"
-                variant="outline"
-                onClick={() => setShowAIBar(true)}
-                className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 font-semibold shadow-sm"
-              >
-                <Sparkles size={16} className="text-blue-500" />
-                Fill with AI
-              </Button>
-              <span className="text-xs text-gray-400">Describe your idea and AI will fill the form automatically</span>
-            </div>
-          )}
-
-          {/* AI Input Bar (expanded) */}
-          {showAIBar && (
-            <AIAutofillBar
-              fields={selectedTemplate.fields}
-              onAutofill={handleAIAutofill}
-              onClose={() => setShowAIBar(false)}
-            />
-          )}
-
-          <Card className="border-t-4 border-t-brand-blue shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <FileText className="h-5 w-5 text-brand-blue" /> {selectedTemplate.name}
-                </CardTitle>
-                <CardDescription className="mt-1">{selectedTemplate.description}</CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={handleBack} className="gap-2 shrink-0">
-                <ArrowLeft size={16} /> Back to Templates
-              </Button>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="relative grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-xl bg-gray-50 border border-gray-100">
-                  {/* AI Loader Overlay */}
-                  {isAIFilling && <AILoader />}
 
-                  {selectedTemplate.fields.map(field => (
-                    <div key={field.id} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
-                      <label className="mb-1.5 flex flex-wrap items-center gap-1 text-sm font-semibold text-gray-700">
-                        {field.label}
-                        {field.id === 'attachment' && <span className="text-xs text-gray-500 font-normal">/ आप फोटो खींच कर भी अपलोड कर सकते हो</span>}
-                        {(field.id === 'referenceLink' || field.id === 'supportingLink') && <span className="text-xs text-gray-500 font-normal">/ आप OneDrive का लिंक भी अपलोड कर सकते हो</span>}
-                        {field.required && <span className="text-red-500">*</span>}
-                      </label>
-                      {renderField(field)}
+              {/* RIGHT SIDE: Taller, narrower motivational block (merges with background) */}
+              <div className="w-full md:w-[210px] bg-transparent border-none p-1 flex flex-col items-start justify-center gap-2.5 shrink-0 shadow-none md:min-h-[155px]">
+                {/* Speech Bubble */}
+                <div 
+                  onClick={playMotivationalAudio}
+                  title="Click to play voice note"
+                  className="relative bg-white border border-gray-200 rounded-lg px-3 py-2 text-center w-full -ml-4 shadow-sm cursor-pointer hover:bg-gray-50 active:scale-95 transition-all duration-200"
+                >
+                  <p className="text-gray-800 text-[11px] sm:text-xs font-bold leading-normal select-none">
+                    Chhota idea ho ya bada — har suggestion hai valuable.
+                  </p>
+                  {/* Arrow pointing down directly to helmet (made larger for visibility) */}
+                  <div className="absolute -bottom-[7px] left-[48px] w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[7px] border-t-white"></div>
+                  {/* Outer boundary arrow showing a fine outline matching the bubble border */}
+                  <div className="absolute -bottom-[8px] left-[47px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-gray-200 -z-10"></div>
+                </div>
+
+                {/* Character Image shifted to the left */}
+                <img 
+                  src="/motivational-worker.png" 
+                  alt="Motivational Engineer" 
+                  onClick={playMotivationalAudio}
+                  title="Click to play voice note"
+                  className="h-28 w-28 object-contain self-start -ml-6 hover:scale-105 active:scale-95 cursor-pointer transition-all duration-300"
+                />
+              </div>
+            </div>
+
+            {/* STEP 1: SELECT TEMPLATE */}
+            <div className="space-y-6 pt-4 border-t border-gray-100">
+              <p className="text-sm font-medium text-gray-700">Step 1: Select a template category that best fits your idea</p>
+
+              {isLoadingTemplates ? (
+                <div className="py-8 text-center text-gray-500">Loading templates...</div>
+              ) : allowedTemplates.length === 0 ? (
+                <div className="py-8 text-center text-gray-500 border border-dashed border-gray-200 rounded-xl bg-gray-50">
+                  <Boxes className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+                  <h3 className="font-semibold text-gray-700">No Templates Available</h3>
+                  <p className="text-sm mt-1">Your organization currently does not have access to any idea templates. Please contact the Central Team.</p>
+                </div>
+              ) : (
+                categories.map(category => {
+                  const CatIcon = CATEGORY_ICONS[category] || FileText;
+                  const categoryTemplates = allowedTemplates.filter(t => t.category === category);
+                  if (categoryTemplates.length === 0) return null;
+
+                  return (
+                    <div key={category} className="space-y-3">
+                      <h2 className="text-lg font-bold text-brand-black flex items-center gap-2">
+                        <span className="p-1.5 rounded-md bg-gray-100 text-brand-blue"><CatIcon size={16} /></span>
+                        {category}
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {categoryTemplates.map((template, tIdx) => (
+                          <Card
+                            key={template.id}
+                            id={`template-card-${category === categories[0] && tIdx === 0 ? '0' : template.id}`}
+                            className="cursor-pointer hover:border-brand-blue hover:shadow-md transition duration-200 border-gray-200"
+                            onClick={() => handleTemplateSelect(template)}
+                          >
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-base text-brand-blue leading-tight truncate" title={template.name}>
+                                {template.name}
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-sm text-gray-500 line-clamp-2" title={template.description}>
+                                {template.description}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-
-                  {/* Voice Note — always shown at bottom */}
-                  <div className="md:col-span-2">
-                    <label className="mb-1.5 flex flex-wrap items-center gap-1 text-sm font-semibold text-gray-700">
-                      <Mic size={14} className="text-gray-400" /> Voice Note (Optional) <span className="text-xs text-gray-500 font-normal">/ आप अपनी आवाज रिकॉर्ड करके भी भेज सकते हो</span>
-                    </label>
-                    <VoiceRecorder
-                      onRecorded={(data) => setVoiceNote(data)}
-                      existingUrl={voiceNote?.url}
-                      onRemove={() => setVoiceNote(null)}
-                    />
-                  </div>
+                  );
+                })
+              )}
+            </div>
+          </>
+        ) : (
+          selectedTemplate && (
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight text-brand-black">Submit New Idea</h1>
+                  <p className="text-gray-500 mt-1">Share your innovative ideas to improve the organization.</p>
                 </div>
 
-                <hr className="border-gray-200" />
-
-                <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 gap-4 mt-6">
-                  <p className="text-xs text-gray-500 font-medium">Required fields are marked with <span className="text-red-500">*</span></p>
-
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleSaveDraft}
-                      disabled={isSubmitting || isAIFilling || limits.draftCount >= 5}
-                      className="w-full sm:w-auto font-semibold shadow-sm hover:shadow"
-                      title={limits.draftCount >= 5 ? "You can only have up to 5 drafts at a time" : ""}
-                    >
-                      Save as Draft
-                    </Button>
-
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting || isAIFilling || limits.submittedCount >= 3}
-                      className="w-full sm:w-auto font-semibold shadow-md hover:shadow-lg transition-all"
-                      title={limits.submittedCount >= 3 ? "You can only submit 3 ideas per month" : ""}
-                    >
-                      <Send className="mr-2 h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Submit Idea for Review'}
-                    </Button>
+                {/* Simple Limits Display in Form Step */}
+                <div className="flex items-center bg-white rounded-xl border border-gray-200 shadow-sm shrink-0 divide-x divide-gray-100 overflow-hidden">
+                  <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Monthly Subm.</span>
+                    <span className={`text-[17px] font-extrabold ${limits.submittedCount >= 3 ? 'text-red-500' : 'text-brand-blue'}`}>
+                      {limits.submittedCount} <span className="text-gray-400 text-sm font-medium">/ 3</span>
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center px-4 py-2.5 bg-gray-50/50">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">Saved Drafts</span>
+                    <span className={`text-[17px] font-extrabold ${limits.draftCount >= 5 ? 'text-amber-500' : 'text-brand-blue'}`}>
+                      {limits.draftCount} <span className="text-gray-400 text-sm font-medium">/ 5</span>
+                    </span>
                   </div>
                 </div>
+              </div>
 
-                {/* Block Messages below form */}
-                {(limits.submittedCount >= 3 || limits.draftCount >= 5) && (
-                  <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600 flex flex-col gap-2">
-                    {limits.submittedCount >= 3 && <p className="flex items-center gap-2"><X size={16} /> <strong>Submission Limit Reached:</strong> You can only submit 3 ideas per month.</p>}
-                    {limits.draftCount >= 5 && <p className="flex items-center gap-2"><X size={16} /> <strong>Draft Limit Reached:</strong> You can only have up to 5 active drafts. Please submit an existing draft to free up space.</p>}
+              {/* AI Autofill button (collapsed) */}
+              {!showAIBar && (
+                <div className="flex items-center gap-3">
+                  <Button
+                    id="ai-fill-btn"
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowAIBar(true)}
+                    className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 font-semibold shadow-sm"
+                  >
+                    <Sparkles size={16} className="text-blue-500" />
+                    Fill with AI
+                  </Button>
+                  <span className="text-xs text-gray-400">Describe your idea and AI will fill the form automatically</span>
+                </div>
+              )}
+
+              {/* AI Input Bar (expanded) */}
+              {showAIBar && (
+                <AIAutofillBar
+                  fields={selectedTemplate.fields}
+                  onAutofill={handleAIAutofill}
+                  onClose={() => setShowAIBar(false)}
+                />
+              )}
+
+              <Card className="border-t-4 border-t-brand-blue shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <FileText className="h-5 w-5 text-brand-blue" /> {selectedTemplate.name}
+                    </CardTitle>
+                    <CardDescription className="mt-1">{selectedTemplate.description}</CardDescription>
                   </div>
-                )}
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+                  <Button variant="outline" size="sm" onClick={handleBack} className="gap-2 shrink-0">
+                    <ArrowLeft size={16} /> Back to Templates
+                  </Button>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="relative grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                      {/* AI Loader Overlay */}
+                      {isAIFilling && <AILoader />}
+
+                      {selectedTemplate.fields.map(field => (
+                        <div key={field.id} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
+                          <label className="mb-1.5 flex flex-wrap items-center gap-1 text-sm font-semibold text-gray-700">
+                            {field.label}
+                            {field.id === 'attachment' && <span className="text-xs text-gray-500 font-normal">/ आप फोटो खींच कर भी अपलोड कर सकते हो</span>}
+                            {(field.id === 'referenceLink' || field.id === 'supportingLink') && <span className="text-xs text-gray-500 font-normal">/ आप OneDrive का link भी अपलोड कर सकते हो</span>}
+                            {field.required && <span className="text-red-500">*</span>}
+                          </label>
+                          {renderField(field)}
+                        </div>
+                      ))}
+
+                      {/* Voice Note — always shown at bottom */}
+                      <div className="md:col-span-2">
+                        <label className="mb-1.5 flex flex-wrap items-center gap-1 text-sm font-semibold text-gray-700">
+                          <Mic size={14} className="text-gray-400" /> Voice Note (Optional) <span className="text-xs text-gray-500 font-normal">/ आप अपनी आवाज रिकॉर्ड करके भी भेज सकते हो</span>
+                        </label>
+                        <VoiceRecorder
+                          onRecorded={(data) => setVoiceNote(data)}
+                          existingUrl={voiceNote?.url}
+                          onRemove={() => setVoiceNote(null)}
+                        />
+                      </div>
+                    </div>
+
+                    <hr className="border-gray-200" />
+
+                    <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 gap-4 mt-6">
+                      <p className="text-xs text-gray-500 font-medium">Required fields are marked with <span className="text-red-500">*</span></p>
+
+                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleSaveDraft}
+                          disabled={isSubmitting || isAIFilling || limits.draftCount >= 5}
+                          className="w-full sm:w-auto font-semibold shadow-sm hover:shadow"
+                          title={limits.draftCount >= 5 ? "You can only have up to 5 drafts at a time" : ""}
+                        >
+                          Save as Draft
+                        </Button>
+
+                        <Button
+                          type="submit"
+                          disabled={isSubmitting || isAIFilling || limits.submittedCount >= 3}
+                          className="w-full sm:w-auto font-semibold shadow-md hover:shadow-lg transition-all"
+                          title={limits.submittedCount >= 3 ? "You can only submit 3 ideas per month" : ""}
+                        >
+                          <Send className="mr-2 h-4 w-4" /> {isSubmitting ? 'Submitting...' : 'Submit Idea for Review'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Block Messages below form */}
+                    {(limits.submittedCount >= 3 || limits.draftCount >= 5) && (
+                      <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600 flex flex-col gap-2">
+                        {limits.submittedCount >= 3 && <p className="flex items-center gap-2"><X size={16} /> <strong>Submission Limit Reached:</strong> You can only submit 3 ideas per month.</p>}
+                        {limits.draftCount >= 5 && <p className="flex items-center gap-2"><X size={16} /> <strong>Draft Limit Reached:</strong> You can only have up to 5 active drafts. Please submit an existing draft to free up space.</p>}
+                      </div>
+                    )}
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          )
+        )}
       </div>
     </div>
   );

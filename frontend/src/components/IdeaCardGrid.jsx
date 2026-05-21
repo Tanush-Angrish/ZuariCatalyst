@@ -195,6 +195,47 @@ function statusVariant(status) {
   }
 }
 
+// ─── SLA Status Badge ───────────────────────────────────────────────────────
+function SLABadge({ idea }) {
+  if (!idea.slaDeadline) return null;
+
+  const deadline = new Date(idea.slaDeadline);
+  const now = new Date();
+  const msRemaining = deadline.getTime() - now.getTime();
+  const daysRemaining = msRemaining / (1000 * 60 * 60 * 24);
+  const hoursRemaining = msRemaining / (1000 * 60 * 60);
+
+  let label = '';
+  let colorClass = '';
+
+  if (msRemaining <= 0) {
+    if (idea.slaStage === 'under_review_central' || idea.slaStage === 'under_review_org_admin') {
+      label = 'Auto approval pending';
+      colorClass = 'bg-red-50 text-red-700 border-red-200';
+    } else {
+      label = 'SLA breached';
+      colorClass = 'bg-rose-50 text-rose-700 border-rose-200';
+    }
+  } else {
+    if (daysRemaining > 1) {
+      label = `${Math.ceil(daysRemaining)} days remaining`;
+      colorClass = 'bg-blue-50 text-blue-700 border-blue-150';
+    } else {
+      const hrs = Math.max(1, Math.ceil(hoursRemaining));
+      label = `${hrs} hr${hrs > 1 ? 's' : ''} remaining`;
+      colorClass = 'bg-amber-50 text-amber-700 border-amber-200';
+    }
+  }
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${colorClass}`}>
+      <Clock size={11} className="shrink-0" />
+      {label}
+    </span>
+  );
+}
+
+
 // ─── Read-More text block ──────────────────────────────────────────────────
 const TRUNCATE_LEN = 120;
 function ReadMoreText({ text }) {
@@ -340,6 +381,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold text-brand-black leading-snug">{idea.title}</h2>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                <SLABadge idea={idea} />
                 {!(isEmployee && viewType === 'community') && (
                   <Badge variant={statusVariant(idea.status)}>{idea.status === 'Rejected' ? 'Declined' : idea.status}</Badge>
                 )}
@@ -766,10 +808,13 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
               <span className="text-xs text-gray-400 hidden sm:block truncate">• {idea.authorOrganization}</span>
             )}
           </div>
-          {/* Hide Status badge for employees in community view */}
-          {!(isEmployee && viewType === 'community') && (
-            <Badge variant={statusVariant(idea.status)} className={`shrink-0 text-xs ${idea.status === 'Draft' ? 'bg-amber-100 text-amber-800' : ''}`}>{idea.status === 'Rejected' ? 'Declined' : idea.status}</Badge>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <SLABadge idea={idea} />
+            {/* Hide Status badge for employees in community view */}
+            {!(isEmployee && viewType === 'community') && (
+              <Badge variant={statusVariant(idea.status)} className={`text-xs ${idea.status === 'Draft' ? 'bg-amber-100 text-amber-800' : ''}`}>{idea.status === 'Rejected' ? 'Declined' : idea.status}</Badge>
+            )}
+          </div>
         </div>
 
         {/* Card Body */}

@@ -30,8 +30,26 @@ function deriveRoles(primaryRole) {
 }
 
 /**
+ * Given a roles array, returns the highest-privilege role.
+ * Hierarchy: Superadmin > Org Admin > Employee
+ *
+ * Used ONLY on fresh logins (/login, /ms-login) so that a user who
+ * switched roles and then closed the browser always comes back at
+ * their highest-privilege level next time they log in.
+ *
+ * NOT used on /me — /me respects whatever role is currently active
+ * so that in-session role switching continues to work.
+ */
+function primaryRoleFromRoles(rolesArr) {
+  if (!Array.isArray(rolesArr) || rolesArr.length === 0) return 'Employee';
+  if (rolesArr.includes('Superadmin')) return 'Superadmin';
+  if (rolesArr.includes('Org Admin'))  return 'Org Admin';
+  return 'Employee';
+}
+
+/**
  * Gets or initializes the roles array for a user.
- * If roles is empty "[]" (legacy user), auto-populate from primary role.
+ * If roles is empty "[]" (legacy user), auto-populate from the primary role.
  */
 async function ensureRoles(user) {
   let roles = [];
@@ -42,11 +60,11 @@ async function ensureRoles(user) {
   if (roles.length === 0) {
     // Auto-derive for existing/legacy users
     roles = deriveRoles(user.role);
-    // Persist the derived roles so future logins are fast
+    // Persist so future calls are fast
     await prisma.user.update({
       where: { id: user.id },
       data: { roles: JSON.stringify(roles) }
-    }).catch(() => {}); // Fail silently — roles will be re-derived next time
+    }).catch(() => {}); // Fail silently
   }
 
   return roles;
@@ -83,24 +101,30 @@ function issueToken(res, user) {
 }
 
 /**
- * Builds the user object shape returned to the frontend.
+ * Builds the standard user payload shape for the frontend.
+ * `activeRole` is the role to embed — callers decide whether to use
+ * the DB's current role (session restore) or the primary role (fresh login).
  */
-function buildUserPayload(row, roles) {
+function buildUserPayload(row, roles, activeRole) {
   return {
-    id: row.id,
-    email: row.email,
-    name: row.name,
-    title: row.title || '',
-    role: row.role,
+    id:              row.id,
+    email:           row.email,
+    name:            row.name,
+    title:           row.title || '',
+    role:            activeRole,
     roles,
-    organization: row.organization,
-    mobileNumber: row.mobile_number || null,
-    employeeId: row.employee_id || null,
+    organization:    row.organization,
+    mobileNumber:    row.mobile_number || null,
+    employeeId:      row.employee_id || null,
     profilePhotoUrl: row.profile_photo_url || null,
   };
 }
 
 // ─── GET /api/auth/me ─────────────────────────────────────────────────────────
+// Session restore — called on every page load via AuthContext.
+// Respects the current active role in the DB so in-session role switches
+// (Superadmin ↔ Employee, Org Admin ↔ Employee) keep working.
+// Does NOT reset to primary role — that only happens on fresh login.
 router.get('/me', async (req, res) => {
   const cookieHeader = req.headers.cookie || '';
   const match = cookieHeader.split(';').find(c => c.trim().startsWith('auth_token='));
@@ -111,7 +135,7 @@ router.get('/me', async (req, res) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Fetch fresh user data on every /me call to pick up profile photo changes etc.
+    // Fetch fresh user data to pick up profile photo / name changes etc.
     const row = await prisma.user.findUnique({
       where: { id: decoded.id },
       select: {
@@ -123,11 +147,14 @@ router.get('/me', async (req, res) => {
     if (!row) return res.status(401).json({ error: 'User not found' });
 
     const roles = await ensureRoles(row);
-    const user = buildUserPayload(row, roles);
 
-    // Re-issue token if roles were just auto-populated (so next /me is fast)
+    // Use whatever role is currently stored in the DB.
+    // This is the active (possibly switched) role — we must not override it here
+    // or role switching breaks: switchRole() sets the DB then calls /me to refresh.
+    const user = buildUserPayload(row, roles, row.role);
+
+    // Re-issue token so cookie lifetime extends and role is baked in fresh
     issueToken(res, user);
-
     res.json({ user });
   } catch {
     return res.status(401).json({ error: 'Session expired' });
@@ -141,6 +168,9 @@ router.post('/logout', (req, res) => {
 });
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
+// Fresh login — always resets active role to the user's primary (highest-privilege)
+// role. This means a Superadmin who switched to Employee and closed the browser
+// will always come back as Superadmin when they log in again.
 router.post('/login', async (req, res) => {
   const { email, password } = req.body || {};
 
@@ -165,7 +195,20 @@ router.post('/login', async (req, res) => {
     if (!row.role) return res.status(403).json({ error: 'No role assigned. Contact your administrator.' });
 
     const roles = await ensureRoles(row);
-    const user = buildUserPayload(row, roles);
+
+    // ── Fresh login: restore to primary role ──────────────────────────────
+    // If a previous session left the DB role as 'Employee' (from a role switch),
+    // reset it to the correct primary role now so the user lands at Superadmin/Org Admin.
+    const primaryRole = primaryRoleFromRoles(roles);
+    if (row.role !== primaryRole) {
+      await prisma.user.update({
+        where: { id: row.id },
+        data:  { role: primaryRole }
+      }).catch(() => {});
+      row.role = primaryRole; // reflect locally before building payload
+    }
+
+    const user = buildUserPayload(row, roles, primaryRole);
     issueToken(res, user);
     res.json({ user });
   } catch (error) {
@@ -175,6 +218,7 @@ router.post('/login', async (req, res) => {
 });
 
 // ─── POST /api/auth/ms-login ──────────────────────────────────────────────────
+// Microsoft SSO login — same primary-role-reset logic as /login.
 router.post('/ms-login', (req, res) => {
   const { idToken } = req.body;
 
@@ -213,7 +257,18 @@ router.post('/ms-login', (req, res) => {
       }
 
       const roles = await ensureRoles(row);
-      const user = buildUserPayload(row, roles);
+
+      // ── Fresh SSO login: restore to primary role ──────────────────────
+      const primaryRole = primaryRoleFromRoles(roles);
+      if (row.role !== primaryRole) {
+        await prisma.user.update({
+          where: { id: row.id },
+          data:  { role: primaryRole }
+        }).catch(() => {});
+        row.role = primaryRole;
+      }
+
+      const user = buildUserPayload(row, roles, primaryRole);
       issueToken(res, user);
       res.json({ user });
     } catch (dbError) {

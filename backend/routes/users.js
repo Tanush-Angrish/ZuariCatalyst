@@ -275,6 +275,131 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// ─── GET /api/users/org-admin-overview — Org grouped with admins ─────────────
+// Returns all distinct organizations and, for each, the list of users whose
+// roles array contains "Org Admin" (i.e. has the org_admin role).
+// Also returns all users per org so the assign modal can show them.
+router.get('/org-admin-overview', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true, name: true, email: true, role: true, roles: true,
+        organization: true, employee_id: true, profile_photo_url: true, title: true,
+      },
+      where: { organization: { not: null } },
+      orderBy: { name: 'asc' },
+    });
+
+    // Build org → { orgAdmins, members } map
+    const orgMap = {};
+    for (const u of users) {
+      const org = (u.organization || '').trim();
+      if (!org) continue;
+
+      let rolesArr = [];
+      try { rolesArr = JSON.parse(u.roles || '[]'); } catch { rolesArr = []; }
+
+      const isOrgAdmin = rolesArr.includes('Org Admin');
+
+      if (!orgMap[org]) orgMap[org] = { name: org, orgAdmins: [], members: [] };
+
+      const shaped = {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        roles: rolesArr,
+        organization: u.organization,
+        employeeId: u.employee_id,
+        profilePhotoUrl: u.profile_photo_url,
+        title: u.title,
+        isOrgAdmin,
+      };
+
+      orgMap[org].members.push(shaped);
+      if (isOrgAdmin) orgMap[org].orgAdmins.push(shaped);
+    }
+
+    // Sort orgs alphabetically
+    const result = Object.values(orgMap).sort((a, b) => a.name.localeCompare(b.name));
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── PUT /api/users/:id/assign-org-admin — Grant Org Admin role ───────────────
+// Adds "Org Admin" to the user's roles array. Employee role is preserved.
+// Primary role (role column) is updated to "Org Admin" so dashboard routes correctly.
+router.put('/:id/assign-org-admin', async (req, res) => {
+  const userId = parseInt(req.params.id);
+  if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, roles: true, organization: true },
+    });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let rolesArr = [];
+    try { rolesArr = JSON.parse(user.roles || '[]'); } catch { rolesArr = []; }
+
+    // Add Org Admin if not already present; always keep Employee
+    if (!rolesArr.includes('Org Admin')) rolesArr.push('Org Admin');
+    if (!rolesArr.includes('Employee')) rolesArr.push('Employee');
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        role: 'Org Admin',  // primary active role
+        roles: JSON.stringify(rolesArr),
+      },
+    });
+
+    res.json({ message: 'Org Admin role assigned', roles: rolesArr });
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'User not found' });
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// ─── PUT /api/users/:id/remove-org-admin — Revoke Org Admin role ─────────────
+// Removes "Org Admin" from the user's roles array. Employee role is preserved.
+router.put('/:id/remove-org-admin', async (req, res) => {
+  const userId = parseInt(req.params.id);
+  if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, roles: true },
+    });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let rolesArr = [];
+    try { rolesArr = JSON.parse(user.roles || '[]'); } catch { rolesArr = []; }
+
+    rolesArr = rolesArr.filter(r => r !== 'Org Admin');
+    if (!rolesArr.includes('Employee')) rolesArr.push('Employee');
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        role: 'Employee',
+        roles: JSON.stringify(rolesArr),
+      },
+    });
+
+    res.json({ message: 'Org Admin role removed', roles: rolesArr });
+  } catch (error) {
+    if (error.code === 'P2025') return res.status(404).json({ error: 'User not found' });
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 // ─── DELETE /api/users/:id — Delete user ─────────────────────────────────────
 router.delete('/:id', async (req, res) => {
   try {

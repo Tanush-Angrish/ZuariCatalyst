@@ -117,6 +117,24 @@ if (frontendDistExists) {
 }
 
 
+// ─── Scheduled Background Jobs ────────────────────────────────────────────────
+// The SLA engine uses these intervals to auto-escalate/approve ideas and send warnings.
+const { runSLAChecks, runSLAReminders } = require('./services/slaService');
+
+setInterval(() => {
+  runSLAChecks().catch(err => console.error('[Cron] SLA Check error:', err));
+}, 30 * 60 * 1000); // 30 mins
+
+setInterval(() => {
+  runSLAReminders().catch(err => console.error('[Cron] SLA Reminder error:', err));
+}, 60 * 60 * 1000); // 1 hour
+
+// Run once on startup (wait 5s so db is ready)
+setTimeout(() => {
+  runSLAChecks().catch(() => {});
+  runSLAReminders().catch(() => {});
+}, 5000);
+
 // Run seed and then start server
 runSeed().then(() => {
   const server = app.listen(PORT, () => {

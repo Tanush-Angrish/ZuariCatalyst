@@ -151,7 +151,7 @@ async function sendIdeaSubmittedEmail({ toEmails, ideaTitle, submittedBy, organi
       <div class="detail-row"><span class="detail-label">Submitted By</span><span class="detail-value">${submittedBy}</span></div>
       <div class="detail-row"><span class="detail-label">Organization</span><span class="detail-value">${organization}</span></div>
     </div>
-    <div class="action-box">📋 <strong>Action Required:</strong> Log in to the platform to review this submission.</div>
+    <div class="action-box">📋 <strong>Action Required:</strong> Please review and take action (Approve, Decline, Put Under Review, or Assign) within 3 days. If no action is taken, this idea will automatically escalate to the 'Under Review' stage.</div>
   `);
 
   return sendEmail({
@@ -175,6 +175,8 @@ async function sendIdeaStatusChangeEmail({ toEmail, ideaTitle, authorName, newSt
   if (newStatus === 'Approved') nextStep = 'Your project is now active! You can track its progress and collaborate with your team.';
   if (newStatus === 'Rejected') nextStep = 'Review the feedback provided. You can resubmit or propose a different idea in the future.';
 
+  const isUnderReview = newStatus === 'Under Review';
+
   const html = wrapHtml(`
     <p>Hello ${authorName},</p>
     <p>There is an update on your submitted idea.</p>
@@ -184,7 +186,7 @@ async function sendIdeaStatusChangeEmail({ toEmail, ideaTitle, authorName, newSt
       ${projectId ? `<div class="detail-row"><span class="detail-label">Project ID</span><span class="detail-value" style="font-family:monospace;color:#003580;">${projectId}</span></div>` : ''}
       ${reason ? `<div class="detail-row"><span class="detail-label">Reason/Feedback</span><span class="detail-value" style="color:#374151;">${reason}</span></div>` : ''}
     </div>
-    <div class="action-box">💡 <strong>Next Steps:</strong> ${nextStep}</div>
+    <div class="action-box">💡 <strong>Next Steps:</strong> ${nextStep} ${isUnderReview ? 'Please note that review actions must be taken within 3 days; otherwise, the idea will be automatically approved.' : ''}</div>
   `);
 
   return sendEmail({

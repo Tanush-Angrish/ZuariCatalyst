@@ -54,6 +54,17 @@ model Idea {
   authorId       Int
   assignedToId   Int?
 
+  // ── SLA tracking ──────────────────────────────────────────────────────────
+  // slaDeadline: when the current SLA window expires (set on each stage change)
+  // slaStage:    which reviewer is on the clock
+  //   "pending_central"        → Central Admin has 3 days to act (submitted)
+  //   "under_review_central"   → Central Admin has 3 days to approve/reject
+  //   "pending_org_admin"      → Org Admin has 3 days to act (assigned)
+  //   "under_review_org_admin" → Org Admin has 3 days to approve/reject
+  //   null                     → terminal state (approved/rejected/draft)
+  slaDeadline    DateTime?
+  slaStage       String?
+
   // Relations
   author         User     @relation("IdeaAuthor", fields: [authorId], references: [id])
   assignedTo     User?    @relation("IdeaAssignee", fields: [assignedToId], references: [id])

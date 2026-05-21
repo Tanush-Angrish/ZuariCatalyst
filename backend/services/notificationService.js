@@ -28,11 +28,14 @@ async function _createNotification(userId, type, message, referenceId = null) {
 
 /**
  * Notify all Superadmins (Central Team)
+ * Filters by `roles` array containing 'Superadmin', not the mutable `role` column.
+ * This ensures Central Team members who temporarily switched to Employee
+ * still receive all Central Team notifications.
  */
 async function notifyCentralTeam(type, message, referenceId = null) {
   try {
     const admins = await prisma.user.findMany({
-      where: { role: 'Superadmin' },
+      where: { roles: { contains: 'Superadmin' } },
       select: { id: true }
     });
     await Promise.all(admins.map(a => _createNotification(a.id, type, message, referenceId)));
@@ -43,12 +46,15 @@ async function notifyCentralTeam(type, message, referenceId = null) {
 
 /**
  * Notify all Org Admins of a specific organization
+ * Filters by `roles` array containing 'Org Admin', not the mutable `role` column.
+ * This ensures Org Admins who temporarily switched to Employee
+ * still receive all Org Admin notifications.
  */
 async function notifyOrgAdmins(organization, type, message, referenceId = null) {
   if (!organization) return;
   try {
     const admins = await prisma.user.findMany({
-      where: { role: 'Org Admin', organization },
+      where: { roles: { contains: 'Org Admin' }, organization },
       select: { id: true }
     });
     await Promise.all(admins.map(a => _createNotification(a.id, type, message, referenceId)));

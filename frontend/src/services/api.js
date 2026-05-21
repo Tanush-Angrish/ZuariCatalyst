@@ -230,6 +230,9 @@ export const api = {
 
   // Users
   getUsers: () => request('/api/users'),
+  getOrgAdminOverview: () => request('/api/users/org-admin-overview'),
+  assignOrgAdmin: (userId) => request(`/api/users/${userId}/assign-org-admin`, { method: 'PUT' }),
+  removeOrgAdmin: (userId) => request(`/api/users/${userId}/remove-org-admin`, { method: 'PUT' }),
   createUser: (userData) => request('/api/users', {
     method: 'POST',
     body: JSON.stringify(userData),
@@ -280,6 +283,11 @@ export const api = {
 
   // Points & Leaderboard
   getLeaderboard: () => request('/api/points/leaderboard'),
+  getOrgLeaderboard: (org) => {
+    const qs = org ? `?org=${encodeURIComponent(org)}` : '';
+    return request(`/api/points/org-leaderboard${qs}`);
+  },
+  getAllOrgsLeaderboard: () => request('/api/points/all-orgs-leaderboard'),
   getUserPoints: (userId) => request(`/api/points/user/${userId}`),
 
   // AI Template Generation

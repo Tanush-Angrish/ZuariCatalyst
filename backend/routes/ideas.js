@@ -18,12 +18,14 @@ const {
   notifyUser,
   notifyUsers
 } = require('../services/notificationService');
+const { setSLA, clearSLA } = require('../services/slaService');
 
 // Helper: get all Central Team (Superadmin) emails
+// Filters by `roles` array, not active `role`, so switched users still receive emails.
 async function getCentralTeamEmails() {
   try {
     const admins = await prisma.user.findMany({
-      where: { role: 'Superadmin' },
+      where: { roles: { contains: 'Superadmin' } },
       select: { email: true }
     });
     return admins.map(a => a.email).filter(Boolean);
@@ -391,6 +393,9 @@ router.post('/', async (req, res) => {
       return res.json({ id: idea.id, status: idea.status, isDraft: true });
     }
 
+    // Set initial SLA for Central Admin
+    setSLA(idea.id, 'pending_central');
+
     // AI Processing - Background (don't block the response)
     // Build a rich content string from ALL text fields in extraFields so that
     // Gemini gets the full idea content regardless of which template was used.
@@ -456,7 +461,11 @@ router.post('/', async (req, res) => {
     // Email Central Team + Org Admins (strict rules)
     if (author) {
       const centralEmails = await getCentralTeamEmails();
-      const orgAdmins = await prisma.user.findMany({ where: { role: 'Org Admin', organization: author.organization }, select: { email: true } });
+      // Filter org admins by roles array (not active role) so switched users get emails
+      const orgAdmins = await prisma.user.findMany({
+        where: { roles: { contains: 'Org Admin' }, organization: author.organization },
+        select: { email: true }
+      });
       const orgEmails = orgAdmins.map(a => a.email).filter(Boolean);
       const toEmails = [...new Set([...centralEmails, ...orgEmails])];
 
@@ -500,6 +509,9 @@ router.put('/:id/submit-draft', async (req, res) => {
       where: { id: ideaId },
       data: { status: 'Pending Review' }
     });
+
+    // Start SLA for Central Admin
+    setSLA(updated.id, 'pending_central');
 
     // Extract proposed solution for AI
     let proposedSolution = '';
@@ -565,7 +577,11 @@ router.put('/:id/submit-draft', async (req, res) => {
     
     if (author) {
       const centralEmails = await getCentralTeamEmails();
-      const orgAdmins = await prisma.user.findMany({ where: { role: 'Org Admin', organization: author.organization }, select: { email: true } });
+      // Filter org admins by roles array (not active role) so switched users get emails
+      const orgAdmins = await prisma.user.findMany({
+        where: { roles: { contains: 'Org Admin' }, organization: author.organization },
+        select: { email: true }
+      });
       const orgEmails = orgAdmins.map(a => a.email).filter(Boolean);
       const toEmails = [...new Set([...centralEmails, ...orgEmails])];
 
@@ -602,6 +618,10 @@ router.put('/:id/assign', async (req, res) => {
       },
       include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } }
     });
+
+    // Pass SLA to Org Admin
+    setSLA(ideaId, 'pending_org_admin');
+    
     res.json({ message: 'Idea assigned successfully' });
 
     // Fetch Org Admin details for email/notification
@@ -632,6 +652,11 @@ router.put('/:id/under-review', async (req, res) => {
       data: { status: 'Under Review' },
       include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } }
     });
+
+    // Advance SLA to the under_review stage (depends on who owns it)
+    const slaStage = idea.assignedToId ? 'under_review_org_admin' : 'under_review_central';
+    setSLA(ideaId, slaStage);
+
     res.json({ message: 'Idea is now Under Review' });
 
     notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' is now Under Review.`, ideaId);
@@ -755,6 +780,9 @@ router.put('/:id/status', async (req, res) => {
       }
     }
 
+    // Terminal state — clear SLA
+    clearSLA(ideaId);
+
     res.json({ message: `Idea marked as ${status}` });
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Idea not found' });
@@ -763,11 +791,12 @@ router.put('/:id/status', async (req, res) => {
 });
 
 // GET org admins (For Select Dropdown)
+// Uses roles array so Org Admins who temporarily switched to Employee are still visible.
 router.get('/orgadmins', async (req, res) => {
   try {
     const admins = await prisma.user.findMany({
-      where: { role: 'Org Admin' },
-      select: { id: true, name: true }
+      where: { roles: { contains: 'Org Admin' } },
+      select: { id: true, name: true, organization: true }
     });
     res.json(admins);
   } catch (error) {
