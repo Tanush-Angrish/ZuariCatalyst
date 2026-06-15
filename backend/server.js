@@ -13,6 +13,7 @@ const uploadRoutes = require('./routes/upload');
 const projectsRoutes = require('./routes/projects');
 const notificationsRoutes = require('./routes/notifications');
 const pointsRoutes = require('./routes/points');
+const tourRoutes = require('./routes/tour');
 const { sendTestEmail } = require('./services/emailService');
 const runSeed = require('./scripts/seed');
 
@@ -22,10 +23,10 @@ const PORT = process.env.PORT || 5000;
 // Enable gzip compression for API responses and static files
 app.use(compression());
 
-// Setup rate limiting to protect the 1GB RAM server from DoS/spam
+// Setup rate limiting to protect the server
 const apiLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 300, // Limit each IP to 300 requests per window
+  max: 3000, // Increased limit for dev
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests from this IP, please try again after 5 minutes.' }
@@ -72,6 +73,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/points', pointsRoutes);
+app.use('/api/tour', tourRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Zuari Catalyst Backend Running' });
@@ -114,6 +116,24 @@ if (frontendDistExists) {
   console.log('[Server] No frontend/dist found — run "npm run serve" from root to build. Running API-only mode.');
 }
 
+
+// ─── Scheduled Background Jobs ────────────────────────────────────────────────
+// The SLA engine uses these intervals to auto-escalate/approve ideas and send warnings.
+const { runSLAChecks, runSLAReminders } = require('./services/slaService');
+
+setInterval(() => {
+  runSLAChecks().catch(err => console.error('[Cron] SLA Check error:', err));
+}, 30 * 60 * 1000); // 30 mins
+
+setInterval(() => {
+  runSLAReminders().catch(err => console.error('[Cron] SLA Reminder error:', err));
+}, 60 * 60 * 1000); // 1 hour
+
+// Run once on startup (wait 5s so db is ready)
+setTimeout(() => {
+  runSLAChecks().catch(() => {});
+  runSLAReminders().catch(() => {});
+}, 5000);
 
 // Run seed and then start server
 runSeed().then(() => {

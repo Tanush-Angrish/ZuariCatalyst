@@ -15,6 +15,7 @@ import {
 const TABS = [
   {
     id: 'assigned',
+    tourId: 'filter-action',
     label: 'Action Required',
     icon: UserCheck,
     description: 'Ideas delegated to you by the Central Team',
@@ -25,6 +26,7 @@ const TABS = [
   },
   {
     id: 'underReview',
+    tourId: 'filter-review',
     label: 'Under Review Queue',
     icon: Clock,
     description: 'Ideas you are actively reviewing',
@@ -35,6 +37,7 @@ const TABS = [
   },
   {
     id: 'approved',
+    tourId: 'filter-approved',
     label: 'Approved by Me',
     icon: CheckCircle2,
     description: 'Ideas you have finalized and converted to projects',
@@ -45,7 +48,8 @@ const TABS = [
   },
   {
     id: 'rejected',
-    label: 'Rejected',
+    tourId: 'filter-rejected',
+    label: 'Declined',
     icon: AlertTriangle,
     description: 'Ideas you have decided not to pursue',
     color: 'text-red-600',
@@ -82,7 +86,7 @@ function ProcessedIdeaRow({ idea, onViewProject }) {
             {idea.status === 'Approved' ? (
               <Badge variant="success" className="text-xs flex items-center gap-1"><CheckCircle2 size={10} />Approved</Badge>
             ) : (
-              <Badge variant="danger" className="text-xs flex items-center gap-1"><AlertTriangle size={10} />Rejected</Badge>
+              <Badge variant="danger" className="text-xs flex items-center gap-1"><AlertTriangle size={10} />Declined</Badge>
             )}
             {idea.project && (
               <Badge variant="outline" className="text-xs capitalize">{idea.project.status}</Badge>
@@ -149,10 +153,10 @@ export default function OrgAdminDashboard() {
       const isApproved = newStatus === 'Approved';
       notify({
         type: isApproved ? 'success' : 'info',
-        title: isApproved ? 'Idea Approved' : 'Idea Rejected',
+        title: isApproved ? 'Idea Approved' : 'Idea Declined',
         message: isApproved
           ? 'A project has been automatically created for this idea.'
-          : 'The idea has been marked as rejected.',
+          : 'The idea has been marked as declined.',
         event: isApproved ? 'idea_approved' : 'idea_rejected'
       });
     } catch (e) {
@@ -205,6 +209,7 @@ export default function OrgAdminDashboard() {
           return (
             <button
               key={tab.id}
+              id={tab.tourId}
               onClick={() => { setActiveTab(tab.id); setTabSearch(''); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border ${isActive
                   ? `${tab.activeBg} text-white border-transparent shadow-md`
@@ -336,12 +341,12 @@ export default function OrgAdminDashboard() {
           loading.processed ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400">
               <Loader2 size={32} className="animate-spin mb-4 text-brand-blue/40" />
-              <p className="text-sm">Loading rejected ideas...</p>
+              <p className="text-sm">Loading declined ideas...</p>
             </div>
           ) : rejectedList.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
               <AlertTriangle size={48} className="mx-auto text-gray-200 mb-4" />
-              <p className="text-gray-500">You haven't rejected any ideas yet.</p>
+              <p className="text-gray-500">You haven't declined any ideas yet.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -351,7 +356,7 @@ export default function OrgAdminDashboard() {
                   type="text"
                   value={tabSearch}
                   onChange={e => setTabSearch(e.target.value)}
-                  placeholder="Search rejected ideas…"
+                  placeholder="Search declined ideas…"
                   className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue/40 transition-all"
                 />
                 {tabSearch && (

@@ -116,6 +116,27 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ description, fields }),
   }),
+  regenerateSummary: (ideaId) => request(`/api/ideas/${ideaId}/regenerate-summary`, {
+    method: 'POST',
+  }),
+
+  // Profile
+  uploadProfilePhoto: (formData) => request('/api/upload/profile-photo', {
+    method: 'POST',
+    body: formData,
+  }),
+  updateProfilePhoto: (userId, url) => request(`/api/users/${userId}/profile-photo`, {
+    method: 'PUT',
+    body: JSON.stringify({ url }),
+  }),
+  switchActiveRole: (userId, role) => request(`/api/users/${userId}/active-role`, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
+  }),
+  updateUser: (userId, data) => request(`/api/users/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
 
   // Projects
   getProjects: (params = {}) => {
@@ -209,6 +230,9 @@ export const api = {
 
   // Users
   getUsers: () => request('/api/users'),
+  getOrgAdminOverview: () => request('/api/users/org-admin-overview'),
+  assignOrgAdmin: (userId) => request(`/api/users/${userId}/assign-org-admin`, { method: 'PUT' }),
+  removeOrgAdmin: (userId) => request(`/api/users/${userId}/remove-org-admin`, { method: 'PUT' }),
   createUser: (userData) => request('/api/users', {
     method: 'POST',
     body: JSON.stringify(userData),
@@ -259,6 +283,11 @@ export const api = {
 
   // Points & Leaderboard
   getLeaderboard: () => request('/api/points/leaderboard'),
+  getOrgLeaderboard: (org) => {
+    const qs = org ? `?org=${encodeURIComponent(org)}` : '';
+    return request(`/api/points/org-leaderboard${qs}`);
+  },
+  getAllOrgsLeaderboard: () => request('/api/points/all-orgs-leaderboard'),
   getUserPoints: (userId) => request(`/api/points/user/${userId}`),
 
   // AI Template Generation
@@ -280,5 +309,10 @@ export const api = {
   deleteCategory: (id) => request(`/api/templates/categories/${id}`, {
     method: 'DELETE',
   }),
+
+  // Product Tour
+  getTourStatus: () => request('/api/tour/status'),
+  completeTour: () => request('/api/tour/complete', { method: 'POST' }),
+  getNudgeStatus: () => request('/api/tour/nudge-status'),
 
 };

@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { TourProvider } from './context/TourContext';
 
 // Eager imports — loaded immediately (entry point + layout shell)
 import LandingPage from './pages/LandingPage';
@@ -19,6 +20,8 @@ const TemplateAccess      = lazy(() => import('./pages/dashboards/TemplateAccess
 const TemplateConfig      = lazy(() => import('./pages/dashboards/TemplateConfig'));
 const CommunityHub        = lazy(() => import('./pages/dashboards/CommunityHub'));
 const Leaderboard         = lazy(() => import('./pages/dashboards/Leaderboard'));
+const ProfilePage         = lazy(() => import('./pages/dashboards/ProfilePage'));
+const OrgAdminManagement  = lazy(() => import('./pages/dashboards/OrgAdminManagement'));
 
 // Minimal loading fallback — shown while a page chunk is downloading
 function PageLoader() {
@@ -64,39 +67,43 @@ const DashboardDirector = () => {
 function App() {
   return (
     <AuthProvider>
-      <NotificationProvider>
-        <Router>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<LandingPage />} />
+      <TourProvider>
+        <NotificationProvider>
+          <Router>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<LandingPage />} />
 
-              {/* General Dashboard routes */}
-              <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-                <Route index element={<DashboardDirector />} />
-                <Route path="my-ideas" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><MyIdeas /></ProtectedRoute>} />
-                <Route path="team-ideas" element={<ProtectedRoute allowedRoles={['Org Admin']}><TeamIdeas /></ProtectedRoute>} />
-                <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><ProjectsPage /></ProtectedRoute>} />
-                <Route path="leaderboard" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><Leaderboard /></ProtectedRoute>} />
-              </Route>
+                {/* General Dashboard routes */}
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                  <Route index element={<DashboardDirector />} />
+                  <Route path="my-ideas" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><MyIdeas /></ProtectedRoute>} />
+                  <Route path="team-ideas" element={<ProtectedRoute allowedRoles={['Org Admin']}><TeamIdeas /></ProtectedRoute>} />
+                  <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><ProjectsPage /></ProtectedRoute>} />
+                  <Route path="leaderboard" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><Leaderboard /></ProtectedRoute>} />
+                  <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                </Route>
 
-              {/* Central Team / Hub routes */}
-              <Route path="/community-hub" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-                <Route index element={<CommunityHub />} />
-              </Route>
+                {/* Central Team / Hub routes */}
+                <Route path="/community-hub" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                  <Route index element={<CommunityHub />} />
+                </Route>
 
-              {/* Global Settings */}
-              <Route path="/settings" element={<ProtectedRoute allowedRoles={['Superadmin', 'Central Team']}><DashboardLayout /></ProtectedRoute>}>
-                <Route path="users" element={<UserManagement />} />
-                <Route path="templates" element={<TemplateConfig />} />
-                <Route path="access" element={<TemplateAccess />} />
-              </Route>
+                {/* Global Settings */}
+                <Route path="/settings" element={<ProtectedRoute allowedRoles={['Superadmin', 'Central Team']}><DashboardLayout /></ProtectedRoute>}>
+                  <Route path="users" element={<UserManagement />} />
+                  <Route path="templates" element={<TemplateConfig />} />
+                  <Route path="access" element={<TemplateAccess />} />
+                  <Route path="org-admins" element={<OrgAdminManagement />} />
+                </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </Router>
-      </NotificationProvider>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </Router>
+        </NotificationProvider>
+      </TourProvider>
     </AuthProvider>
   );
 }

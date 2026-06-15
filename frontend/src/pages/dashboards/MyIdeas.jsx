@@ -56,7 +56,7 @@ export default function MyIdeas() {
       </div>
 
       <div className="mt-8">
-        <IdeaCardGrid ideas={ideas} viewType="myIdeas" />
+        <IdeaCardGrid ideas={ideas} viewType="myIdeas" isEmployee={user?.role === 'Employee'} />
       </div>
     </div>
   );

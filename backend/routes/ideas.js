@@ -18,12 +18,14 @@ const {
   notifyUser,
   notifyUsers
 } = require('../services/notificationService');
+const { setSLA, clearSLA } = require('../services/slaService');
 
 // Helper: get all Central Team (Superadmin) emails
+// Filters by `roles` array, not active `role`, so switched users still receive emails.
 async function getCentralTeamEmails() {
   try {
     const admins = await prisma.user.findMany({
-      where: { role: 'Superadmin' },
+      where: { roles: { contains: 'Superadmin' } },
       select: { email: true }
     });
     return admins.map(a => a.email).filter(Boolean);
@@ -86,10 +88,10 @@ router.get('/pending', async (req, res) => {
   try {
     const ideas = await prisma.idea.findMany({
       where: { status: 'Pending Review' },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
-    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name, authorOrganization: idea.author.organization }));
+    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name, authorOrganization: idea.author.organization, authorTitle: idea.author.title, authorMobile: idea.author.mobile_number, authorEmployeeId: idea.author.employee_id, authorPhotoUrl: idea.author.profile_photo_url }));
     res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -105,7 +107,7 @@ router.get('/central/assigned', async (req, res) => {
         status: { not: 'Draft' }
       },
       include: {
-        author: { select: { name: true, organization: true } },
+        author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } },
         assignedTo: { select: { id: true, name: true, organization: true } }
       },
       orderBy: { createdAt: 'desc' }
@@ -128,10 +130,10 @@ router.get('/central/under-review', async (req, res) => {
   try {
     const ideas = await prisma.idea.findMany({
       where: { status: 'Under Review', assignedToId: null },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
-    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name, authorOrganization: idea.author.organization }));
+    const formatted = ideas.map(idea => ({ ...idea, authorName: idea.author.name, authorOrganization: idea.author.organization, authorTitle: idea.author.title, authorMobile: idea.author.mobile_number, authorEmployeeId: idea.author.employee_id, authorPhotoUrl: idea.author.profile_photo_url }));
     res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -147,7 +149,7 @@ router.get('/central/approved', async (req, res) => {
         approvedByRole: 'central'   // STRICT: only Central Team approvals
       },
       include: {
-        author: { select: { name: true, organization: true } },
+        author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } },
         approvedBy: { select: { id: true, name: true, role: true } }
       },
       orderBy: { createdAt: 'desc' }
@@ -185,7 +187,7 @@ router.get('/central/approved-by-admin', async (req, res) => {
         approvedByRole: 'admin'     // STRICT: only Org Admin approvals
       },
       include: {
-        author: { select: { name: true, organization: true } },
+        author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } },
         approvedBy: { select: { id: true, name: true, role: true } }
       },
       orderBy: { createdAt: 'desc' }
@@ -222,7 +224,7 @@ router.get('/assigned/:userId', async (req, res) => {
         assignedToId: parseInt(req.params.userId),
         status: 'Assigned to Org Admin' 
       },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
     const formatted = ideas.map(idea => ({ 
@@ -244,7 +246,7 @@ router.get('/assigned/:userId/under-review', async (req, res) => {
         assignedToId: parseInt(req.params.userId),
         status: 'Under Review' 
       },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
     const formatted = ideas.map(idea => ({ 
@@ -266,7 +268,7 @@ router.get('/assigned/:userId/processed', async (req, res) => {
         assignedToId: parseInt(req.params.userId),
         status: { in: ['Approved', 'Rejected'] } 
       },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -303,7 +305,7 @@ router.get('/team/:organization', async (req, res) => {
         },
         status: { not: 'Draft' }
       },
-      include: { author: { select: { name: true, organization: true } } },
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } },
       orderBy: { createdAt: 'desc' }
     });
     const formatted = ideas.map(idea => ({ 
@@ -360,8 +362,8 @@ router.post('/', async (req, res) => {
       const draftCount = await prisma.idea.count({
         where: { authorId: aid, status: 'Draft' }
       });
-      if (draftCount >= 3) {
-        return res.status(400).json({ error: 'Draft limit reached. You can only have up to 3 drafts at a time.' });
+      if (draftCount >= 5) {
+        return res.status(400).json({ error: 'Draft limit reached. You can only have up to 5 drafts at a time.' });
       }
     } else {
       const now = new Date();
@@ -369,8 +371,8 @@ router.post('/', async (req, res) => {
       const submittedCount = await prisma.idea.count({
         where: { authorId: aid, createdAt: { gte: startOfMonth }, status: { not: 'Draft' } }
       });
-      if (submittedCount >= 5) {
-        return res.status(400).json({ error: 'Monthly limit reached. You can only submit 5 ideas per month.' });
+      if (submittedCount >= 3) {
+        return res.status(400).json({ error: 'Monthly limit reached. You can only submit 3 ideas per month.' });
       }
     }
     const idea = await prisma.idea.create({
@@ -391,9 +393,29 @@ router.post('/', async (req, res) => {
       return res.json({ id: idea.id, status: idea.status, isDraft: true });
     }
 
+    // Set initial SLA for Central Admin
+    setSLA(idea.id, 'pending_central');
+
     // AI Processing - Background (don't block the response)
+    // Build a rich content string from ALL text fields in extraFields so that
+    // Gemini gets the full idea content regardless of which template was used.
+    const enrichedDescription = (() => {
+      const parts = [];
+      if (description && description !== `Submitted via ${req.body.extraFields?._templateName || ''}`) {
+        parts.push(description);
+      }
+      const ef = extraFields || {};
+      const TEXT_SKIP = new Set(['_templateId', '_templateName', 'referenceLink', 'supportingLink']);
+      Object.entries(ef).forEach(([k, v]) => {
+        if (!TEXT_SKIP.has(k) && typeof v === 'string' && v.trim()) {
+          parts.push(`${k}: ${v.trim()}`);
+        }
+      });
+      return parts.join('\n\n') || description;
+    })();
+
     console.log(`[AI-Queue] Triggering AI processing for idea ID: ${idea.id}`);
-    generateIdeaInsights({ title, description, proposedSolution: extraFields?.proposedSolution || '' })
+    generateIdeaInsights({ title, description: enrichedDescription, proposedSolution: extraFields?.proposedSolution || '' })
       .then(async (insights) => {
         if (insights) {
           console.log(`[AI-Queue] Updating idea ID: ${idea.id} with insights`);
@@ -411,10 +433,23 @@ router.post('/', async (req, res) => {
       })
       .catch(err => console.error(`[AI-Queue] Error in background AI processing for ID: ${idea.id}:`, err));
 
-    // Award +10 points for idea submission
-    awardPoints(aid, 'idea_submitted', 10, idea.id);
+    // Points logic:
+    // - First idea ever (all-time): award ONLY +50 bonus (skip the regular 10pts)
+    // - All subsequent ideas: award regular +10 pts
+    const totalSubmitted = await prisma.idea.count({
+      where: { authorId: aid, status: { not: 'Draft' } }
+    });
+    const isFirstIdea = totalSubmitted === 1;
+    if (isFirstIdea) {
+      // First idea: only 50 pts — no 10 pt award
+      awardPoints(aid, 'first_idea_bonus', 50, idea.id);
+      console.log(`[Points] First-idea bonus +50 awarded to userId=${aid} (no regular 10pts)`);
+    } else {
+      // Subsequent ideas: regular 10 pts
+      awardPoints(aid, 'idea_submitted', 10, idea.id);
+    }
 
-    res.json({ id: idea.id, status: idea.status });
+    res.json({ id: idea.id, status: idea.status, isFirstIdea });
 
     // DB Notifications & Email
     const author = await prisma.user.findUnique({ where: { id: parseInt(authorId) }, select: { name: true, organization: true } });
@@ -426,7 +461,11 @@ router.post('/', async (req, res) => {
     // Email Central Team + Org Admins (strict rules)
     if (author) {
       const centralEmails = await getCentralTeamEmails();
-      const orgAdmins = await prisma.user.findMany({ where: { role: 'Org Admin', organization: author.organization }, select: { email: true } });
+      // Filter org admins by roles array (not active role) so switched users get emails
+      const orgAdmins = await prisma.user.findMany({
+        where: { roles: { contains: 'Org Admin' }, organization: author.organization },
+        select: { email: true }
+      });
       const orgEmails = orgAdmins.map(a => a.email).filter(Boolean);
       const toEmails = [...new Set([...centralEmails, ...orgEmails])];
 
@@ -449,7 +488,7 @@ router.put('/:id/submit-draft', async (req, res) => {
   const ideaId = parseInt(req.params.id);
   
   try {
-    const idea = await prisma.idea.findUnique({ where: { id: ideaId }, include: { author: { select: { name: true, organization: true } } } });
+    const idea = await prisma.idea.findUnique({ where: { id: ideaId }, include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } } });
     if (!idea || idea.status !== 'Draft') {
       return res.status(400).json({ error: 'This idea is not a draft or does not exist.' });
     }
@@ -461,8 +500,8 @@ router.put('/:id/submit-draft', async (req, res) => {
       where: { authorId: idea.authorId, createdAt: { gte: startOfMonth }, status: { not: 'Draft' } }
     });
     
-    if (submittedCount >= 5) {
-      return res.status(400).json({ error: 'Monthly limit reached. You can only submit 5 ideas per month.' });
+    if (submittedCount >= 3) {
+      return res.status(400).json({ error: 'Monthly limit reached. You can only submit 3 ideas per month.' });
     }
 
     // Submit it
@@ -471,16 +510,33 @@ router.put('/:id/submit-draft', async (req, res) => {
       data: { status: 'Pending Review' }
     });
 
+    // Start SLA for Central Admin
+    setSLA(updated.id, 'pending_central');
+
     // Extract proposed solution for AI
     let proposedSolution = '';
+    let enrichedDescriptionDraft = updated.description || '';
     try {
       const extra = JSON.parse(idea.extraFields || '{}');
       proposedSolution = extra.proposedSolution || '';
+
+      // Build a rich description from ALL text fields in extraFields
+      const TEXT_SKIP = new Set(['_templateId', '_templateName', 'referenceLink', 'supportingLink']);
+      const parts = [];
+      if (updated.description && !updated.description.startsWith('Submitted via ')) {
+        parts.push(updated.description);
+      }
+      Object.entries(extra).forEach(([k, v]) => {
+        if (!TEXT_SKIP.has(k) && typeof v === 'string' && v.trim()) {
+          parts.push(`${k}: ${v.trim()}`);
+        }
+      });
+      if (parts.length > 0) enrichedDescriptionDraft = parts.join('\n\n');
     } catch(e) {}
 
     // AI Processing - Background
     console.log(`[AI-Queue] Triggering AI processing for idea ID: ${updated.id}`);
-    generateIdeaInsights({ title: updated.title, description: updated.description, proposedSolution })
+    generateIdeaInsights({ title: updated.title, description: enrichedDescriptionDraft, proposedSolution })
       .then(async (insights) => {
         if (insights) {
           console.log(`[AI-Queue] Updating idea ID: ${updated.id} with insights`);
@@ -496,10 +552,23 @@ router.put('/:id/submit-draft', async (req, res) => {
       })
       .catch(err => console.error(`[AI-Queue] Error in background AI processing for ID: ${updated.id}:`, err));
 
-    // Award +10 points for idea submission
-    awardPoints(idea.authorId, 'idea_submitted', 10, idea.id);
+    // Points logic:
+    // - First idea ever (all-time): award ONLY +50 bonus (skip the regular 10pts)
+    // - All subsequent ideas: award regular +10 pts
+    const totalSubmittedDraft = await prisma.idea.count({
+      where: { authorId: idea.authorId, status: { not: 'Draft' } }
+    });
+    const isFirstIdeaDraft = totalSubmittedDraft === 1;
+    if (isFirstIdeaDraft) {
+      // First idea: only 50 pts — no 10 pt award
+      awardPoints(idea.authorId, 'first_idea_bonus', 50, idea.id);
+      console.log(`[Points] First-idea bonus +50 awarded to userId=${idea.authorId} (via draft submit, no regular 10pts)`);
+    } else {
+      // Subsequent ideas: regular 10 pts
+      awardPoints(idea.authorId, 'idea_submitted', 10, idea.id);
+    }
 
-    res.json({ message: 'Draft submitted successfully', status: 'Pending Review' });
+    res.json({ message: 'Draft submitted successfully', status: 'Pending Review', isFirstIdea: isFirstIdeaDraft });
 
     // DB Notifications & Email
     const author = idea.author;
@@ -508,7 +577,11 @@ router.put('/:id/submit-draft', async (req, res) => {
     
     if (author) {
       const centralEmails = await getCentralTeamEmails();
-      const orgAdmins = await prisma.user.findMany({ where: { role: 'Org Admin', organization: author.organization }, select: { email: true } });
+      // Filter org admins by roles array (not active role) so switched users get emails
+      const orgAdmins = await prisma.user.findMany({
+        where: { roles: { contains: 'Org Admin' }, organization: author.organization },
+        select: { email: true }
+      });
       const orgEmails = orgAdmins.map(a => a.email).filter(Boolean);
       const toEmails = [...new Set([...centralEmails, ...orgEmails])];
 
@@ -543,8 +616,12 @@ router.put('/:id/assign', async (req, res) => {
         assignedToId: parseInt(assignedToId),
         status: 'Assigned to Org Admin'
       },
-      include: { author: { select: { name: true, organization: true } } }
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } }
     });
+
+    // Pass SLA to Org Admin
+    setSLA(ideaId, 'pending_org_admin');
+    
     res.json({ message: 'Idea assigned successfully' });
 
     // Fetch Org Admin details for email/notification
@@ -573,8 +650,13 @@ router.put('/:id/under-review', async (req, res) => {
     const idea = await prisma.idea.update({
       where: { id: ideaId },
       data: { status: 'Under Review' },
-      include: { author: { select: { name: true, organization: true } } }
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } }
     });
+
+    // Advance SLA to the under_review stage (depends on who owns it)
+    const slaStage = idea.assignedToId ? 'under_review_org_admin' : 'under_review_central';
+    setSLA(ideaId, slaStage);
+
     res.json({ message: 'Idea is now Under Review' });
 
     notifyUser(idea.authorId, 'idea', `Your idea '${idea.title}' is now Under Review.`, ideaId);
@@ -636,7 +718,7 @@ router.put('/:id/status', async (req, res) => {
           approvedByRole: approvedByRole || 'admin'
         } : {})
       },
-      include: { author: { select: { name: true, organization: true } } }
+      include: { author: { select: { name: true, title: true, organization: true, mobile_number: true, employee_id: true, profile_photo_url: true } } }
     });
 
     // Auto-create project when approved (if not already existing)
@@ -698,6 +780,9 @@ router.put('/:id/status', async (req, res) => {
       }
     }
 
+    // Terminal state — clear SLA
+    clearSLA(ideaId);
+
     res.json({ message: `Idea marked as ${status}` });
   } catch (error) {
     if (error.code === 'P2025') return res.status(404).json({ error: 'Idea not found' });
@@ -706,11 +791,12 @@ router.put('/:id/status', async (req, res) => {
 });
 
 // GET org admins (For Select Dropdown)
+// Uses roles array so Org Admins who temporarily switched to Employee are still visible.
 router.get('/orgadmins', async (req, res) => {
   try {
     const admins = await prisma.user.findMany({
-      where: { role: 'Org Admin' },
-      select: { id: true, name: true }
+      where: { roles: { contains: 'Org Admin' } },
+      select: { id: true, name: true, organization: true }
     });
     res.json(admins);
   } catch (error) {
@@ -718,6 +804,48 @@ router.get('/orgadmins', async (req, res) => {
   }
 });
 
+
+// POST /api/ideas/:id/regenerate-summary — Re-run AI summary for a specific idea
+// Useful to backfill missing summaries without resubmitting.
+router.post('/:id/regenerate-summary', async (req, res) => {
+  const ideaId = parseInt(req.params.id);
+  try {
+    const idea = await prisma.idea.findUnique({ where: { id: ideaId } });
+    if (!idea) return res.status(404).json({ error: 'Idea not found' });
+
+    // Build enriched description from all text fields in extraFields
+    let enriched = idea.description || '';
+    try {
+      const extra = JSON.parse(idea.extraFields || '{}');
+      const TEXT_SKIP = new Set(['_templateId', '_templateName', 'referenceLink', 'supportingLink']);
+      const parts = [];
+      if (idea.description && !idea.description.startsWith('Submitted via ')) parts.push(idea.description);
+      Object.entries(extra).forEach(([k, v]) => {
+        if (!TEXT_SKIP.has(k) && typeof v === 'string' && v.trim()) {
+          parts.push(`${k}: ${v.trim()}`);
+        }
+      });
+      if (parts.length > 0) enriched = parts.join('\n\n');
+    } catch(e) {}
+
+    // Respond immediately — process in background
+    res.json({ message: 'AI summary generation triggered.' });
+
+    generateIdeaInsights({ title: idea.title, description: enriched, proposedSolution: '' })
+      .then(async (insights) => {
+        if (insights) {
+          await prisma.idea.update({
+            where: { id: ideaId },
+            data: { aiSummary: insights.summary, aiTags: JSON.stringify(insights.tags) }
+          });
+          console.log(`[AI-Queue] Regenerated summary for idea ID: ${ideaId}`);
+        }
+      })
+      .catch(err => console.error(`[AI-Queue] Regenerate failed for ID ${ideaId}:`, err));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // POST autofill form fields using Gemini AI
 router.post('/autofill', async (req, res) => {

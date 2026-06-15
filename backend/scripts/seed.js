@@ -18,7 +18,8 @@ async function runSeed() {
       {
         name: 'Central Admin',
         email: 'central.admin@adventz.com',
-        role: 'Central Team',
+        role: 'Superadmin',
+        roles: JSON.stringify(['Superadmin', 'Org Admin', 'Employee']),
         organization: null,
         password: 'password',
         title: 'Central Administrator'
@@ -27,6 +28,7 @@ async function runSeed() {
         name: 'Org Admin',
         email: 'org.admin@adventz.com',
         role: 'Org Admin',
+        roles: JSON.stringify(['Org Admin', 'Employee']),
         organization: 'Simon',
         password: 'password',
         title: 'Organization Administrator'
@@ -35,6 +37,7 @@ async function runSeed() {
         name: 'Demo Employee',
         email: 'employee@adventz.com',
         role: 'Employee',
+        roles: JSON.stringify(['Employee']),
         organization: 'Simon',
         password: 'password',
         title: 'Staff'

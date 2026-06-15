@@ -32,7 +32,14 @@ async function generateIdeaInsights(ideaData) {
     }
   `;
 
-  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  // Model priority: 2.5 Flash → 2.0 Flash → 1.5 Pro → 1.5 Flash
+  const modelsToTry = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+  ];
+
   let lastError = null;
 
   for (const modelName of modelsToTry) {
@@ -89,6 +96,7 @@ async function generateProjectPlan(projectData) {
 
     Generate 5-8 specific, practical action steps.
     Each step should be a concrete task, not vague advice.
+    IMPORTANT: Even if the provided description is very short or vague, DO NOT refuse to generate steps. You MUST extrapolate and generate a full set of 5-8 logical, detailed steps that would be required to implement such an idea. DO NOT output errors or complaints about the text being too short.
 
     Response must be a valid JSON array of objects:
     [
@@ -98,7 +106,12 @@ async function generateProjectPlan(projectData) {
     Return ONLY the JSON array, no other text.
   `;
 
-  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  const modelsToTry = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+  ];
   let lastError = null;
 
   for (const modelName of modelsToTry) {
@@ -166,20 +179,24 @@ Form Fields Structure:
 ${fieldDescriptions}
 
 Rules:
-1. Return a valid JSON object where keys are field IDs and values are the extracted content
-2. Only include fields you can confidently fill from the description
-3. For "select" type fields, only use one of the valid options listed — if unsure, omit
-4. For "textarea" type fields, write clear, professional content
-5. For "text" type fields, keep it concise
-6. For "url" type fields, only include if a URL was explicitly mentioned
-7. Leave fields empty (omit them) if the description doesn't provide enough info — do NOT guess
-8. Do NOT add any explanation — return ONLY the raw JSON object
+1. Return a valid JSON object where keys are field IDs and values are the extracted content.
+2. MANDATORY: You MUST fill out EVERY SINGLE FIELD provided in the structure. Even if the user's description is just one word, use your creativity to invent, extrapolate, and flesh out highly detailed, professional content for EVERY field based on that hint. NEVER return an empty object or skip fields because the input is too short. Your job is to transform a simple hint into a fully developed proposal.
+3. For "select" type fields, pick the best matching valid option. If unsure, pick the most likely one.
+4. For "textarea" type fields, write clear, professional, and expansive content (at least 2-3 sentences).
+5. For "text" type fields, keep it concise but descriptive.
+6. For "url" type fields, only include if a URL was explicitly mentioned, otherwise omit.
+7. Do NOT add any explanation — return ONLY the raw JSON object.
 
 Example valid response:
 {"title": "...", "problemDescription": "...", "proposedSolution": "..."}
 `.trim();
 
-  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  const modelsToTry = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+  ];
   let lastError = null;
 
   for (const modelName of modelsToTry) {
@@ -257,7 +274,12 @@ Response must be valid JSON (no markdown, no code blocks):
 Return ONLY the JSON object, no other text.
 `.trim();
 
-  const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  const modelsToTry = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+  ];
   let lastError = null;
 
   for (const modelName of modelsToTry) {

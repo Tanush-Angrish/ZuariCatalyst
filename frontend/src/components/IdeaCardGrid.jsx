@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import mammoth from 'mammoth';
+import { Link } from 'react-router-dom';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { useAuth } from '../context/AuthContext';
@@ -9,7 +10,7 @@ import {
   Building, Tag, CheckCircle2, XCircle,
   Calendar, Paperclip, Link as LinkIcon, UserCheck,
   Download, Eye, Mic, Lightbulb, ThumbsUp, Search, SlidersHorizontal,
-  AlertTriangle, RefreshCw, Send, Clock, ChevronRight, Users
+  AlertTriangle, RefreshCw, Send, Clock, ChevronRight, Users, Plus
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -22,13 +23,13 @@ function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onCon
       // Under review: can Approve or Reject (with reason)
       const acts = [
         { id: 'Approved', label: 'Approve Idea', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', desc: 'Approve and convert to a project.' },
-        { id: 'Rejected', label: 'Reject Idea', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', desc: 'Reject this idea with a reason.' },
+        { id: 'Rejected', label: 'Decline Idea', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', desc: 'Decline this idea with a reason.' },
       ];
       return acts;
     }
     const acts = [
       { id: 'Under Review', label: 'Put Under Review', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', desc: 'Move to active review. Required before approving.' },
-      { id: 'Rejected', label: 'Reject Idea', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', desc: 'Reject this idea with a reason.' },
+      { id: 'Rejected', label: 'Decline Idea', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', desc: 'Decline this idea with a reason.' },
     ];
     if (viewType === 'superadmin') {
       acts.push({ id: 'Assigned', label: 'Assign to Org Admin', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', desc: 'Delegate review to an Org Admin.' });
@@ -45,7 +46,7 @@ function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onCon
 
   const handleConfirm = async () => {
     if (!selectedAction) { setError('Please select an action.'); return; }
-    if (selectedAction === 'Rejected' && !reason.trim()) { setError('A reason is required when rejecting an idea.'); return; }
+    if (selectedAction === 'Rejected' && !reason.trim()) { setError('A reason is required when declining an idea.'); return; }
     if (selectedAction === 'Assigned' && !selectedAdmin) { setError('Please select an Org Admin to assign to.'); return; }
 
     setLoading(true);
@@ -126,7 +127,7 @@ function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onCon
         {selectedAction === 'Rejected' && (
           <div className="px-6 pt-4">
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-              Reason for Rejection <span className="text-red-500">*</span>
+              Reason for Declining <span className="text-red-500">*</span>
               <span className="ml-1 font-normal text-gray-400">(required)</span>
             </label>
             <textarea
@@ -134,7 +135,7 @@ function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onCon
               value={reason}
               onChange={e => { setReason(e.target.value); setError(''); }}
               rows={3}
-              placeholder="Explain why this idea is being rejected. This will be shared with the employee…"
+              placeholder="Explain why this idea is being declined. This will be shared with the employee…"
               className="w-full rounded-xl border border-red-200 focus:border-red-400 focus:ring-red-100 p-3 text-sm resize-none transition-all focus:outline-none focus:ring-2"
             />
           </div>
@@ -193,6 +194,47 @@ function statusVariant(status) {
     default: return 'secondary';
   }
 }
+
+// ─── SLA Status Badge ───────────────────────────────────────────────────────
+function SLABadge({ idea }) {
+  if (!idea.slaDeadline) return null;
+
+  const deadline = new Date(idea.slaDeadline);
+  const now = new Date();
+  const msRemaining = deadline.getTime() - now.getTime();
+  const daysRemaining = msRemaining / (1000 * 60 * 60 * 24);
+  const hoursRemaining = msRemaining / (1000 * 60 * 60);
+
+  let label = '';
+  let colorClass = '';
+
+  if (msRemaining <= 0) {
+    if (idea.slaStage === 'under_review_central' || idea.slaStage === 'under_review_org_admin') {
+      label = 'Auto approval pending';
+      colorClass = 'bg-red-50 text-red-700 border-red-200';
+    } else {
+      label = 'SLA breached';
+      colorClass = 'bg-rose-50 text-rose-700 border-rose-200';
+    }
+  } else {
+    if (daysRemaining > 1) {
+      label = `${Math.ceil(daysRemaining)} days remaining`;
+      colorClass = 'bg-blue-50 text-blue-700 border-blue-150';
+    } else {
+      const hrs = Math.max(1, Math.ceil(hoursRemaining));
+      label = `${hrs} hr${hrs > 1 ? 's' : ''} remaining`;
+      colorClass = 'bg-amber-50 text-amber-700 border-amber-200';
+    }
+  }
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${colorClass}`}>
+      <Clock size={11} className="shrink-0" />
+      {label}
+    </span>
+  );
+}
+
 
 // ─── Read-More text block ──────────────────────────────────────────────────
 const TRUNCATE_LEN = 120;
@@ -339,8 +381,9 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold text-brand-black leading-snug">{idea.title}</h2>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                <SLABadge idea={idea} />
                 {!(isEmployee && viewType === 'community') && (
-                  <Badge variant={statusVariant(idea.status)}>{idea.status}</Badge>
+                  <Badge variant={statusVariant(idea.status)}>{idea.status === 'Rejected' ? 'Declined' : idea.status}</Badge>
                 )}
                 {displayOrg && !(isEmployee && viewType === 'community') && (
                   <span className="text-xs text-gray-400 flex items-center gap-1">
@@ -370,7 +413,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <XCircle size={16} className="text-red-500 shrink-0" />
-                <h3 className="text-sm font-bold text-red-700">Rejected — Reviewer Feedback</h3>
+                <h3 className="text-sm font-bold text-red-700">Declined — Reviewer Feedback</h3>
               </div>
               <p className="text-sm text-red-800 leading-relaxed">{idea.rejectionReason}</p>
               <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
@@ -388,7 +431,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
             <div className="rounded-xl border border-red-200 bg-red-50 p-4">
               <div className="flex items-center gap-2">
                 <XCircle size={16} className="text-red-500 shrink-0" />
-                <span className="text-sm font-semibold text-red-700">Idea Rejected</span>
+                <span className="text-sm font-semibold text-red-700">Idea Declined</span>
               </div>
               <div className="mt-2 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
                 <RefreshCw size={14} className="text-amber-600 mt-0.5 shrink-0" />
@@ -433,16 +476,36 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
 
             {/* Author block (Shown to all) */}
             <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-              <div className="h-9 w-9 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center font-bold text-sm shrink-0">
-                {displayName.charAt(0)}
-              </div>
-              <div>
+              {/* Avatar: photo or initials */}
+              {idea.authorPhotoUrl ? (
+                <img
+                  src={api.getFileUrl(idea.authorPhotoUrl)}
+                  alt={displayName}
+                  className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-brand-blue to-blue-400 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                  {displayName.charAt(0)}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-brand-black">{displayName}</p>
-                {!(isEmployee && viewType === 'community') && (
-                  <p className="text-xs text-gray-400">{displayOrg || 'No organization'}</p>
-                )}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                  {!(isEmployee && viewType === 'community') && displayOrg && (
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                      <Building size={10} />{displayOrg}
+                    </span>
+                  )}
+                  {/* Employee ID + Mobile — visible to admins in review/assigned views */}
+                  {!isEmployee && idea.authorEmployeeId && (
+                    <span className="text-xs text-gray-400 font-mono">ID: {idea.authorEmployeeId}</span>
+                  )}
+                  {!isEmployee && idea.authorMobile && (
+                    <span className="text-xs text-gray-400 font-mono">📱 {idea.authorMobile}</span>
+                  )}
+                </div>
               </div>
-              <div className="ml-auto text-xs text-gray-400 flex items-center gap-1">
+              <div className="ml-auto text-xs text-gray-400 flex items-center gap-1 shrink-0">
                 <Calendar size={11} />
                 {new Date(idea.createdAt).toLocaleDateString()}
               </div>
@@ -729,18 +792,29 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
         {/* Card Header */}
         <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="h-7 w-7 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center font-bold text-xs shrink-0">
-              {displayName.charAt(0)}
-            </div>
+            {idea.authorPhotoUrl ? (
+              <img
+                src={api.getFileUrl(idea.authorPhotoUrl)}
+                alt={displayName}
+                className="h-7 w-7 rounded-full object-cover border border-gray-200 shrink-0"
+              />
+            ) : (
+              <div className="h-7 w-7 rounded-full bg-gradient-to-br from-brand-blue to-blue-400 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                {displayName.charAt(0)}
+              </div>
+            )}
             <span className="text-sm font-medium text-brand-black truncate">{displayName}</span>
             {idea.authorOrganization && !isOwn && viewType !== 'community' && (
               <span className="text-xs text-gray-400 hidden sm:block truncate">• {idea.authorOrganization}</span>
             )}
           </div>
-          {/* Hide Status badge for employees in community view */}
-          {!(isEmployee && viewType === 'community') && (
-            <Badge variant={statusVariant(idea.status)} className={`shrink-0 text-xs ${idea.status === 'Draft' ? 'bg-amber-100 text-amber-800' : ''}`}>{idea.status}</Badge>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <SLABadge idea={idea} />
+            {/* Hide Status badge for employees in community view */}
+            {!(isEmployee && viewType === 'community') && (
+              <Badge variant={statusVariant(idea.status)} className={`text-xs ${idea.status === 'Draft' ? 'bg-amber-100 text-amber-800' : ''}`}>{idea.status === 'Rejected' ? 'Declined' : idea.status}</Badge>
+            )}
+          </div>
         </div>
 
         {/* Card Body */}
@@ -954,15 +1028,7 @@ export default function IdeaCardGrid({
 
   const showSearchUI = showSearch && parsedIdeas.length > 0;
 
-  if (parsedIdeas.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-gray-500 bg-white">
-        <FileText className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-        <h3 className="text-lg font-medium text-brand-black">No ideas found</h3>
-        <p className="text-sm">There are currently no ideas to display in this view.</p>
-      </div>
-    );
-  }
+
 
   // Superadmin gets wider cards (2 cols) to fit assign + approve/reject
   const gridCols = viewType === 'superadmin'
@@ -1022,19 +1088,43 @@ export default function IdeaCardGrid({
         </div>
       )}
 
-      {/* ── No results state ────────────────────────────────────────── */}
-      {filteredIdeas.length === 0 && (
+      {/* ── Completely Empty State for Employees ──────────────────────── */}
+      {parsedIdeas.length === 0 && isEmployee && (
+        <div className="rounded-2xl border border-dashed border-gray-200 p-16 text-center text-gray-500 bg-white shadow-sm max-w-2xl mx-auto mt-12 animate-fade-in-up">
+          <div className="mx-auto w-16 h-16 bg-blue-50 text-brand-blue rounded-full flex items-center justify-center mb-5 border border-blue-100">
+            <Lightbulb size={32} strokeWidth={2} />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Nothing here yet</h3>
+          <p className="text-[15px] mb-8 max-w-md mx-auto leading-relaxed">
+            There are no ideas to display right now. Start sharing your innovative thoughts to help improve the organization and climb the leaderboard!
+          </p>
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-800 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-[0_4px_12px_rgba(0,53,128,0.2)] hover:-translate-y-0.5"
+          >
+            <Plus size={18} />
+            Submit New Idea
+          </Link>
+        </div>
+      )}
+
+      {/* ── No Search Results State / Default Empty State ─────────────── */}
+      {((parsedIdeas.length > 0 && filteredIdeas.length === 0) || (parsedIdeas.length === 0 && !isEmployee)) && (
         <div className="rounded-xl border border-dashed border-gray-200 p-12 text-center text-gray-400 bg-white">
           <Search className="mx-auto h-10 w-10 text-gray-200 mb-3" />
           <h3 className="text-base font-semibold text-gray-600 mb-1">No results found</h3>
-          <p className="text-sm">Try adjusting your search or clearing the status filter.</p>
-          <button
-            type="button"
-            onClick={() => { setSearchQuery(''); setStatusFilter('All'); }}
-            className="mt-3 text-xs font-semibold text-brand-blue hover:underline"
-          >
-            Clear all filters
-          </button>
+          <p className="text-sm">
+            {parsedIdeas.length === 0 ? "No ideas have been submitted yet." : "Try adjusting your search or clearing the status filter."}
+          </p>
+          {parsedIdeas.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { setSearchQuery(''); setStatusFilter('All'); }}
+              className="mt-3 text-xs font-semibold text-brand-blue hover:underline"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       )}
 

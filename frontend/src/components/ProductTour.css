@@ -1,0 +1,436 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Product Tour — Complete CSS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Backdrop (dimmed overlay for welcome / done / fallback) ────────────── */
+.tour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(10, 15, 35, 0.72);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: tourFade 0.25s ease;
+}
+
+@keyframes tourFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Spotlight Layer ─────────────────────────────────────────────────────── */
+.tour-spot-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+}
+
+.tour-spot-hole {
+  position: absolute;
+  border-radius: 12px;
+  /* 9999px shadow creates a full-screen dim AROUND the hole */
+  box-shadow:
+    0 0 0 9999px rgba(10, 15, 35, 0.70),
+    inset 0 0 0 2.5px rgba(59, 130, 246, 0.75);
+  transition: top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease;
+  animation: spotPulse 2s infinite ease-in-out;
+}
+
+@keyframes spotPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 9999px rgba(10, 15, 35, 0.70),
+      inset 0 0 0 2.5px rgba(59,130,246,0.65),
+      0 0 16px rgba(59,130,246,0.20);
+  }
+  50% {
+    box-shadow:
+      0 0 0 9999px rgba(10, 15, 35, 0.70),
+      inset 0 0 0 2.5px rgba(59,130,246,1),
+      0 0 28px rgba(59,130,246,0.45);
+  }
+}
+
+/* ─── Arrow (independent fixed element) ───────────────────────────────────── */
+.tour-arr {
+  position: fixed;
+  width: 0;
+  height: 0;
+  z-index: 10001;
+  pointer-events: none;
+  transition: top 0.3s ease, left 0.3s ease;
+}
+
+/* Points LEFT (tooltip is to the right of a sidebar item) */
+.tour-arr-left {
+  border-right: 10px solid #fff;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  filter: drop-shadow(-3px 0 3px rgba(0,0,0,0.10));
+}
+
+/* Points UP (tooltip is below an element) */
+.tour-arr-up {
+  border-bottom: 10px solid #fff;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  filter: drop-shadow(0 -2px 3px rgba(0,0,0,0.10));
+}
+
+/* Points DOWN (tooltip is above an element) */
+.tour-arr-down {
+  border-top: 10px solid #fff;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.10));
+}
+
+/* ─── Tooltip (the white popup card) ──────────────────────────────────────── */
+.tour-tip {
+  position: fixed;
+  width: 340px;
+  background: #fff;
+  border-radius: 18px;
+  padding: 22px 24px 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.20), 0 0 0 1px rgba(0,0,0,0.05);
+  z-index: 10000;
+  pointer-events: auto;
+  transition: top 0.3s ease, left 0.3s ease, opacity 0.2s ease;
+  animation: tipIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes tipIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Tooltip internals ───────────────────────────────────────────────────── */
+.tour-tip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.tour-tip-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #3b82f6;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.tour-tip-lang {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tour-tip-lang:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.tour-tip-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f1b3d;
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
+}
+
+.tour-tip-body {
+  font-size: 13.5px;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0 0 18px;
+}
+
+/* ─── Tooltip nav row ─────────────────────────────────────────────────────── */
+.tour-tip-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tour-tip-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tour-tip-back {
+  height: 38px;
+  padding: 0 18px;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tour-tip-back:hover:not(:disabled) { background: #f9fafb; border-color: #d1d5db; }
+.tour-tip-back:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.tour-tip-play {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  color: #374151;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tour-tip-play:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.tour-tip-next,
+.tour-tip-finish {
+  height: 38px;
+  padding: 0 20px;
+  background: #1d3368;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tour-tip-finish {
+  background: linear-gradient(135deg, #3b82f6, #1d3368);
+}
+.tour-tip-next:hover,
+.tour-tip-finish:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(29, 51, 104, 0.3);
+}
+
+/* ─── Welcome / Done Card ─────────────────────────────────────────────────── */
+.tour-card {
+  background: #f5f6fa;
+  border-radius: 20px;
+  padding: 40px 36px 32px;
+  width: 520px;
+  max-width: 95vw;
+  position: relative;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  z-index: 10000;
+  pointer-events: auto;
+  animation: cardUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cardUp {
+  from { opacity: 0; transform: translateY(40px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.tour-x {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.tour-x:hover { color: #374151; }
+
+.tour-emoji-box {
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  margin-bottom: 20px;
+}
+.tour-emoji-welcome {
+  background: #1d3368;
+  box-shadow: 0 8px 24px rgba(29, 51, 104, 0.35);
+}
+.tour-emoji-done {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: #fef9ec;
+  font-size: 38px;
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.25);
+}
+
+.tour-heading {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f1b3d;
+  margin: 0 0 10px;
+  letter-spacing: -0.5px;
+}
+
+.tour-sub {
+  font-size: 15px;
+  color: #5a6481;
+  margin: 0 0 24px;
+  line-height: 1.55;
+}
+
+.tour-xp {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+/* Language bar */
+.tour-lang-bar {
+  display: flex;
+  background: #e8eaf0;
+  border-radius: 50px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 28px;
+}
+
+.tour-lang {
+  padding: 9px 22px;
+  border-radius: 50px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tour-lang.on {
+  background: #fff;
+  color: #1d3368;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.tour-lang:hover:not(.on) { background: rgba(255,255,255,0.5); }
+
+/* Actions */
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.tour-play-sm {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  background: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  color: #374151;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tour-play-sm:hover {
+  border-color: #1d3368;
+  color: #1d3368;
+  background: #f0f4ff;
+}
+
+.tour-btn-primary {
+  flex: 1;
+  height: 48px;
+  background: linear-gradient(135deg, #3b82f6, #1d3368);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.2px;
+}
+.tour-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+}
+
+.tour-btn-dark {
+  width: 100%;
+  height: 52px;
+  background: #0f1b3d;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tour-btn-dark:hover {
+  background: #1d3368;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(15, 27, 61, 0.35);
+}
+
+/* ─── Target Highlight (added by JS) ──────────────────────────────────────── */
+.tour-hi {
+  position: relative;
+  z-index: 9999 !important;
+}
+
+/* ─── Sidebar "Product Tour" button ───────────────────────────────────────── */
+.tour-sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  white-space: nowrap;
+}
+.tour-sidebar-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+.tour-sidebar-btn svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}

@@ -1,19 +1,40 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Users, PlusCircle, LayoutList, UserCog, Settings, Wrench, Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTour } from '../../context/TourContext';
+import {
+  LayoutDashboard, Users, PlusCircle, LayoutList, UserCog,
+  Settings, Wrench, Trophy, ChevronLeft, ChevronRight, PlayCircle, UserCircle, ShieldAlert,
+  Tv
+} from 'lucide-react';
 import { cn } from '../../lib/utils';
+import VideoModal from '../VideoModal';
+import '../ProductTour.css';
+
+const TOUR_ID_MAP = {
+  'Submit Idea':    'sidebar-submit',
+  'My Ideas':       'sidebar-myideas',
+  'Community Hub':  'sidebar-community',
+  'Projects':       'sidebar-projects',
+  'Leaderboard':    'sidebar-leaderboard',
+  'Assigned Ideas': 'sidebar-assigned',
+  'Team Ideas':     'sidebar-team',
+  'Profile':        'sidebar-profile',
+};
 
 export default function Sidebar({ isMobile }) {
   const { user } = useAuth();
+  const { startTour } = useTour();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
 
   const getLinks = () => {
     const common = [
       { name: 'Community Hub', path: '/community-hub', icon: Users },
       { name: 'Projects', path: '/dashboard/projects', icon: LayoutList },
       { name: 'Leaderboard', path: '/dashboard/leaderboard', icon: Trophy },
+      { name: 'Profile', path: '/dashboard/profile', icon: UserCircle },
     ];
 
     if (!user) return common;
@@ -24,6 +45,7 @@ export default function Sidebar({ isMobile }) {
         return [
           { name: 'Review Queue', path: '/dashboard', icon: LayoutList },
           { name: 'User Management', path: '/settings/users', icon: UserCog },
+          { name: 'Org Admin Management', path: '/settings/org-admins', icon: ShieldAlert },
           { name: 'Template Access', path: '/settings/access', icon: Settings },
           { name: 'Template Config', path: '/settings/templates', icon: Wrench },
           ...common
@@ -35,13 +57,12 @@ export default function Sidebar({ isMobile }) {
           ...common
         ];
       case 'Employee':
+      default:
         return [
           { name: 'Submit Idea', path: '/dashboard', icon: PlusCircle },
           { name: 'My Ideas', path: '/dashboard/my-ideas', icon: LayoutDashboard },
           ...common
         ];
-      default:
-        return common;
     }
   };
 
@@ -77,11 +98,13 @@ export default function Sidebar({ isMobile }) {
 
         {links.map((link) => {
           const Icon = link.icon;
+          const tourId = TOUR_ID_MAP[link.name];
           return (
             <NavLink
               key={link.name}
               to={link.path}
               end={link.path === '/dashboard'}
+              id={tourId}
               title={isCollapsed ? link.name : undefined}
               className={({ isActive }) =>
                 cn(
@@ -117,6 +140,58 @@ export default function Sidebar({ isMobile }) {
             </div>
           )}
         </div>
+
+        {/* ASSISTANCE — Product Tour & Video Demo */}
+        {(user?.role === 'Employee' || user?.role === 'Org Admin') && (
+          <>
+            {!isCollapsed && (
+              <div className="mt-4 space-y-1">
+                <p className="text-[10px] font-semibold uppercase text-gray-400 tracking-widest mb-2 px-1">
+                  Assistance
+                </p>
+                <button
+                  id="sidebar-product-tour"
+                  className="tour-sidebar-btn"
+                  onClick={startTour}
+                  title={`Replay the ${user.role === 'Org Admin' ? 'admin walkthrough' : 'product tour'}`}
+                >
+                  <PlayCircle size={15} />
+                  <span>{user.role === 'Org Admin' ? 'Admin Walkthrough' : 'Product Tour'}</span>
+                </button>
+                <button
+                  className="tour-sidebar-btn"
+                  onClick={() => setIsVideoOpen(true)}
+                  title="Watch the Catalyst Demo Video"
+                >
+                  <Tv size={15} />
+                  <span>Watch Demo</span>
+                </button>
+              </div>
+            )}
+
+            {isCollapsed && (
+              <div className="mt-4 flex flex-col items-center gap-2">
+                <button
+                  id="sidebar-product-tour"
+                  onClick={startTour}
+                  title={user.role === 'Org Admin' ? 'Admin Walkthrough' : 'Product Tour'}
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-brand-blue hover:bg-blue-50 transition-all"
+                >
+                  <PlayCircle size={18} />
+                </button>
+                <button
+                  onClick={() => setIsVideoOpen(true)}
+                  title="Watch Demo Video"
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-brand-blue hover:bg-blue-50 transition-all"
+                >
+                  <Tv size={18} />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+        
+        <VideoModal isOpen={isVideoOpen} onClose={() => setIsVideoOpen(false)} />
       </div>
     </aside>
   );
