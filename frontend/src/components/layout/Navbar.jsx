@@ -104,9 +104,9 @@ export default function Navbar({ onMenuToggle }) {
         {/* Brand: Zuari Logo | Catalyst */}
         <Link to="/" onClick={handleLogoClick} className="flex items-center gap-3">
           <img
-            src="https://www.zuariindustries.in/assets/web/img/logo/zuari_logo.png"
-            alt="Zuari Industries"
-            className="h-7 object-contain shrink-0"
+            src="https://www.zuarimoney.com/App_Themes/images/ZMLogo.svg"
+            alt="Zuari Money"
+            className="h-8 object-contain shrink-0"
           />
           <div className="h-7 w-px bg-gray-200 shrink-0" />
           <span
