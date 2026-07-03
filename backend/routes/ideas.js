@@ -855,11 +855,18 @@ router.post('/autofill', async (req, res) => {
   }
   try {
     const result = await generateFormAutofill({ description, fields });
-    // Partial result is fine — return what we have (even null → empty object)
-    res.json({ fields: result || {} });
+    if (!result) {
+      return res.json({ en: {}, hi: {} });
+    }
+    // New shape: { en: {...}, hi: {...} }
+    if (result.en && typeof result.en === 'object') {
+      return res.json({ en: result.en, hi: result.hi || {} });
+    }
+    // Legacy fallback: flat object returned — treat as English
+    return res.json({ en: result, hi: {} });
   } catch (error) {
     console.error('[Autofill] Error:', error.message);
-    res.json({ fields: {} }); // Never fail — return empty if error
+    res.json({ en: {}, hi: {} }); // Never fail — return empty if error
   }
 });
 

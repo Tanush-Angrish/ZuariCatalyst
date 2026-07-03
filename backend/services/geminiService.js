@@ -179,16 +179,22 @@ Form Fields Structure:
 ${fieldDescriptions}
 
 Rules:
-1. Return a valid JSON object where keys are field IDs and values are the extracted content.
-2. MANDATORY: You MUST fill out EVERY SINGLE FIELD provided in the structure. Even if the user's description is just one word, use your creativity to invent, extrapolate, and flesh out highly detailed, professional content for EVERY field based on that hint. NEVER return an empty object or skip fields because the input is too short. Your job is to transform a simple hint into a fully developed proposal.
-3. For "select" type fields, pick the best matching valid option. If unsure, pick the most likely one.
-4. For "textarea" type fields, write clear, professional, and expansive content (at least 2-3 sentences).
-5. For "text" type fields, keep it concise but descriptive.
-6. For "url" type fields, only include if a URL was explicitly mentioned, otherwise omit.
-7. Do NOT add any explanation — return ONLY the raw JSON object.
+1. MANDATORY: You MUST fill out EVERY SINGLE FIELD provided in the structure for BOTH languages. Even if the user's description is just one word, extrapolate and flesh out highly detailed, professional content for EVERY field. NEVER return empty objects or skip fields.
+2. For "select" type fields, pick the best matching valid option from the list. Keep select values in English even in the Hindi response.
+3. For "textarea" type fields, write clear and expansive content (at least 2-3 sentences).
+4. For "text" type fields, keep it concise but descriptive.
+5. For "url" type fields, only include if a URL was explicitly mentioned, otherwise omit.
+6. Do NOT add any explanation — return ONLY the raw JSON object described below.
+
+Return a JSON object with EXACTLY two top-level keys: "en" and "hi".
+- "en": all field values written in clear, professional English.
+- "hi": all field values written in simple, everyday Hindi (Devanagari script) that a factory or office worker can easily read and understand. Avoid Sanskrit-heavy or overly formal words — use the Hindi people actually speak. For "select" type fields, keep the value in English (it must match the option label exactly).
 
 Example valid response:
-{"title": "...", "problemDescription": "...", "proposedSolution": "..."}
+{
+  "en": {"title": "...", "problemDescription": "...", "proposedSolution": "..."},
+  "hi": {"title": "...", "problemDescription": "...", "proposedSolution": "..."}
+}
 `.trim();
 
   const modelsToTry = [
@@ -214,15 +220,30 @@ Example valid response:
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      console.log(`[AI] Autofill successful via ${modelName}, filled ${Object.keys(parsed).length} fields`);
-      return parsed;
+
+      // New shape: { en: {...}, hi: {...} }
+      if (parsed.en && typeof parsed.en === 'object') {
+        console.log(`[AI] Bilingual autofill successful via ${modelName}, en: ${Object.keys(parsed.en).length} fields, hi: ${Object.keys(parsed.hi || {}).length} fields`);
+        return {
+          en: parsed.en,
+          hi: parsed.hi && typeof parsed.hi === 'object' ? parsed.hi : {}
+        };
+      }
+
+      // Fallback: old flat shape returned — treat as English only
+      if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+        console.warn(`[AI] Autofill via ${modelName} returned flat shape (legacy). Treating as English only.`);
+        return { en: parsed, hi: {} };
+      }
+
+      console.error(`[AI] Unexpected autofill response shape from ${modelName}`);
     } catch (error) {
       console.error(`[AI] Autofill failed with ${modelName}:`, error.message);
       lastError = error;
     }
   }
 
-  console.error("[AI] All models failed for form autofill:", lastError?.message);
+  console.error('[AI] All models failed for form autofill:', lastError?.message);
   return null;
 }
 

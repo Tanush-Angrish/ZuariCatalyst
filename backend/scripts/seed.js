@@ -62,7 +62,9 @@ async function runSeed() {
       }
     }
 
-    // 3. Seed hardcoded templates into IdeaTemplate table
+    // 3. Template seeding — DISABLED (templates already exist in prod DB)
+    // To re-enable, uncomment the block below.
+    /*
     const { IDEA_TEMPLATES } = require('./template-seed-data');
     const masterTpl = IDEA_TEMPLATES.find(t => t.id === 'MASTER_TEMPLATE');
     const masterFieldIds = masterTpl ? masterTpl.fields.map(f => f.id) : [];
@@ -70,7 +72,6 @@ async function runSeed() {
     for (const t of IDEA_TEMPLATES) {
       const existingTpl = await prisma.ideaTemplate.findUnique({ where: { id: t.id } });
       if (!existingTpl) {
-        // Build default fieldOrder: master field IDs first, then template-specific field IDs
         const fieldOrder = t.id === 'MASTER_TEMPLATE'
           ? masterFieldIds
           : [...masterFieldIds, ...t.fields.map(f => f.id).filter(id => !masterFieldIds.includes(id))];
@@ -90,9 +91,7 @@ async function runSeed() {
     }
     console.log('Template seed check complete.');
 
-    // 4. Sync template categories — ensures template_categories table is never empty
-    // Collects categories from: seed data definitions + all existing templates in DB
-    // Skips 'GLOBAL' (used by MASTER_TEMPLATE only, not a user-facing category)
+    // 4. Category sync — DISABLED (categories already exist in prod DB)
     const allExistingTemplates = await prisma.ideaTemplate.findMany({
       where: { id: { not: 'MASTER_TEMPLATE' } },
       select: { category: true }
@@ -111,6 +110,7 @@ async function runSeed() {
       }
     }
     console.log('Category sync complete.');
+    */
 
   } catch (error) {
     console.error('Seed execution failed:', error);

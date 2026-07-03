@@ -265,6 +265,9 @@ export default function EmployeeDashboard() {
 
   // AI Bar State
   const [showAIBar, setShowAIBar] = useState(false);
+  // Bilingual AI fill: stores both { en: {...}, hi: {...} } after AI autofill
+  const [aiFilled, setAiFilled] = useState(null);
+  const [aiLang, setAiLang] = useState('hi'); // 'hi' | 'en'
 
 
   // Template Access State
@@ -365,6 +368,8 @@ export default function EmployeeDashboard() {
     setUploadedFiles({});
     setVoiceNote(null);
     setShowAIBar(false);
+    setAiFilled(null);
+    setAiLang('hi');
     setStep(2);
   };
 
@@ -375,6 +380,8 @@ export default function EmployeeDashboard() {
     setUploadedFiles({});
     setVoiceNote(null);
     setShowAIBar(false);
+    setAiFilled(null);
+    setAiLang('hi');
   };
 
   const handleChange = (fieldId, value) => {
@@ -393,15 +400,21 @@ export default function EmployeeDashboard() {
     setIsAIFilling(true);
     try {
       const data = await api.autofillIdea(description, fieldsPayload);
-      const filled = data.fields || {};
+      const en = data.en || {};
+      const hi = data.hi || {};
 
+      // Store both language versions
+      const bothLangs = { en, hi };
+      setAiFilled(bothLangs);
+      setAiLang('hi'); // default to Hindi
+
+      // Apply Hindi version to the form by default
+      const filled = Object.keys(hi).length > 0 ? hi : en;
       const filledCount = Object.keys(filled).length;
-
-      // Merge AI values into form state, never overwrite existing user edits for filled fields
       setFormData(prev => ({ ...prev, ...filled }));
 
       if (filledCount > 0) {
-        notify({ type: 'success', title: 'Form filled!', message: `AI filled ${filledCount} field${filledCount > 1 ? 's' : ''}. Review and edit as needed.`, event: '' });
+        notify({ type: 'success', title: 'फॉर्म भरा गया!', message: `AI ने ${filledCount} फील्ड भरे। ऊपर भाषा बदल सकते हैं।`, event: '' });
       } else {
         notify({ type: 'warning', title: 'No fields filled', message: 'AI could not extract enough info. Try describing your idea in more detail.', event: '' });
       }
@@ -410,6 +423,16 @@ export default function EmployeeDashboard() {
       notify({ type: 'error', title: 'AI fill failed', message: 'Could not connect to AI. Please fill the form manually.', event: '' });
     }
     setIsAIFilling(false);
+  };
+
+  // ── Language toggle handler ───────────────────────────────────────────
+  const handleLangSwitch = (lang) => {
+    if (!aiFilled || lang === aiLang) return;
+    setAiLang(lang);
+    const langData = aiFilled[lang] || {};
+    if (Object.keys(langData).length > 0) {
+      setFormData(prev => ({ ...prev, ...langData }));
+    }
   };
 
   // Supports multiple files per field — each file is uploaded separately and appended
@@ -797,9 +820,34 @@ export default function EmployeeDashboard() {
                     </CardTitle>
                     <CardDescription className="mt-1">{selectedTemplate.description}</CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" onClick={handleBack} className="gap-2 shrink-0">
-                    <ArrowLeft size={16} /> Back to Templates
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Language toggle — only visible after AI has filled the form */}
+                    {aiFilled && (
+                      <div className="flex items-center rounded-full border border-gray-200 bg-gray-50 p-0.5 shadow-sm" title="Toggle AI fill language">
+                        <button
+                          type="button"
+                          onClick={() => handleLangSwitch('hi')}
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                            aiLang === 'hi' ? 'bg-white text-brand-blue shadow' : 'text-gray-400 hover:text-gray-600'
+                          }`}
+                        >
+                          हिंदी
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleLangSwitch('en')}
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                            aiLang === 'en' ? 'bg-white text-brand-blue shadow' : 'text-gray-400 hover:text-gray-600'
+                          }`}
+                        >
+                          EN
+                        </button>
+                      </div>
+                    )}
+                    <Button variant="outline" size="sm" onClick={handleBack} className="gap-2">
+                      <ArrowLeft size={16} /> Back to Templates
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="pt-4">
                   <form onSubmit={handleSubmit} className="space-y-6">
