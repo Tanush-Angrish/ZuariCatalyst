@@ -144,7 +144,8 @@ export default function OrgAdminDashboard() {
       await api.updateIdeaStatus(
         ideaId,
         newStatus,
-        reason,
+        newStatus === 'Rejected' ? reason : undefined,
+        newStatus === 'Approved' ? reason : undefined,
         newStatus === 'Approved' ? user?.id : undefined,
         newStatus === 'Approved' ? 'admin' : undefined
       );

@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx';
 import { api } from '../../services/api';
 
 
-const ROLES = ['Employee', 'Org Admin', 'Central Team'];
+const ROLES = ['Employee', 'Org Admin', 'Central Team', 'Administrator'];
 const displayRole = (r) => r === 'Superadmin' ? 'Central Team' : (r || '');
 
 /**
@@ -19,11 +19,13 @@ function normalizeExcelRole(raw) {
   const r = String(raw).trim().toLowerCase().replace(/[\s_-]/g, '');
   if (r === 'orgadmin') return 'Org Admin';
   if (r === 'centralteam' || r === 'superadmin' || r === 'admin') return 'Central Team';
+  if (r === 'administrator') return 'Administrator';
   return 'Employee';
 }
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [tab, setTab] = useState('table'); // table | add | bulk
   const [editingRole, setEditingRole] = useState({}); // userId -> newRole
   const [form, setForm] = useState({
@@ -42,7 +44,14 @@ export default function UserManagement() {
     } catch (e) { console.error(e); }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  const fetchOrganizations = async () => {
+    try {
+      const data = await api.getOrganizations();
+      setOrganizations(data);
+    } catch (e) { console.error(e); }
+  };
+
+  useEffect(() => { fetchUsers(); fetchOrganizations(); }, []);
 
   // ---------- Add User ----------
   const handleAddUser = async (e) => {
@@ -235,7 +244,7 @@ export default function UserManagement() {
         <Card className="border-t-4 border-t-brand-blue shadow-sm max-w-2xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5 text-brand-blue" /> Add New User</CardTitle>
-            <CardDescription>Fill in the details below. Default password will be "password".</CardDescription>
+            <CardDescription>Fill in the details below.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAddUser} className="space-y-4">
@@ -268,16 +277,28 @@ export default function UserManagement() {
                 <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className={inputClass}>
                   {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
-                {(form.role === 'Org Admin' || form.role === 'Central Team') && (
+                {(form.role === 'Org Admin' || form.role === 'Central Team' || form.role === 'Administrator') && (
                   <p className="text-xs text-blue-600 mt-1.5 font-medium">
                     ✓ {form.role} will automatically also have Employee access (idea submission)
                   </p>
                 )}
               </div>
-              {form.role !== 'Central Team' && (
+              {form.role !== 'Central Team' && form.role !== 'Administrator' && (
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Organization / Unit</label>
-                  <input value={form.organization} onChange={e => setForm({ ...form, organization: e.target.value })} className={inputClass} placeholder="e.g. Distillery, Cane, Finance Accounts" />
+                  <select
+                    value={form.organization}
+                    onChange={e => setForm({ ...form, organization: e.target.value })}
+                    className={inputClass}
+                  >
+                    <option value="">— Select Organization / Unit —</option>
+                    {organizations.map(org => (
+                      <option key={org} value={org}>{org}</option>
+                    ))}
+                  </select>
+                  {organizations.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">No organizations found. Add users via Bulk Upload first to populate this list.</p>
+                  )}
                 </div>
               )}
               <hr className="border-gray-200" />
@@ -300,7 +321,7 @@ export default function UserManagement() {
               <CardDescription>
                 Upload an Excel file (.xlsx) with columns: <strong>Name</strong>, Title, <strong>Email</strong>, Organization, <strong>Role</strong> (OrgAdmin / Employee), Mobile Number, Emp Id
                 <br />
-                <span className="text-amber-600">⚠ Central Team users cannot be added via bulk upload — add them from the "Add User" tab.</span>
+                <span className="text-amber-600">⚠ Central Team and Administrator users cannot be added via bulk upload — add them from the "Add User" tab.</span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -369,7 +390,7 @@ export default function UserManagement() {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                           {bulkUsers.map((u, i) => (
-                            <tr key={i} className={`hover:bg-gray-50/50 ${u.role === 'Central Team' ? 'bg-red-50' : ''}`}>
+                            <tr key={i} className={`hover:bg-gray-50/50 ${(u.role === 'Central Team' || u.role === 'Administrator') ? 'bg-red-50' : ''}`}>
                               <td className="px-4 py-2 text-gray-400">{i + 1}</td>
                               <td className="px-4 py-2 text-brand-black font-medium">{u.name}</td>
                               <td className="px-4 py-2 text-gray-600 font-mono">{u.employeeId || '—'}</td>

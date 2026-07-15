@@ -44,3 +44,5 @@ backend/db/*.db
 # Gemini/AI artifacts
 .gemini/
 brain/
+
+Ponytail.md

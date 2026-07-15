@@ -110,17 +110,17 @@ function Row({ entry, isMe, showOrg = false }) {
 }
 
 // ─── Panel (global or my-org) ─────────────────────────────────────────────────
-function Panel({ title, subtitle, entries, loading, userId, showOrg, emptyText }) {
+function Panel({ title, subtitle, entries, loading, userId, showOrg, emptyText, borderClass }) {
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center h-[520px]">
+      <div className={`bg-white rounded-2xl shadow-sm flex items-center justify-center h-[520px] ${borderClass || 'border border-gray-100'}`}>
         <Loader2 size={20} className="animate-spin text-brand-blue" />
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[520px]">
+    <div className={`bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col h-[520px] ${borderClass || 'border border-gray-100'}`}>
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-gray-50 shrink-0">
         <div className="flex items-center gap-2">
@@ -285,6 +285,7 @@ export default function Leaderboard() {
             userId={myId}
             showOrg={true}
             emptyText="No ideas submitted yet — be the first innovator!"
+            borderClass="border-2 border-brand-blue shadow-md"
           />
         </div>
 

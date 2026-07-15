@@ -3,3 +3,5 @@ node_modules
 .env
 
 /generated/prisma
+prod-patch.js
+seed-fallback-template.js

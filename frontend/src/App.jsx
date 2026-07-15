@@ -60,6 +60,7 @@ const DashboardDirector = () => {
   if (user?.role === 'Central Team') return <SuperadminDashboard />;
   if (user?.role === 'Org Admin') return <OrgAdminDashboard />;
   if (user?.role === 'Employee') return <EmployeeDashboard />;
+  if (user?.role === 'Administrator') return <Navigate to="/settings/users" replace />;
 
   return <Navigate to="/" replace />;
 };
@@ -91,7 +92,7 @@ function App() {
                 </Route>
 
                 {/* Global Settings */}
-                <Route path="/settings" element={<ProtectedRoute allowedRoles={['Superadmin', 'Central Team']}><DashboardLayout /></ProtectedRoute>}>
+                <Route path="/settings" element={<ProtectedRoute allowedRoles={['Administrator']}><DashboardLayout /></ProtectedRoute>}>
                   <Route path="users" element={<UserManagement />} />
                   <Route path="templates" element={<TemplateConfig />} />
                   <Route path="access" element={<TemplateAccess />} />

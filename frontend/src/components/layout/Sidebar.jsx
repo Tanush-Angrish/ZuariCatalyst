@@ -44,11 +44,15 @@ export default function Sidebar({ isMobile }) {
       case 'Central Team':
         return [
           { name: 'Review Queue', path: '/dashboard', icon: LayoutList },
+          ...common
+        ];
+      case 'Administrator':
+        return [
           { name: 'User Management', path: '/settings/users', icon: UserCog },
           { name: 'Org Admin Management', path: '/settings/org-admins', icon: ShieldAlert },
           { name: 'Template Access', path: '/settings/access', icon: Settings },
           { name: 'Template Config', path: '/settings/templates', icon: Wrench },
-          ...common
+          { name: 'Profile', path: '/dashboard/profile', icon: UserCircle },
         ];
       case 'Org Admin':
         return [

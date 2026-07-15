@@ -365,9 +365,97 @@ Return ONLY the JSON object, no other text.
   return null;
 }
 
+/**
+ * Suggests the best template for a given idea description.
+ * @param {string} description - The user's idea description.
+ * @param {Array} templates - Array of available templates { id, name, description }
+ * @returns {Promise<{templateId: string|null, confidence: number, reasoning: string}>}
+ */
+async function suggestTemplate(description, templates) {
+  console.log(`[AI] Suggesting template for description: "${description.slice(0, 80)}..."`);
+  
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_api_key_here') {
+    console.warn("[AI] GEMINI_API_KEY not set. Throwing AUTH_ERROR.");
+    throw new Error("AUTH_ERROR");
+  }
+
+  if (!templates || templates.length === 0) {
+    throw new Error("NO_TEMPLATES_PROVIDED");
+  }
+
+  const templatesList = templates.map(t => `ID: ${t.id} | Name: ${t.name} | Desc: ${t.description}`).join('\n');
+
+  const prompt = `
+You are an intelligent assistant. A user has described their idea below. You must evaluate if the idea clearly fits one of the templates.
+
+User's Idea Description:
+"""
+${description}
+"""
+
+Available Templates:
+${templatesList}
+
+Return a JSON object matching this exact structure:
+{
+  "template_id": "string ID of the best matching template, or null if none fit well",
+  "confidence": 0.0 to 1.0 (number representing how well it fits),
+  "reasoning": "short string explaining why"
+}
+Do NOT return any explanation outside the JSON.
+`.trim();
+
+  const modelsToTry = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+  ];
+  let lastError = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`[AI] Attempting template suggestion with model: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error(`[AI] No JSON found in template suggestion from ${modelName}`);
+        throw new Error("PARSE_ERROR");
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.template_id !== undefined && parsed.confidence !== undefined) {
+        return {
+          templateId: parsed.template_id,
+          confidence: parseFloat(parsed.confidence),
+          reasoning: parsed.reasoning || ""
+        };
+      } else {
+        throw new Error("PARSE_ERROR");
+      }
+    } catch (error) {
+      if (error.message === "PARSE_ERROR") {
+        console.error(`[AI] Template suggestion parse failed with ${modelName}:`, error.message);
+        lastError = error;
+      } else {
+        // Likely a network or API error
+        console.error(`[AI] Template suggestion network/API error with ${modelName}:`, error.message);
+        lastError = new Error("NETWORK_ERROR");
+      }
+    }
+  }
+
+  console.error("[AI] All models failed for template suggestion:", lastError?.message);
+  throw lastError || new Error("NETWORK_ERROR");
+}
+
 module.exports = {
   generateIdeaInsights,
   generateProjectPlan,
   generateFormAutofill,
-  generateTemplateFromPrompt
+  generateTemplateFromPrompt,
+  suggestTemplate
 };

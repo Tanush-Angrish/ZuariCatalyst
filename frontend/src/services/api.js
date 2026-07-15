@@ -58,11 +58,12 @@ export const api = {
     return `${cleanBase}${cleanPath}`;
   },
   // Auth
-  login: (credentials) => request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(credentials),
-  }),
+
   msLogin: (data) => request('/api/auth/ms-login', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  googleLogin: (data) => request('/api/auth/google-login', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -94,14 +95,19 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(payload),
   }),
+  updateIdea: (id, payload) => request(`/api/ideas/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  }),
   submitDraftIdea: (id) => request(`/api/ideas/${id}/submit-draft`, {
     method: 'PUT',
   }),
-  updateIdeaStatus: (id, status, rejectionReason, approvedById, approvedByRole) => request(`/api/ideas/${id}/status`, {
+  updateIdeaStatus: (id, status, rejectionReason, approvalRemarks, approvedById, approvedByRole) => request(`/api/ideas/${id}/status`, {
     method: 'PUT',
     body: JSON.stringify({
       status,
       ...(rejectionReason ? { rejectionReason } : {}),
+      ...(approvalRemarks ? { approvalRemarks } : {}),
       ...(approvedById ? { approvedById, approvedByRole } : {})
     }),
   }),
@@ -115,6 +121,10 @@ export const api = {
   autofillIdea: (description, fields) => request('/api/ideas/autofill', {
     method: 'POST',
     body: JSON.stringify({ description, fields }),
+  }),
+  suggestTemplate: (description, templates) => request('/api/ideas/suggest-template', {
+    method: 'POST',
+    body: JSON.stringify({ description, templates }),
   }),
   regenerateSummary: (ideaId) => request(`/api/ideas/${ideaId}/regenerate-summary`, {
     method: 'POST',

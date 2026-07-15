@@ -3,7 +3,7 @@ import { api } from '../../services/api';
 
 import { useAuth } from '../../context/AuthContext';
 import { useTour } from '../../context/TourContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useNotifications } from '../../context/NotificationContext';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
@@ -249,11 +249,13 @@ function AILoader() {
 export default function EmployeeDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { notify } = useNotifications();
 
   // Wizard State
   const [step, setStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [editIdeaId, setEditIdeaId] = useState(null);
 
   // Form State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -264,7 +266,9 @@ export default function EmployeeDashboard() {
   const [voiceNote, setVoiceNote] = useState(null);
 
   // AI Bar State
-  const [showAIBar, setShowAIBar] = useState(false);
+  const [showAIBar, setShowAIBar] = useState(true);
+  const [showStep1AIBar, setShowStep1AIBar] = useState(true);
+  const [isStep1AIFilling, setIsStep1AIFilling] = useState(false);
   // Bilingual AI fill: stores both { en: {...}, hi: {...} } after AI autofill
   const [aiFilled, setAiFilled] = useState(null);
   const [aiLang, setAiLang] = useState('hi'); // 'hi' | 'en'
@@ -358,6 +362,65 @@ export default function EmployeeDashboard() {
     else setIsLoadingTemplates(false);
   }, [user]);
 
+  // Handle incoming draft to edit from MyIdeas
+  React.useEffect(() => {
+    const editDraft = location.state?.editDraftIdea;
+    if (editDraft && allowedTemplates.length > 0) {
+      const tplName = editDraft.extra?._templateName || 'General';
+      const template = allowedTemplates.find(t => t.name === tplName);
+      if (template) {
+        setSelectedTemplate(template);
+        setEditIdeaId(editDraft.id);
+        
+        // Initialize form data
+        const initial = {};
+        template.fields.forEach(f => {
+          if (f.type !== 'file' && f.type !== 'voice') {
+             initial[f.id] = editDraft.extra?.[f.id] || '';
+          }
+        });
+        
+        // Handle system fields that live on the idea level
+        initial.problemDescription = editDraft.extra?.problemDescription || '';
+        initial.proposedSolution = editDraft.extra?.proposedSolution || '';
+        if (editDraft.description) {
+           const descLines = editDraft.description.split('\n');
+           if (descLines.length > 1 && !editDraft.extra?.problemDescription) {
+             initial.problemDescription = descLines[0].replace('Problem:\n', '');
+             initial.proposedSolution = descLines[2]?.replace('Solution:\n', '') || '';
+           }
+        }
+        initial.expectedImpact = editDraft.expectedImpact !== 'N/A' ? editDraft.expectedImpact : '';
+        initial.referenceLink = editDraft.supportingLink || '';
+        initial.department = editDraft.department || '';
+        initial.title = editDraft.title || '';
+
+        setFormData(initial);
+
+        // Files
+        const filesMap = {};
+        if (editDraft.files && editDraft.files.length > 0) {
+           try {
+              const filesArr = typeof editDraft.files === 'string' ? JSON.parse(editDraft.files) : editDraft.files;
+              // Assuming all existing files belong to 'attachment' field for now, 
+              // or we can just stick them in the first file field if available
+              const fileField = template.fields.find(f => f.type === 'file');
+              if (fileField && filesArr.length > 0) {
+                filesMap[fileField.id] = filesArr;
+              }
+           } catch(e) {}
+        }
+        setUploadedFiles(filesMap);
+        setVoiceNote(null);
+        setShowAIBar(true);
+        setStep(2);
+        
+        // Clear state so a refresh doesn't trigger it again
+        navigate('/dashboard', { replace: true, state: {} });
+      }
+    }
+  }, [location.state, allowedTemplates, navigate]);
+
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
     const initial = {};
@@ -367,7 +430,7 @@ export default function EmployeeDashboard() {
     setFormData(initial);
     setUploadedFiles({});
     setVoiceNote(null);
-    setShowAIBar(false);
+    setShowAIBar(true);
     setAiFilled(null);
     setAiLang('hi');
     setStep(2);
@@ -376,10 +439,12 @@ export default function EmployeeDashboard() {
   const handleBack = () => {
     setStep(1);
     setSelectedTemplate(null);
+    setEditIdeaId(null);
     setFormData({});
     setUploadedFiles({});
     setVoiceNote(null);
-    setShowAIBar(false);
+    setShowAIBar(true);
+    setShowStep1AIBar(true);
     setAiFilled(null);
     setAiLang('hi');
   };
@@ -388,12 +453,67 @@ export default function EmployeeDashboard() {
     setFormData(prev => ({ ...prev, [fieldId]: value }));
   };
 
+  // ── AI Template Suggestion handler (Step 1) ────────────────────────────
+  const handleTemplateSuggestion = async (description) => {
+    if (!allowedTemplates.length) return;
+    
+    setIsStep1AIFilling(true);
+    let attempt = 0;
+    const maxAttempts = 3; // 1 initial + 2 retries
+    let success = false;
+
+    while (attempt < maxAttempts && !success) {
+      attempt++;
+      try {
+        const templatesPayload = allowedTemplates.map(t => ({ id: t.id, name: t.name, description: t.description }));
+        const { templateId } = await api.suggestTemplate(description, templatesPayload);
+        
+        const suggestedTemplate = allowedTemplates.find(t => t.id === templateId);
+        if (suggestedTemplate) {
+          notify({ type: 'success', title: 'Template Selected', message: `AI selected: ${suggestedTemplate.name}`, event: '' });
+          handleTemplateSelect(suggestedTemplate);
+          // Automatically start form autofill
+          await handleAIAutofill(description, suggestedTemplate);
+        } else {
+          notify({ type: 'warning', title: 'Could not select template', message: 'AI could not match your idea to a template. Please select one manually.', event: '' });
+        }
+        success = true;
+      } catch (e) {
+        console.error(`[AI Suggestion Attempt ${attempt}] Failed:`, e.message);
+        
+        const isRetryable = e.message === 'NETWORK_ERROR' || e.message === 'PARSE_ERROR';
+        
+        if (isRetryable && attempt < maxAttempts) {
+          // Backoff before retry
+          await new Promise(res => setTimeout(res, 1000 * attempt));
+          continue;
+        }
+
+        // Exhausted retries or non-retryable error
+        let errorMessage = 'Could not connect to AI to pick a template.';
+        if (e.message === 'AUTH_ERROR') {
+          errorMessage = 'AI service unavailable.';
+        } else if (e.message === 'NO_FALLBACK') {
+          errorMessage = 'No matching template found and no fallback template is configured.';
+        } else if (isRetryable) {
+          errorMessage = "Couldn't reach the AI service — try again in a moment.";
+        }
+
+        notify({ type: 'error', title: 'AI suggestion failed', message: errorMessage, event: '' });
+        break; // Exit the loop
+      }
+    }
+    setIsStep1AIFilling(false);
+    setShowStep1AIBar(false);
+  };
+
   // ── AI Autofill handler ────────────────────────────────────────────────
-  const handleAIAutofill = async (description) => {
-    if (!selectedTemplate) return;
+  const handleAIAutofill = async (description, overrideTemplate = null) => {
+    const templateToUse = overrideTemplate || selectedTemplate;
+    if (!templateToUse) return;
 
     // Build simple field descriptors for the API
-    const fieldsPayload = selectedTemplate.fields
+    const fieldsPayload = templateToUse.fields
       .filter(f => !['file', 'voice'].includes(f.type))
       .map(f => ({ id: f.id, label: f.label, type: f.type, options: f.options || [] }));
 
@@ -469,6 +589,13 @@ export default function EmployeeDashboard() {
   const handleSubmit = async (e, isDraft = false) => {
     if (e) e.preventDefault();
     if (!selectedTemplate) return;
+    
+    // Frontend limits check before submitting (Drafts have no max-submit limit)
+    if (!isDraft && limits.submittedCount >= 3) {
+      notify({ type: 'error', title: 'Limit Reached', message: 'You can only submit 3 ideas per month.', event: '' });
+      return;
+    }
+    
     setIsSubmitting(true);
 
     const systemFields = ['title', 'department'];
@@ -505,14 +632,20 @@ export default function EmployeeDashboard() {
     payload.files = allFiles;
 
     try {
-      await api.submitIdea(payload);
+      if (editIdeaId) {
+        await api.updateIdea(editIdeaId, payload);
+      } else {
+        await api.submitIdea(payload);
+      }
+      
       if (isDraft) {
-        notify({ type: 'success', title: 'Draft Saved', message: 'Your idea has been saved as a draft.', event: '' });
+        notify({ type: 'success', title: editIdeaId ? 'Draft Updated' : 'Draft Saved', message: 'Your idea has been saved as a draft.', event: '' });
       } else {
         notify({ type: 'success', title: 'Idea submitted!', message: 'Your idea has been sent for review.', event: 'idea_submitted' });
       }
       setFormData({});
       setSelectedTemplate(null);
+      setEditIdeaId(null);
       setUploadedFiles({});
       setVoiceNote(null);
       setStep(1);
@@ -711,7 +844,33 @@ export default function EmployeeDashboard() {
 
             {/* STEP 1: SELECT TEMPLATE */}
             <div className="space-y-6 pt-4 border-t border-gray-100">
-              <p className="text-sm font-medium text-gray-700">Step 1: Select a template category that best fits your idea</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <p className="text-sm font-medium text-gray-700">Step 1: Select a template category that best fits your idea</p>
+                
+                {!showStep1AIBar && (
+                  <div className="flex items-center gap-3">
+                    <Button
+                      id="step1-ai-fill-btn"
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowStep1AIBar(true)}
+                      className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 font-semibold shadow-sm text-xs py-1 h-8"
+                    >
+                      <Sparkles size={14} className="text-blue-500" />
+                      Describe to AI
+                    </Button>
+                    <span className="text-xs text-gray-400 hidden sm:inline">AI will pick a template and fill it</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Step 1 AI Input Bar */}
+              {showStep1AIBar && (
+                <AIAutofillBar
+                  onAutofill={handleTemplateSuggestion}
+                  onClose={() => setShowStep1AIBar(false)}
+                />
+              )}
 
               {isLoadingTemplates ? (
                 <div className="py-8 text-center text-gray-500">Loading templates...</div>
@@ -765,8 +924,8 @@ export default function EmployeeDashboard() {
             <div className="space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl font-bold tracking-tight text-brand-black">Submit New Idea</h1>
-                  <p className="text-gray-500 mt-1">Share your innovative ideas to improve the organization.</p>
+                  <h1 className="text-3xl font-bold tracking-tight text-brand-black">{editIdeaId ? 'Edit Draft' : 'Submit New Idea'}</h1>
+                  <p className="text-gray-500 mt-1">{editIdeaId ? 'Update your draft idea before submitting.' : 'Share your innovative ideas to improve the organization.'}</p>
                 </div>
 
                 {/* Simple Limits Display in Form Step */}
@@ -922,6 +1081,7 @@ export default function EmployeeDashboard() {
           )
         )}
       </div>
+      {(isSubmitting || isAIFilling || isStep1AIFilling) && <AILoader />}
     </div>
   );
 }

@@ -45,6 +45,7 @@ model Idea {
   files          String   @default("[]") // JSON array of { name, url, type } objects
   status         String   @default("Pending Review")
   rejectionReason    String?
+  approvalRemarks    String?
   aiSummary          String?
   aiTags             String   @default("[]") // JSON array of tags
   createdAt          DateTime @default(now())
@@ -83,6 +84,7 @@ model IdeaTemplate {
   fieldOrder  String   @default("[]") // JSON array of field IDs in display order
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  isFallback  Boolean  @default(false)
 
   @@map("idea_templates")
 }

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import mammoth from 'mammoth';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { pdf } from '@react-pdf/renderer';
+import { IdeaPDFDocument } from './IdeaPDF';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +12,7 @@ import {
   Building, Tag, CheckCircle2, XCircle,
   Calendar, Paperclip, Link as LinkIcon, UserCheck,
   Download, Eye, Mic, Lightbulb, ThumbsUp, Search, SlidersHorizontal,
-  AlertTriangle, RefreshCw, Send, Clock, ChevronRight, Users, Plus
+  AlertTriangle, RefreshCw, Send, Clock, ChevronRight, Users, Plus, FileDown
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -47,6 +49,13 @@ function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onCon
   const handleConfirm = async () => {
     if (!selectedAction) { setError('Please select an action.'); return; }
     if (selectedAction === 'Rejected' && !reason.trim()) { setError('A reason is required when declining an idea.'); return; }
+    if (selectedAction === 'Approved') {
+      const len = reason.trim().length;
+      if (len < 10 || len > 150) {
+        setError('Please provide remarks between 10 and 150 characters to proceed.');
+        return;
+      }
+    }
     if (selectedAction === 'Assigned' && !selectedAdmin) { setError('Please select an Org Admin to assign to.'); return; }
 
     setLoading(true);
@@ -123,20 +132,31 @@ function ActionModal({ ideaId, ideaTitle, ideaStatus, viewType, orgAdmins, onCon
           </div>
         )}
 
-        {/* Reason Input — only required for Rejection */}
-        {selectedAction === 'Rejected' && (
+        {/* Remarks Input — required for Approval and Rejection */}
+        {(selectedAction === 'Rejected' || selectedAction === 'Approved') && (
           <div className="px-6 pt-4">
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-              Reason for Declining <span className="text-red-500">*</span>
-              <span className="ml-1 font-normal text-gray-400">(required)</span>
-            </label>
+            <div className="flex justify-between items-end mb-1.5">
+              <label className="block text-xs font-semibold text-gray-600">
+                {selectedAction === 'Rejected' ? 'Reason for Declining' : 'Remarks'} <span className="text-red-500">*</span>
+                <span className="ml-1 font-normal text-gray-400">(required)</span>
+              </label>
+              {selectedAction === 'Approved' && (
+                <span className={`text-[10px] font-semibold ${reason.trim().length < 10 || reason.trim().length > 150 ? 'text-red-500' : 'text-gray-400'}`}>
+                  {reason.trim().length}/150
+                </span>
+              )}
+            </div>
             <textarea
               autoFocus
               value={reason}
               onChange={e => { setReason(e.target.value); setError(''); }}
               rows={3}
-              placeholder="Explain why this idea is being declined. This will be shared with the employee…"
-              className="w-full rounded-xl border border-red-200 focus:border-red-400 focus:ring-red-100 p-3 text-sm resize-none transition-all focus:outline-none focus:ring-2"
+              placeholder={selectedAction === 'Rejected' ? "Explain why this idea is being declined. This will be shared with the employee…" : "Provide remarks for this approval (10-150 chars)…"}
+              className={`w-full rounded-xl border p-3 text-sm resize-none transition-all focus:outline-none focus:ring-2 ${
+                selectedAction === 'Approved' && (reason.trim().length > 0 && (reason.trim().length < 10 || reason.trim().length > 150))
+                  ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
+                  : 'border-gray-200 focus:border-brand-blue/50 focus:ring-brand-blue/20'
+              }`}
             />
           </div>
         )}
@@ -274,7 +294,41 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
   const isOwnIdea = currentUser && idea.authorId === currentUser.id;
   const showRejectionBanner = idea.status === 'Rejected' && (isEmployeeView || isOwnIdea);
 
-  // Parse files from idea
+  // PDF download permission: only the author OR an admin role
+  const canDownloadPDF = currentUser && (
+    idea.authorId === currentUser.id ||
+    ['Org Admin', 'Superadmin', 'Central Team'].includes(currentUser.role)
+  );
+
+  // PDF download state
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      const fileName = `Catalyst-Idea-${(idea.title || 'idea').replace(/[^a-z0-9\u0900-\u097F]/gi, '-')}.pdf`;
+      const blob = await pdf(<IdeaPDFDocument idea={idea} templateDef={templateDef} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      // Surface real error so it can be diagnosed quickly
+      const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+      alert(`PDF Error: ${msg}`);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+
+  // Parse files from idea (must be before renderReadOnlyField which uses ideaFiles)
   const ideaFiles = useMemo(() => {
     try {
       const raw = typeof idea.files === 'string' ? JSON.parse(idea.files) : (idea.files || []);
@@ -283,6 +337,72 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
   }, [idea.files]);
   const fileAttachments = ideaFiles.filter(f => f.type === 'file');
   const voiceNotes = ideaFiles.filter(f => f.type === 'voice');
+
+  // ── Read-only field renderer (mirrors the submission form) ────────────────
+  const inputReadOnlyCls = 'w-full rounded-md border border-gray-200 bg-gray-50/60 p-2 text-sm text-gray-700 cursor-not-allowed outline-none';
+
+  const renderReadOnlyField = (field) => {
+    const value = getFieldValue(field.id, idea);
+    switch (field.type) {
+      case 'textarea':
+        return (
+          <textarea
+            disabled
+            readOnly
+            value={value || ''}
+            rows={4}
+            className={inputReadOnlyCls + ' resize-none'}
+          />
+        );
+      case 'url':
+        return value ? (
+          <div className={inputReadOnlyCls + ' flex items-center gap-1.5'}>
+            <LinkIcon size={12} className="text-brand-blue shrink-0" />
+            <a href={value} target="_blank" rel="noreferrer" className="text-brand-blue hover:underline text-sm truncate">{value}</a>
+          </div>
+        ) : <div className={inputReadOnlyCls + ' text-gray-300 italic'}>Not provided</div>;
+      case 'select':
+        return (
+          <div className={inputReadOnlyCls}>{value || <span className="text-gray-300 italic">Not selected</span>}</div>
+        );
+      case 'file': {
+        const fieldFiles = ideaFiles.filter(f => f.type === 'file');
+        if (!fieldFiles.length) return <div className={inputReadOnlyCls + ' text-gray-300 italic'}>No files attached</div>;
+        return (
+          <div className="space-y-1.5">
+            {fieldFiles.map((f, i) => (
+              <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-100 text-sm">
+                <Paperclip size={12} className="text-brand-blue shrink-0" />
+                <span className="flex-1 truncate text-gray-700">{f.name || f.url}</span>
+                <button type="button" onClick={() => setViewingFile(f)} className="text-brand-blue text-xs hover:underline flex items-center gap-1"><Eye size={11} />View</button>
+                <button type="button" onClick={(e) => handleDownload(e, api.getFileUrl(f.url), f.name)} className="text-brand-blue text-xs hover:underline flex items-center gap-1"><Download size={11} />Download</button>
+              </div>
+            ))}
+          </div>
+        );
+      }
+      case 'voice': {
+        const vNotes = ideaFiles.filter(f => f.type === 'voice');
+        if (!vNotes.length) return <div className={inputReadOnlyCls + ' text-gray-300 italic'}>No voice note recorded</div>;
+        return (
+          <div className="space-y-1.5">
+            {vNotes.map((v, i) => (
+              <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-purple-50/50 border border-purple-100">
+                <Mic size={13} className="text-purple-500 shrink-0" />
+                <audio controls src={api.getFileUrl(v.url)} className="h-8 flex-1" />
+              </div>
+            ))}
+          </div>
+        );
+      }
+      case 'number':
+      case 'date':
+      default:
+        return (
+          <div className={inputReadOnlyCls}>{value || <span className="text-gray-300 italic">Not provided</span>}</div>
+        );
+    }
+  };
 
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose(); };
@@ -381,7 +501,7 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold text-brand-black leading-snug">{idea.title}</h2>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                <SLABadge idea={idea} />
+                {viewType !== 'community' && <SLABadge idea={idea} />}
                 {!(isEmployee && viewType === 'community') && (
                   <Badge variant={statusVariant(idea.status)}>{idea.status === 'Rejected' ? 'Declined' : idea.status}</Badge>
                 )}
@@ -397,13 +517,27 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
                 )}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1.5 hover:bg-gray-100 text-gray-400 hover:text-gray-700 shrink-0 transition-colors"
-            >
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* PDF Download — only for author, Org Admin, Superadmin, Central Team */}
+              {canDownloadPDF && idea.status !== 'Draft' && (
+                <button
+                  type="button"
+                  onClick={handleDownloadPDF}
+                  disabled={pdfLoading}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-blue hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed text-white transition-all shadow-sm"
+                >
+                  <FileDown size={13} />
+                  {pdfLoading ? 'Generating…' : 'Download PDF'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full p-1.5 hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           {/* Body */}
@@ -511,115 +645,77 @@ function IdeaDetailModal({ idea, viewType, currentUser, onClose, onAction, orgAd
               </div>
             </div>
 
-            {/* Everything below is HIDDEN in strict Employee Community mode */}
+            {/* ── Read-only Form View (mirrors submission form exactly) ─────────── */}
             {!(isEmployee && viewType === 'community') && (
-              <>
-                {/* Problem Description */}
-                <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Problem Description</h3>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-red-50/50 border border-red-100 rounded-lg p-3">
-                    {problem || '—'}
-                  </p>
+              <div className="rounded-xl border border-gray-100 bg-gray-50/30 overflow-hidden">
+                <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+                  <FileText size={13} className="text-brand-blue" />
+                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    {templateDef ? templateDef.name : 'Idea Details'}
+                  </span>
                 </div>
 
-                {/* Proposed Solution */}
-                <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Proposed Solution</h3>
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-green-50/50 border border-green-100 rounded-lg p-3">
-                    {solution || '—'}
-                  </p>
-                </div>
-
-                {/* Expected Impact */}
-                {idea.expectedImpact && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Expected Impact</h3>
-                    <p className="text-sm text-gray-700 leading-relaxed bg-blue-50/50 border border-blue-100 rounded-lg p-3">
-                      {idea.expectedImpact}
-                    </p>
-                  </div>
-                )}
-
-                {/* Extra template-specific fields */}
-                {extraFields.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {extraFields.map(f => {
-                      const val = idea.extra?.[f.id];
-                      if (!val) return null;
-                      if (f.type === 'url') return (
-                        <div key={f.id}>
-                          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{f.label}</h3>
-                          <a href={val} target="_blank" rel="noreferrer" className="text-brand-blue text-sm flex items-center gap-1 hover:underline">
-                            <LinkIcon size={12} />View Link
-                          </a>
-                        </div>
-                      );
-                      return (
-                        <div key={f.id}>
-                          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{f.label}</h3>
-                          <p className="text-sm text-gray-700">{val}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Supporting link */}
-                {idea.supportingLink && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Supporting Link</h3>
-                    <a href={idea.supportingLink} target="_blank" rel="noreferrer"
-                      className="text-brand-blue text-sm flex items-center gap-1 hover:underline">
-                      <Paperclip size={12} />View Attachment
-                    </a>
-                  </div>
-                )}
-
-                {/* File Attachments */}
-                {fileAttachments.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Attached Files</h3>
-                    <div className="space-y-2">
-                      {fileAttachments.map((f, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
-                          <FileText size={16} className="text-brand-blue shrink-0" />
-                          <span className="text-sm text-gray-700 flex-1 truncate">{f.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => setViewingFile(f)}
-                            className="text-brand-blue hover:underline text-xs flex items-center gap-1"
-                          >
-                            <Eye size={12} />View
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDownload(e, api.getFileUrl(f.url), f.name)} 
-                            className="text-brand-blue hover:underline text-xs flex items-center gap-1"
-                          >
-                            <Download size={12} />Download
-                          </button>
+                <div className="p-4">
+                  {fields.length > 0 ? (
+                    // Template fields exist → render as read-only form grid
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      {fields.map(field => (
+                        <div
+                          key={field.id}
+                          className={field.type === 'textarea' || field.type === 'file' || field.type === 'voice' ? 'md:col-span-2' : ''}
+                        >
+                          <label className="mb-1.5 flex items-center gap-1 text-sm font-semibold text-gray-600">
+                            {field.label}
+                            {field.required && <span className="text-red-400 text-xs">*</span>}
+                          </label>
+                          {renderReadOnlyField(field)}
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Voice Notes */}
-                {voiceNotes.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Voice Notes</h3>
-                    <div className="space-y-2">
-                      {voiceNotes.map((v, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-purple-50/50 border border-purple-100">
-                          <Mic size={16} className="text-purple-600 shrink-0" />
-                          <audio controls src={api.getFileUrl(v.url)} className="h-8 flex-1" />
-                        </div>
-                      ))}
+                  ) : (
+                    // No template def → graceful fallback showing core fields
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                      {[
+                        { id: 'title', label: 'Title', type: 'text' },
+                        { id: 'department', label: 'Department', type: 'text' },
+                        { id: 'problemDescription', label: 'Problem Description', type: 'textarea' },
+                        { id: 'proposedSolution', label: 'Proposed Solution', type: 'textarea' },
+                        { id: 'expectedImpact', label: 'Expected Impact', type: 'textarea' },
+                        { id: 'referenceLink', label: 'Supporting Link', type: 'url' },
+                      ].map(field => {
+                        const val = getFieldValue(field.id, idea);
+                        if (!val) return null;
+                        return (
+                          <div
+                            key={field.id}
+                            className={field.type === 'textarea' ? 'md:col-span-2' : ''}
+                          >
+                            <label className="mb-1.5 block text-sm font-semibold text-gray-600">{field.label}</label>
+                            {renderReadOnlyField(field)}
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                )}
+                  )}
 
-              </>
+                  {/* Voice notes — always shown if present */}
+                  {voiceNotes.length > 0 && (
+                    <div className="mt-4 md:col-span-2">
+                      <label className="mb-1.5 flex items-center gap-1 text-sm font-semibold text-gray-600">
+                        <Mic size={13} className="text-gray-400" /> Voice Note
+                      </label>
+                      <div className="space-y-2">
+                        {voiceNotes.map((v, i) => (
+                          <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-purple-50/50 border border-purple-100">
+                            <Mic size={13} className="text-purple-500 shrink-0" />
+                            <audio controls src={api.getFileUrl(v.url)} className="h-8 flex-1" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
@@ -753,6 +849,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
   const [hasUpvoted, setHasUpvoted] = useState(false);
   const [upvoteLoading, setUpvoteLoading] = useState(false);
   const [actionModalOpen, setActionModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   // Fetch upvote count on mount
   useEffect(() => {
@@ -776,6 +873,13 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
   const handleCardClick = e => {
     // Let interactive elements handle their own events
     if (e.defaultPrevented) return;
+    
+    // If it's the author's own Draft, go to editor instead of opening detail modal
+    if (isOwn && idea.status === 'Draft') {
+      navigate('/dashboard', { state: { editDraftIdea: idea } });
+      return;
+    }
+    
     openModal();
   };
 
@@ -809,7 +913,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <SLABadge idea={idea} />
+            {viewType !== 'community' && <SLABadge idea={idea} />}
             {/* Hide Status badge for employees in community view */}
             {!(isEmployee && viewType === 'community') && (
               <Badge variant={statusVariant(idea.status)} className={`text-xs ${idea.status === 'Draft' ? 'bg-amber-100 text-amber-800' : ''}`}>{idea.status === 'Rejected' ? 'Declined' : idea.status}</Badge>
@@ -927,7 +1031,7 @@ function IdeaCard({ idea, viewType, currentUser, onAction, orgAdmins, selectedAd
             } else if (action === 'Assigned') {
               await api.assignIdea(idea.id, parseInt(adminId));
             } else if (action === 'Approved') {
-              await onDirectAction?.(idea.id, 'Approved', null);
+              await onDirectAction?.(idea.id, 'Approved', reason);
             } else if (action === 'Rejected') {
               await onDirectAction?.(idea.id, 'Rejected', reason);
             }

@@ -17,17 +17,6 @@ export const AuthProvider = ({ children }) => {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = async (email, password) => {
-    try {
-      const data = await api.login({ email, password });
-      setUser(data.user);
-      return data.user;
-    } catch (error) {
-      console.error('Login Error:', error);
-      throw error;
-    }
-  };
-
   const msLogin = async (idToken) => {
     try {
       const data = await api.msLogin({ idToken });
@@ -35,6 +24,17 @@ export const AuthProvider = ({ children }) => {
       return data.user;
     } catch (error) {
       console.error('MS Login Error:', error);
+      throw error;
+    }
+  };
+
+  const googleLogin = async (access_token) => {
+    try {
+      const data = await api.googleLogin({ access_token });
+      setUser(data.user);
+      return data.user;
+    } catch (error) {
+      console.error('Google Login Error:', error);
       throw error;
     }
   };
@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, msLogin, logout, switchRole, refreshUser }}>
+    <AuthContext.Provider value={{ user, msLogin, googleLogin, logout, switchRole, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

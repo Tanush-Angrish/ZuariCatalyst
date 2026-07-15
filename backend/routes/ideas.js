@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../db/prisma');
 const authMiddleware = require('../middleware/auth');
-const { generateIdeaInsights, generateFormAutofill } = require('../services/geminiService');
+const { generateIdeaInsights, generateFormAutofill, suggestTemplate } = require('../services/geminiService');
 const { awardPoints } = require('../services/pointService');
 
 // All idea endpoints require authentication
@@ -483,6 +483,152 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT update an existing idea (primarily for drafts)
+router.put('/:id', async (req, res) => {
+  const ideaId = parseInt(req.params.id);
+  const { title, description, department, expectedImpact, supportingLink, extraFields, files, isDraft } = req.body;
+  
+  if (!title || !description || !department || !expectedImpact) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const existingIdea = await prisma.idea.findUnique({
+      where: { id: ideaId }
+    });
+
+    if (!existingIdea) return res.status(404).json({ error: 'Idea not found' });
+    if (existingIdea.authorId !== req.user.id && req.user.role !== 'Superadmin') {
+      return res.status(403).json({ error: 'Not authorized to edit this idea' });
+    }
+    if (existingIdea.status !== 'Draft') {
+      return res.status(400).json({ error: 'Only Draft ideas can be edited directly via this endpoint.' });
+    }
+
+    // Limits check
+    if (isDraft) {
+      // It's still a draft, verify they haven't somehow exceeded 5 drafts (shouldn't happen on update, but safe)
+      const draftCount = await prisma.idea.count({
+        where: { authorId: existingIdea.authorId, status: 'Draft', id: { not: ideaId } }
+      });
+      if (draftCount >= 5) {
+        return res.status(400).json({ error: 'Draft limit reached. You can only have up to 5 drafts at a time.' });
+      }
+    } else {
+      // Submitting the draft
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const submittedCount = await prisma.idea.count({
+        where: { authorId: existingIdea.authorId, createdAt: { gte: startOfMonth }, status: { not: 'Draft' } }
+      });
+      if (submittedCount >= 3) {
+        return res.status(400).json({ error: 'Monthly limit reached. You can only submit 3 ideas per month.' });
+      }
+    }
+
+    const updatedIdea = await prisma.idea.update({
+      where: { id: ideaId },
+      data: {
+        title,
+        description,
+        department,
+        expectedImpact,
+        supportingLink,
+        extraFields: JSON.stringify(extraFields || {}),
+        files: JSON.stringify(files || []),
+        status: isDraft ? 'Draft' : 'Pending Review'
+      }
+    });
+
+    if (isDraft) {
+      return res.json({ id: updatedIdea.id, status: updatedIdea.status, isDraft: true });
+    }
+
+    // --- Transitioning from Draft to Submitted ---
+    
+    // Set initial SLA for Central Admin
+    setSLA(updatedIdea.id, 'pending_central');
+
+    // AI Processing - Background (don't block the response)
+    const enrichedDescription = (() => {
+      const parts = [];
+      if (description && description !== `Submitted via ${req.body.extraFields?._templateName || ''}`) {
+        parts.push(description);
+      }
+      const ef = extraFields || {};
+      const TEXT_SKIP = new Set(['_templateId', '_templateName', 'referenceLink', 'supportingLink']);
+      Object.entries(ef).forEach(([k, v]) => {
+        if (!TEXT_SKIP.has(k) && typeof v === 'string' && v.trim()) {
+          parts.push(`${k}: ${v.trim()}`);
+        }
+      });
+      return parts.join('\n\n') || description;
+    })();
+
+    console.log(`[AI-Queue] Triggering AI processing for idea ID: ${updatedIdea.id}`);
+    generateIdeaInsights({ title, description: enrichedDescription, proposedSolution: extraFields?.proposedSolution || '' })
+      .then(async (insights) => {
+        if (insights) {
+          console.log(`[AI-Queue] Updating idea ID: ${updatedIdea.id} with insights`);
+          await prisma.idea.update({
+            where: { id: updatedIdea.id },
+            data: {
+              aiSummary: insights.summary,
+              aiTags: JSON.stringify(insights.tags)
+            }
+          });
+          console.log(`[AI-Queue] Idea ID: ${updatedIdea.id} successfully updated with AI insights`);
+        } else {
+          console.warn(`[AI-Queue] No insights generated for idea ID: ${updatedIdea.id}`);
+        }
+      })
+      .catch(err => console.error(`[AI-Queue] Error in background AI processing for ID: ${updatedIdea.id}:`, err));
+
+    // Points logic
+    const totalSubmitted = await prisma.idea.count({
+      where: { authorId: existingIdea.authorId, status: { not: 'Draft' } }
+    });
+    const isFirstIdea = totalSubmitted === 1;
+    if (isFirstIdea) {
+      awardPoints(existingIdea.authorId, 'first_idea_bonus', 50, updatedIdea.id);
+      console.log(`[Points] First-idea bonus +50 awarded to userId=${existingIdea.authorId} (no regular 10pts)`);
+    } else {
+      awardPoints(existingIdea.authorId, 'idea_submitted', 10, updatedIdea.id);
+    }
+
+    res.json({ id: updatedIdea.id, status: updatedIdea.status, isFirstIdea });
+
+    // DB Notifications & Email
+    const author = await prisma.user.findUnique({ where: { id: existingIdea.authorId }, select: { name: true, organization: true } });
+    
+    // Notify in app
+    notifyOrgAdmins(author?.organization, 'idea', `New idea submitted by ${author?.name}: ${title}`, updatedIdea.id);
+    notifyCentralTeam('idea', `New idea submitted by ${author?.name}: ${title}`, updatedIdea.id);
+    
+    // Email Central Team + Org Admins
+    if (author) {
+      const centralEmails = await getCentralTeamEmails();
+      const orgAdmins = await prisma.user.findMany({
+        where: { roles: { contains: 'Org Admin' }, organization: author.organization },
+        select: { email: true }
+      });
+      const orgEmails = orgAdmins.map(a => a.email).filter(Boolean);
+      const toEmails = [...new Set([...centralEmails, ...orgEmails])];
+
+      if (toEmails.length > 0) {
+        sendIdeaSubmittedEmail({
+          toEmails,
+          ideaTitle: title,
+          submittedBy: author.name,
+          organization: author.organization || 'Unknown'
+        }).catch(console.error);
+      }
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // PUT submit a draft idea
 router.put('/:id/submit-draft', async (req, res) => {
   const ideaId = parseInt(req.params.id);
@@ -682,7 +828,7 @@ router.put('/:id/under-review', async (req, res) => {
 // PUT update status — ONLY valid from 'Under Review' state
 router.put('/:id/status', async (req, res) => {
   const ideaId = parseInt(req.params.id);
-  const { status, rejectionReason, approvedById, approvedByRole } = req.body;
+  const { status, rejectionReason, approvalRemarks, approvedById, approvedByRole } = req.body;
 
   if (!['Approved', 'Rejected'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
@@ -691,6 +837,13 @@ router.put('/:id/status', async (req, res) => {
   // Only Rejection requires a reason
   if (status === 'Rejected' && (!rejectionReason || !rejectionReason.trim())) {
     return res.status(400).json({ error: 'A reason is required when rejecting an idea.' });
+  }
+
+  // Approval requires remarks between 10 and 150 characters
+  if (status === 'Approved') {
+    if (!approvalRemarks || approvalRemarks.trim().length < 10 || approvalRemarks.trim().length > 150) {
+      return res.status(400).json({ error: 'Please provide remarks between 10 and 150 characters to proceed.' });
+    }
   }
 
   try {
@@ -713,6 +866,7 @@ router.put('/:id/status', async (req, res) => {
       data: {
         status,
         rejectionReason: (rejectionReason || '').trim(),
+        ...(status === 'Approved' ? { approvalRemarks: (approvalRemarks || '').trim() } : {}),
         ...(status === 'Approved' && approvedById ? {
           approvedByUserId: parseInt(approvedById),
           approvedByRole: approvedByRole || 'admin'
@@ -867,6 +1021,62 @@ router.post('/autofill', async (req, res) => {
   } catch (error) {
     console.error('[Autofill] Error:', error.message);
     res.json({ en: {}, hi: {} }); // Never fail — return empty if error
+  }
+});
+
+// POST suggest template based on description
+router.post('/suggest-template', async (req, res) => {
+  const { description, templates } = req.body;
+  if (!description || !Array.isArray(templates)) {
+    return res.status(400).json({ error: 'description and templates array are required' });
+  }
+  
+  const CONFIDENCE_THRESHOLD = 0.6;
+  
+  try {
+    const suggestion = await suggestTemplate(description, templates);
+    
+    // Evaluate suggestion
+    let finalTemplateId = null;
+    if (
+      suggestion.templateId && 
+      suggestion.confidence >= CONFIDENCE_THRESHOLD && 
+      templates.some(t => t.id === suggestion.templateId)
+    ) {
+      finalTemplateId = suggestion.templateId;
+    }
+    
+    // Fallback logic
+    if (!finalTemplateId) {
+      console.log(`[SuggestTemplate] No confident match (id=${suggestion.templateId}, conf=${suggestion.confidence}). Attempting fallback...`);
+      const fallbackTemplate = await prisma.ideaTemplate.findFirst({
+        where: { isFallback: true }
+      });
+      
+      if (fallbackTemplate) {
+        finalTemplateId = fallbackTemplate.id;
+      } else {
+        return res.status(404).json({ error: 'NO_FALLBACK', message: 'No matching template found and no fallback template is configured.' });
+      }
+    }
+
+    res.json({ templateId: finalTemplateId });
+  } catch (error) {
+    if (error.message === 'AUTH_ERROR') {
+      console.error('[SuggestTemplate] Auth Error:', error.message);
+      return res.status(503).json({ error: 'AUTH_ERROR', message: 'AI service unavailable' });
+    }
+    if (error.message === 'PARSE_ERROR') {
+      console.error('[SuggestTemplate] Parse Error:', error.message);
+      return res.status(502).json({ error: 'PARSE_ERROR', message: 'Malformed AI response' });
+    }
+    if (error.message === 'NETWORK_ERROR') {
+      console.error('[SuggestTemplate] Network Error:', error.message);
+      return res.status(503).json({ error: 'NETWORK_ERROR', message: 'Could not reach AI service' });
+    }
+    
+    console.error('[SuggestTemplate] Unhandled Error:', error.message);
+    res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Failed to suggest template' });
   }
 });
 

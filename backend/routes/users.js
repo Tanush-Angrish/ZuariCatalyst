@@ -8,7 +8,7 @@ router.use(authMiddleware);
 
 // ─── Role Helpers ─────────────────────────────────────────────────────────────
 
-const DISPLAY_ROLES = ['Employee', 'Org Admin', 'Central Team'];
+const DISPLAY_ROLES = ['Employee', 'Org Admin', 'Central Team', 'Administrator'];
 
 /**
  * Normalize Excel role values to DB role values.
@@ -19,6 +19,7 @@ function normalizeExcelRole(raw) {
   const r = String(raw).trim().toLowerCase().replace(/[\s_-]/g, '');
   if (r === 'orgadmin' || r === 'orgAdmin') return 'Org Admin';
   if (r === 'centralteam' || r === 'superadmin' || r === 'admin') return 'Superadmin';
+  if (r === 'administrator') return 'Administrator';
   return 'Employee';
 }
 
@@ -27,6 +28,7 @@ function normalizeExcelRole(raw) {
  */
 function toDbRole(displayRole) {
   if (displayRole === 'Central Team') return 'Superadmin';
+  if (displayRole === 'Administrator') return 'Administrator';
   return displayRole; // 'Employee' | 'Org Admin'
 }
 
@@ -35,6 +37,7 @@ function toDbRole(displayRole) {
  * Org Admin and Central Team (Superadmin) automatically also have Employee access.
  */
 function deriveRoles(primaryDbRole) {
+  if (primaryDbRole === 'Administrator') return ['Administrator', 'Employee'];
   if (primaryDbRole === 'Org Admin') return ['Org Admin', 'Employee'];
   if (primaryDbRole === 'Superadmin') return ['Superadmin', 'Employee'];
   return ['Employee'];
@@ -89,10 +92,9 @@ router.post('/', async (req, res) => {
         email: email.toLowerCase().trim(),
         role: dbRole,
         roles: JSON.stringify(roles),
-        organization: (dbRole === 'Superadmin') ? null : (organization || ''),
+        organization: (dbRole === 'Superadmin' || dbRole === 'Administrator') ? null : (organization || ''),
         mobile_number: mobileNumber ? String(mobileNumber).trim() : null,
-        employee_id: employeeId ? String(employeeId).trim() : null,
-        password: 'password'
+        employee_id: employeeId ? String(employeeId).trim() : null
       }
     });
     res.json({ id: user.id, name, title, email: user.email, role: dbRole, roles, organization });
@@ -124,9 +126,9 @@ router.post('/bulk', async (req, res) => {
 
     const dbRole = normalizeExcelRole(u.role);
 
-    // Block Central Team from bulk upload
-    if (dbRole === 'Superadmin') {
-      errors.push({ row: i + 1, email: u.email, error: 'Central Team users cannot be added via bulk upload. Add them from the UI.' });
+    // Block Central Team and Administrator from bulk upload
+    if (dbRole === 'Superadmin' || dbRole === 'Administrator') {
+      errors.push({ row: i + 1, email: u.email, error: 'Central Team or Administrator users cannot be added via bulk upload. Add them from the UI.' });
       continue;
     }
 
@@ -142,8 +144,7 @@ router.post('/bulk', async (req, res) => {
           roles: JSON.stringify(roles),
           organization: u.organization ? String(u.organization).trim() : '',
           mobile_number: u.mobileNumber ? String(u.mobileNumber).trim() : null,
-          employee_id: u.employeeId ? String(u.employeeId).trim() : null,
-          password: 'password'
+          employee_id: u.employeeId ? String(u.employeeId).trim() : null
         }
       });
       successes.push({ id: user.id, email: user.email, role: dbRole });
@@ -199,7 +200,7 @@ router.put('/:id/profile-photo', async (req, res) => {
   const { url } = req.body;
 
   // Only allow users to update their own photo (or admins)
-  if (req.user.id !== userId && req.user.role !== 'Superadmin') {
+  if (req.user.id !== userId && req.user.role !== 'Superadmin' && req.user.role !== 'Administrator') {
     return res.status(403).json({ error: 'You can only update your own profile photo.' });
   }
 
@@ -220,7 +221,7 @@ router.put('/:id/profile-photo', async (req, res) => {
 // ─── PUT /api/users/:id/role — Update user role (admin action) ───────────────
 router.put('/:id/role', async (req, res) => {
   const { role } = req.body;
-  const validRoles = ['Employee', 'Org Admin', 'Central Team', 'Superadmin'];
+  const validRoles = ['Employee', 'Org Admin', 'Central Team', 'Superadmin', 'Administrator'];
 
   if (!role || !validRoles.includes(role)) {
     return res.status(400).json({ error: 'Invalid role' });
@@ -232,7 +233,7 @@ router.put('/:id/role', async (req, res) => {
   try {
     await prisma.user.update({
       where: { id: parseInt(req.params.id) },
-      data: dbRole === 'Superadmin'
+      data: (dbRole === 'Superadmin' || dbRole === 'Administrator')
         ? { role: dbRole, roles: JSON.stringify(roles), organization: null }
         : { role: dbRole, roles: JSON.stringify(roles) }
     });
@@ -263,7 +264,7 @@ router.put('/:id', async (req, res) => {
         email: email.toLowerCase().trim(),
         role: dbRole,
         roles: JSON.stringify(roles),
-        organization: dbRole === 'Superadmin' ? null : (organization || ''),
+        organization: (dbRole === 'Superadmin' || dbRole === 'Administrator') ? null : (organization || ''),
         mobile_number: mobileNumber ? String(mobileNumber).trim() : null,
         employee_id: employeeId ? String(employeeId).trim() : null,
       }

@@ -284,7 +284,8 @@ export default function SuperadminDashboard() {
       await api.updateIdeaStatus(
         ideaId,
         status,
-        reason,
+        status === 'Rejected' ? reason : undefined,
+        status === 'Approved' ? reason : undefined,
         status === 'Approved' ? user?.id : undefined,
         status === 'Approved' ? 'central' : undefined
       );
