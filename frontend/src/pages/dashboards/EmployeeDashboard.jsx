@@ -318,11 +318,11 @@ export default function EmployeeDashboard() {
         if (!Array.isArray(allTemplates)) return;
 
         // ── Admin in Employee view: see ALL templates ─────────────────────────
-        // If this user's full roles include Org Admin or Central Team (Superadmin),
+        // If this user's full roles include Org Admin, Management, or Central Team (Superadmin),
         // they are using the Employee view to submit ideas — give them access to
         // every template in the system, unrestricted.
         const userRoles = Array.isArray(user?.roles) ? user.roles : [];
-        const isAdminInEmployeeView = userRoles.some(r => r === 'Org Admin' || r === 'Superadmin');
+        const isAdminInEmployeeView = userRoles.some(r => r === 'Org Admin' || r === 'Superadmin' || r === 'Management');
 
         if (isAdminInEmployeeView) {
           setAllowedTemplates(allTemplates);
@@ -357,7 +357,7 @@ export default function EmployeeDashboard() {
 
     // Admins in Employee view don't need an organization to load templates
     const userRoles = Array.isArray(user?.roles) ? user.roles : [];
-    const isAdminInEmployeeView = userRoles.some(r => r === 'Org Admin' || r === 'Superadmin');
+    const isAdminInEmployeeView = userRoles.some(r => r === 'Org Admin' || r === 'Superadmin' || r === 'Management');
     if (isAdminInEmployeeView || user?.organization) fetchData();
     else setIsLoadingTemplates(false);
   }, [user]);

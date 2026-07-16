@@ -29,6 +29,7 @@ function getKey(header, callback) {
 function deriveRoles(primaryRole) {
   if (primaryRole === 'Administrator') return ['Administrator', 'Employee'];
   if (primaryRole === 'Org Admin') return ['Org Admin', 'Employee'];
+  if (primaryRole === 'Management') return ['Management', 'Employee'];
   if (primaryRole === 'Superadmin') return ['Superadmin', 'Employee'];
   return ['Employee'];
 }
@@ -49,6 +50,7 @@ function primaryRoleFromRoles(rolesArr) {
   if (rolesArr.includes('Administrator')) return 'Administrator';
   if (rolesArr.includes('Superadmin')) return 'Superadmin';
   if (rolesArr.includes('Org Admin'))  return 'Org Admin';
+  if (rolesArr.includes('Management')) return 'Management';
   return 'Employee';
 }
 
@@ -153,6 +155,9 @@ router.get('/me', async (req, res) => {
 
     const roles = await ensureRoles(row);
 
+    // Stamp last login time on every /me call (active session = active login)
+    await prisma.user.update({ where: { id: row.id }, data: { last_login_at: new Date() } }).catch(() => {});
+
     // Use whatever role is currently stored in the DB.
     // This is the active (possibly switched) role — we must not override it here
     // or role switching breaks: switchRole() sets the DB then calls /me to refresh.
@@ -248,6 +253,9 @@ router.post('/ms-login', (req, res) => {
 
       const roles = await ensureRoles(row);
 
+      // Stamp last login time
+      await prisma.user.update({ where: { id: row.id }, data: { last_login_at: new Date() } }).catch(() => {});
+
       // ── Fresh SSO login: restore to primary role ──────────────────────
       const primaryRole = primaryRoleFromRoles(roles);
       if (row.role !== primaryRole) {
@@ -340,6 +348,9 @@ router.post('/google-login', async (req, res) => {
     }
 
     const roles = await ensureRoles(row);
+
+    // Stamp last login time
+    await prisma.user.update({ where: { id: row.id }, data: { last_login_at: new Date() } }).catch(() => {});
 
     // ── Fresh SSO login: restore to primary role ──────────────────────
     const primaryRole = primaryRoleFromRoles(roles);

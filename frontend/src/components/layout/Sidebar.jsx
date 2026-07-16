@@ -60,6 +60,11 @@ export default function Sidebar({ isMobile }) {
           { name: 'Team Ideas', path: '/dashboard/team-ideas', icon: Users },
           ...common
         ];
+      case 'Management':
+        return [
+          { name: 'Management Dashboard', path: '/dashboard/management', icon: LayoutDashboard },
+          { name: 'Profile', path: '/dashboard/profile', icon: UserCircle },
+        ];
       case 'Employee':
       default:
         return [

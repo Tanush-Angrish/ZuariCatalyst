@@ -14,6 +14,7 @@ const projectsRoutes = require('./routes/projects');
 const notificationsRoutes = require('./routes/notifications');
 const pointsRoutes = require('./routes/points');
 const tourRoutes = require('./routes/tour');
+const managementRoutes = require('./routes/management');
 const { sendTestEmail } = require('./services/emailService');
 const runSeed = require('./scripts/seed');
 
@@ -74,6 +75,7 @@ app.use('/api/projects', projectsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/points', pointsRoutes);
 app.use('/api/tour', tourRoutes);
+app.use('/api/management', managementRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Zuari Catalyst Backend Running' });
@@ -107,8 +109,10 @@ const frontendDistExists = require('fs').existsSync(path.join(FRONTEND_DIST, 'in
 
 if (frontendDistExists) {
   app.use(express.static(FRONTEND_DIST));
-  // Express 5 catch-all: named wildcard is required (bare '*' is not valid in Express 5)
-  app.get('/{*path}', (req, res) => {
+  // Express 5 catch-all: serve index.html for all non-API routes (React Router support)
+  // The /api prefix guard ensures API 404s are NOT swallowed by the frontend catch-all.
+  app.get('/{*path}', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
     res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
   });
   console.log('[Server] Serving built frontend from frontend/dist');

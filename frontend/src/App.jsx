@@ -10,6 +10,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 
 // Lazy imports — each page downloads only when first navigated to
 const EmployeeDashboard   = lazy(() => import('./pages/dashboards/EmployeeDashboard'));
+const ManagementDashboard = lazy(() => import('./pages/dashboards/ManagementDashboard'));
 const MyIdeas             = lazy(() => import('./pages/dashboards/MyIdeas'));
 const SuperadminDashboard = lazy(() => import('./pages/dashboards/SuperadminDashboard'));
 const OrgAdminDashboard   = lazy(() => import('./pages/dashboards/OrgAdminDashboard'));
@@ -59,6 +60,7 @@ const DashboardDirector = () => {
   if (user?.role === 'Superadmin') return <SuperadminDashboard />;
   if (user?.role === 'Central Team') return <SuperadminDashboard />;
   if (user?.role === 'Org Admin') return <OrgAdminDashboard />;
+  if (user?.role === 'Management') return <Navigate to="/dashboard/management" replace />;
   if (user?.role === 'Employee') return <EmployeeDashboard />;
   if (user?.role === 'Administrator') return <Navigate to="/settings/users" replace />;
 
@@ -79,10 +81,11 @@ function App() {
                 {/* General Dashboard routes */}
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                   <Route index element={<DashboardDirector />} />
-                  <Route path="my-ideas" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><MyIdeas /></ProtectedRoute>} />
+                  <Route path="management" element={<ProtectedRoute allowedRoles={['Management']}><ManagementDashboard /></ProtectedRoute>} />
+                  <Route path="my-ideas" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Management', 'Superadmin', 'Central Team']}><MyIdeas /></ProtectedRoute>} />
                   <Route path="team-ideas" element={<ProtectedRoute allowedRoles={['Org Admin']}><TeamIdeas /></ProtectedRoute>} />
-                  <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><ProjectsPage /></ProtectedRoute>} />
-                  <Route path="leaderboard" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Superadmin', 'Central Team']}><Leaderboard /></ProtectedRoute>} />
+                  <Route path="projects" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Management', 'Superadmin', 'Central Team']}><ProjectsPage /></ProtectedRoute>} />
+                  <Route path="leaderboard" element={<ProtectedRoute allowedRoles={['Employee', 'Org Admin', 'Management', 'Superadmin', 'Central Team']}><Leaderboard /></ProtectedRoute>} />
                   <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 </Route>
 

@@ -325,4 +325,10 @@ export const api = {
   completeTour: () => request('/api/tour/complete', { method: 'POST' }),
   getNudgeStatus: () => request('/api/tour/nudge-status'),
 
+  // Management Dashboard
+  getManagementDashboard: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/api/management/dashboard${qs ? '?' + qs : ''}`);
+  },
+
 };

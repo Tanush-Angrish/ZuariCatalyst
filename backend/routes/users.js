@@ -8,7 +8,7 @@ router.use(authMiddleware);
 
 // ─── Role Helpers ─────────────────────────────────────────────────────────────
 
-const DISPLAY_ROLES = ['Employee', 'Org Admin', 'Central Team', 'Administrator'];
+const DISPLAY_ROLES = ['Employee', 'Org Admin', 'Management', 'Central Team', 'Administrator'];
 
 /**
  * Normalize Excel role values to DB role values.
@@ -17,6 +17,7 @@ const DISPLAY_ROLES = ['Employee', 'Org Admin', 'Central Team', 'Administrator']
 function normalizeExcelRole(raw) {
   if (!raw) return 'Employee';
   const r = String(raw).trim().toLowerCase().replace(/[\s_-]/g, '');
+  if (r === 'management') return 'Management';
   if (r === 'orgadmin' || r === 'orgAdmin') return 'Org Admin';
   if (r === 'centralteam' || r === 'superadmin' || r === 'admin') return 'Superadmin';
   if (r === 'administrator') return 'Administrator';
@@ -39,6 +40,7 @@ function toDbRole(displayRole) {
 function deriveRoles(primaryDbRole) {
   if (primaryDbRole === 'Administrator') return ['Administrator', 'Employee'];
   if (primaryDbRole === 'Org Admin') return ['Org Admin', 'Employee'];
+  if (primaryDbRole === 'Management') return ['Management', 'Employee'];
   if (primaryDbRole === 'Superadmin') return ['Superadmin', 'Employee'];
   return ['Employee'];
 }
@@ -92,7 +94,7 @@ router.post('/', async (req, res) => {
         email: email.toLowerCase().trim(),
         role: dbRole,
         roles: JSON.stringify(roles),
-        organization: (dbRole === 'Superadmin' || dbRole === 'Administrator') ? null : (organization || ''),
+        organization: (dbRole === 'Superadmin' || dbRole === 'Administrator' || dbRole === 'Management') ? null : (organization || ''),
         mobile_number: mobileNumber ? String(mobileNumber).trim() : null,
         employee_id: employeeId ? String(employeeId).trim() : null
       }
@@ -221,7 +223,7 @@ router.put('/:id/profile-photo', async (req, res) => {
 // ─── PUT /api/users/:id/role — Update user role (admin action) ───────────────
 router.put('/:id/role', async (req, res) => {
   const { role } = req.body;
-  const validRoles = ['Employee', 'Org Admin', 'Central Team', 'Superadmin', 'Administrator'];
+  const validRoles = ['Employee', 'Org Admin', 'Management', 'Central Team', 'Superadmin', 'Administrator'];
 
   if (!role || !validRoles.includes(role)) {
     return res.status(400).json({ error: 'Invalid role' });
@@ -233,7 +235,7 @@ router.put('/:id/role', async (req, res) => {
   try {
     await prisma.user.update({
       where: { id: parseInt(req.params.id) },
-      data: (dbRole === 'Superadmin' || dbRole === 'Administrator')
+      data: (dbRole === 'Superadmin' || dbRole === 'Administrator' || dbRole === 'Management')
         ? { role: dbRole, roles: JSON.stringify(roles), organization: null }
         : { role: dbRole, roles: JSON.stringify(roles) }
     });
@@ -264,7 +266,7 @@ router.put('/:id', async (req, res) => {
         email: email.toLowerCase().trim(),
         role: dbRole,
         roles: JSON.stringify(roles),
-        organization: (dbRole === 'Superadmin' || dbRole === 'Administrator') ? null : (organization || ''),
+        organization: (dbRole === 'Superadmin' || dbRole === 'Administrator' || dbRole === 'Management') ? null : (organization || ''),
         mobile_number: mobileNumber ? String(mobileNumber).trim() : null,
         employee_id: employeeId ? String(employeeId).trim() : null,
       }

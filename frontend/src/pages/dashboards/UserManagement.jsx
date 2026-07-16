@@ -7,7 +7,7 @@ import * as XLSX from 'xlsx';
 import { api } from '../../services/api';
 
 
-const ROLES = ['Employee', 'Org Admin', 'Central Team', 'Administrator'];
+const ROLES = ['Employee', 'Org Admin', 'Management', 'Central Team', 'Administrator'];
 const displayRole = (r) => r === 'Superadmin' ? 'Central Team' : (r || '');
 
 /**
@@ -17,6 +17,7 @@ const displayRole = (r) => r === 'Superadmin' ? 'Central Team' : (r || '');
 function normalizeExcelRole(raw) {
   if (!raw) return 'Employee';
   const r = String(raw).trim().toLowerCase().replace(/[\s_-]/g, '');
+  if (r === 'management') return 'Management';
   if (r === 'orgadmin') return 'Org Admin';
   if (r === 'centralteam' || r === 'superadmin' || r === 'admin') return 'Central Team';
   if (r === 'administrator') return 'Administrator';
@@ -277,13 +278,13 @@ export default function UserManagement() {
                 <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className={inputClass}>
                   {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
-                {(form.role === 'Org Admin' || form.role === 'Central Team' || form.role === 'Administrator') && (
+                {(form.role === 'Org Admin' || form.role === 'Management' || form.role === 'Central Team' || form.role === 'Administrator') && (
                   <p className="text-xs text-blue-600 mt-1.5 font-medium">
                     ✓ {form.role} will automatically also have Employee access (idea submission)
                   </p>
                 )}
               </div>
-              {form.role !== 'Central Team' && form.role !== 'Administrator' && (
+              {form.role !== 'Central Team' && form.role !== 'Administrator' && form.role !== 'Management' && (
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Organization / Unit</label>
                   <select

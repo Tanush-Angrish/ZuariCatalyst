@@ -22,6 +22,7 @@ model User {
   mobile_number     String?
   employee_id       String?
   profile_photo_url String?
+  last_login_at     DateTime?
   
   // Relations
   authoredIdeas  Idea[]         @relation("IdeaAuthor")

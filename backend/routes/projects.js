@@ -29,7 +29,7 @@ async function getCentralTeamEmails() {
 
 // ─── Visibility helper ─────────────────────────────────────────────────────
 function buildProjectFilter(userId, role, organization) {
-  if (role === 'Superadmin') return {}; // Central team sees everything
+  if (role === 'Superadmin' || role === 'Management') return {}; // Central team and Management see everything
   if (role === 'Org Admin') return { orgId: organization };
   if (role === 'Employee') return {
     OR: [
