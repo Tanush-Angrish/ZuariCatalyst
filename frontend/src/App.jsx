@@ -23,6 +23,7 @@ const CommunityHub        = lazy(() => import('./pages/dashboards/CommunityHub')
 const Leaderboard         = lazy(() => import('./pages/dashboards/Leaderboard'));
 const ProfilePage         = lazy(() => import('./pages/dashboards/ProfilePage'));
 const OrgAdminManagement  = lazy(() => import('./pages/dashboards/OrgAdminManagement'));
+const ExportPage          = lazy(() => import('./pages/dashboards/ExportPage'));
 
 // Minimal loading fallback — shown while a page chunk is downloading
 function PageLoader() {
@@ -100,6 +101,7 @@ function App() {
                   <Route path="templates" element={<TemplateConfig />} />
                   <Route path="access" element={<TemplateAccess />} />
                   <Route path="org-admins" element={<OrgAdminManagement />} />
+                  <Route path="export" element={<ExportPage />} />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />

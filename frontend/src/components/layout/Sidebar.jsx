@@ -5,7 +5,7 @@ import { useTour } from '../../context/TourContext';
 import {
   LayoutDashboard, Users, PlusCircle, LayoutList, UserCog,
   Settings, Wrench, Trophy, ChevronLeft, ChevronRight, PlayCircle, UserCircle, ShieldAlert,
-  Tv
+  Tv, FileDown
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import VideoModal from '../VideoModal';
@@ -52,6 +52,7 @@ export default function Sidebar({ isMobile }) {
           { name: 'Org Admin Management', path: '/settings/org-admins', icon: ShieldAlert },
           { name: 'Template Access', path: '/settings/access', icon: Settings },
           { name: 'Template Config', path: '/settings/templates', icon: Wrench },
+          { name: 'Export Ideas', path: '/settings/export', icon: FileDown },
           { name: 'Profile', path: '/dashboard/profile', icon: UserCircle },
         ];
       case 'Org Admin':

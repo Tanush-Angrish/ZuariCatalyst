@@ -1139,4 +1139,105 @@ router.get('/:id/upvotes', async (req, res) => {
   }
 });
 
+// GET /api/ideas/export-excel — Administrator only, Director-level Excel dump
+// Supports: ?filter=week|month|custom&from=YYYY-MM-DD&to=YYYY-MM-DD
+router.get('/export-excel', async (req, res) => {
+  if (req.user.role !== 'Administrator') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  try {
+    const { filter, from, to } = req.query;
+
+    // Build date filter
+    const where = { status: { not: 'Draft' } };
+    const now = new Date();
+
+    if (filter === 'week') {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      where.createdAt = { gte: weekAgo };
+    } else if (filter === 'month') {
+      const monthAgo = new Date(now);
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      where.createdAt = { gte: monthAgo };
+    } else if (filter === 'custom' && from && to) {
+      where.createdAt = {
+        gte: new Date(from),
+        lte: new Date(to + 'T23:59:59.999Z'),
+      };
+    }
+
+    const ideas = await prisma.idea.findMany({
+      where,
+      include: {
+        author:     { select: { name: true, organization: true } },
+        approvedBy: { select: { name: true } },
+      },
+      orderBy: { id: 'asc' },
+    });
+
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Zuari Catalyst';
+    workbook.created = new Date();
+    const sheet = workbook.addWorksheet('Ideas Report');
+
+    sheet.columns = [
+      { header: 'Idea #',        key: 'id',          width: 8  },
+      { header: 'Title',         key: 'title',        width: 36 },
+      { header: 'Idea Summary',  key: 'description',  width: 52 },
+      { header: 'Submitted By',  key: 'submittedBy',  width: 22 },
+      { header: 'Department',    key: 'department',   width: 22 },
+      { header: 'Submitted On',  key: 'submittedOn',  width: 16 },
+      { header: 'Current Status',key: 'status',       width: 18 },
+      { header: 'Status Date',   key: 'statusDate',   width: 16 },
+      { header: 'Approved By',   key: 'approvedBy',   width: 22 },
+    ];
+
+    // Style header row — Zuari navy + white bold text
+    const headerRow = sheet.getRow(1);
+    headerRow.height = 22;
+    headerRow.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' };
+    headerRow.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D3368' } };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    const fmt = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    ideas.forEach((idea, i) => {
+      const row = sheet.addRow({
+        id:          idea.id,
+        title:       idea.title,
+        description: idea.description.slice(0, 500),
+        submittedBy: idea.author?.name || '—',
+        department:  idea.department,
+        submittedOn: fmt(idea.createdAt),
+        status:      idea.status,
+        // ponytail: ceiling — no statusUpdatedAt in schema; shows submittedOn as proxy.
+        // upgrade path: add statusUpdatedAt DateTime? to Idea model + migration + set on status change.
+        statusDate:  fmt(idea.createdAt),
+        approvedBy:  idea.approvedBy?.name || '—',
+      });
+      row.alignment = { wrapText: true, vertical: 'top' };
+      // Alternate row shading for readability
+      if (i % 2 === 1) {
+        row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } };
+      }
+    });
+
+    // Freeze top row so Directors can scroll and always see headers
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="ideas-export-${dateStr}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('[Export Excel]', err.message);
+    res.status(500).json({ error: 'Failed to generate export.' });
+  }
+});
+
 module.exports = router;
+

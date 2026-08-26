@@ -331,4 +331,25 @@ export const api = {
     return request(`/api/management/dashboard${qs ? '?' + qs : ''}`);
   },
 
+  // Director-level Excel export (Administrator only)
+  // params: { filter: 'week'|'month'|'custom', from: 'YYYY-MM-DD', to: 'YYYY-MM-DD' }
+  downloadIdeasExcel: async (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v))
+    ).toString();
+    const url = `${BASE_URL}/api/ideas/export-excel${qs ? '?' + qs : ''}`;
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `Export failed: ${res.status}`);
+    }
+    const blob = await res.blob();
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `ideas-export-${dateStr}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  },
+
 };
