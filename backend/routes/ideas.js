@@ -1216,7 +1216,12 @@ router.get('/export-excel', async (req, res) => {
         // ponytail: ceiling — no statusUpdatedAt in schema; shows submittedOn as proxy.
         // upgrade path: add statusUpdatedAt DateTime? to Idea model + migration + set on status change.
         statusDate:  fmt(idea.createdAt),
-        approvedBy:  idea.approvedBy?.name || '—',
+        // approvalRemarks is null on SLA auto-approvals (never set by slaService),
+        // and always non-empty (10–150 chars, enforced by API) on manual approvals.
+        // This is the reliable, zero-schema-change signal for accurate Director reporting.
+        approvedBy: idea.status === 'Approved'
+          ? (idea.approvalRemarks?.trim() ? (idea.approvedBy?.name || '—') : 'Auto-Approved (SLA)')
+          : '—',
       });
       row.alignment = { wrapText: true, vertical: 'top' };
       // Alternate row shading for readability

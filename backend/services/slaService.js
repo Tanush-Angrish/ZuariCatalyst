@@ -120,12 +120,6 @@ async function clearSLA(ideaId) {
 
 async function autoApprove(idea, approvedByRole) {
   try {
-    // Find a Central Team user to credit as approver
-    const approver = await prisma.user.findFirst({
-      where: { roles: { contains: approvedByRole === 'central' ? 'Superadmin' : 'Org Admin' } },
-      select: { id: true },
-    });
-
     // Check if a project already exists (idempotency)
     const existing = await prisma.project.findUnique({ where: { ideaId: idea.id } });
     if (existing) {
@@ -141,11 +135,13 @@ async function autoApprove(idea, approvedByRole) {
       prisma.idea.update({
         where: { id: idea.id },
         data: {
-          status:          'Approved',
-          approvedByUserId: approver?.id ?? null,
-          approvedByRole:  approvedByRole,
-          slaDeadline:     null,
-          slaStage:        null,
+          status:           'Approved',
+          // ponytail: approvedByUserId intentionally null — no human actor approved this.
+          // SLA auto-approve is detected via approvalRemarks being null (never set here).
+          approvedByUserId: null,
+          approvedByRole:   approvedByRole,
+          slaDeadline:      null,
+          slaStage:         null,
         },
       }),
       prisma.project.create({
