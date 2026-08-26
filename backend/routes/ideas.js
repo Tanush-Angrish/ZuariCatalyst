@@ -1208,7 +1208,7 @@ router.get('/export-excel', async (req, res) => {
       const row = sheet.addRow({
         id:          idea.id,
         title:       idea.title,
-        description: idea.description.slice(0, 500),
+        description: idea.description,
         submittedBy: idea.author?.name || '—',
         department:  idea.department,
         submittedOn: fmt(idea.createdAt),
