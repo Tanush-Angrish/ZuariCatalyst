@@ -1188,7 +1188,7 @@ router.get('/export-excel', async (req, res) => {
       { header: 'Title',         key: 'title',        width: 36 },
       { header: 'Idea Summary',  key: 'description',  width: 52 },
       { header: 'Submitted By',  key: 'submittedBy',  width: 22 },
-      { header: 'Department',    key: 'department',   width: 22 },
+      { header: 'Organization',  key: 'department',   width: 22 },
       { header: 'Submitted On',  key: 'submittedOn',  width: 16 },
       { header: 'Current Status',key: 'status',       width: 18 },
       { header: 'Status Date',   key: 'statusDate',   width: 16 },
@@ -1210,7 +1210,7 @@ router.get('/export-excel', async (req, res) => {
         title:       idea.title,
         description: idea.description,
         submittedBy: idea.author?.name || '—',
-        department:  idea.department,
+        department:  idea.author?.organization || '—',
         submittedOn: fmt(idea.createdAt),
         status:      idea.status,
         // ponytail: ceiling — no statusUpdatedAt in schema; shows submittedOn as proxy.
